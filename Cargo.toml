@@ -2,6 +2,19 @@
 name = "rust_filen"
 version = "0.1.0"
 authors = ["Konstantin Zakharov <enough.tea@outlook.com>"]
-edition = "2018"
+license = "MIT"
 description = "Rust interface for Filen.io API"
+keywords = ["filen.io", "api"]
 crate-type = ["staticlib"]
+edition = "2018"
+
+[dependencies]
+base64 = "0.13"
+easy-hasher = "2.2"
+rand = "0.8"
+ring = "0.16"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[dev-dependencies]
+cargo-husky = "1.5"
