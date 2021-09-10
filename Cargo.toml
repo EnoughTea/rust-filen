@@ -1,0 +1,7 @@
+[package]
+name = "rust_filen"
+version = "0.1.0"
+authors = ["Konstantin Zakharov <enough.tea@outlook.com>"]
+edition = "2018"
+description = "Rust interface for Filen.io API"
+crate-type = ["staticlib"]
