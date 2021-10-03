@@ -1,0 +1,11 @@
+{
+   "status":true,
+   "message":"Chunk stored.",
+   "data":{
+      "bucket":"filen-1",
+      "region":"de-1",
+      "expireSet":1,
+      "expireTimestamp":4784907962,
+      "deleteTimestamp":4784907962
+   }
+}

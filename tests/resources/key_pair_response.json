@@ -1,0 +1,8 @@
+{
+   "status":true,
+   "message":"Keypair fetched.",
+   "data":{
+      "publicKey":"publicKeyHash",
+      "privateKey":"privateKeyHash"
+   }
+}

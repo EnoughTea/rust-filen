@@ -1,0 +1,7 @@
+{
+   "status":true,
+   "message":"Master keys fetched.",
+   "data":{
+      "keys":"testMaster/testMasterHash"
+   }
+}

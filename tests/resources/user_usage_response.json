@@ -1,0 +1,13 @@
+{
+   "status":true,
+   "message":"User usage fetched.",
+   "data":{
+      "uploads":70412,
+      "folders":16050,
+      "storage":8495138416,
+      "max":10737418240,
+      "twoFactorEnabled":false,
+      "pro":false,
+      "email":"test@test.com"
+   }
+}

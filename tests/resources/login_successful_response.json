@@ -1,0 +1,9 @@
+{
+   "status":true,
+   "message":"Login successful.",
+   "data":{
+      "apiKey":"testApiKey",
+      "masterKeys":"testMaster/testMasterHash",
+      "privateKey":"testPrivate/testPrivateHash"
+   }
+}

@@ -1,0 +1,7 @@
+{
+   "status":true,
+   "message":"Folder link status fetched.",
+   "data":{
+      "link":false
+   }
+}

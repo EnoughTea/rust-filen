@@ -1,0 +1,12 @@
+{
+   "status":true,
+   "message":"Data same as last data for this device ID, skipping.",
+   "data":{
+      "folders":[
+
+      ],
+      "files":[
+
+      ]
+   }
+}

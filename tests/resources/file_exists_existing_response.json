@@ -1,0 +1,8 @@
+{
+   "status":true,
+   "message":"File exists.",
+   "data":{
+      "exists":true,
+      "uuid":"b640414e-367e-4df6-b31a-030fd639bcff"
+   }
+}

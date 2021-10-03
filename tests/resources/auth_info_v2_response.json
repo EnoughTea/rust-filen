@@ -1,0 +1,9 @@
+{
+  "status": true,
+  "message": "Authentication info fetched.",
+  "data": {
+    "email": "test@test.com",
+    "authVersion": 2,
+    "salt": "test"
+  }
+}

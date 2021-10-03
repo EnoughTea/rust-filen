@@ -1,0 +1,10 @@
+{
+   "status":true,
+   "message":"Data fetched.",
+   "data":{
+      "email":"test@test.com",
+      "maxStorage":10737418240,
+      "storageUsed":8497435904,
+      "isPremium":0
+   }
+}
