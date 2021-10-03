@@ -10,6 +10,7 @@ edition = "2018"
 
 [dependencies]
 aes = "0.7"
+aes-gcm = "0.9"
 base64 = "0.13"
 block-modes = "0.8"
 easy-hasher = "2.2"

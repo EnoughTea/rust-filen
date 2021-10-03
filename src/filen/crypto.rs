@@ -1,5 +1,7 @@
 //! This module contains crypto functions used by Filen to generate and process its keys.
-use ::aes::{Aes128, Aes192, Aes256};
+use ::aes::Aes256;
+use aes_gcm::aead::{Aead, NewAead};
+use aes_gcm::{Aes256Gcm, Key, Nonce};
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Cbc};
 use crypto::hmac::Hmac;
@@ -10,12 +12,14 @@ use evpkdf::evpkdf;
 use rand::Rng;
 use std::str;
 
-type Aes128Cbc = Cbc<Aes128, Pkcs7>;
-type Aes192Cbc = Cbc<Aes192, Pkcs7>;
+use crate::utils;
+
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
 const OPENSSL_SALT_PREFIX: &[u8] = b"Salted__";
 const OPENSSL_SALT_LENGTH: usize = 8;
+const FILEN_VERSION_LENGTH: usize = 3;
+const AES_GCM_IV_LENGTH: usize = 12;
 
 #[derive(Debug)]
 pub struct SentPasswordWithMasterKey {
@@ -89,16 +93,54 @@ pub fn encrypt_aes_prefixed(data: &[u8], password: &[u8], maybe_salt: Option<&[u
 }
 
 pub fn decrypt_aes_prefixed(data: &[u8], password: &[u8]) -> Result<Vec<u8>, &'static str> {
-    let cipher_index = OPENSSL_SALT_PREFIX.len() + OPENSSL_SALT_LENGTH;
-    if data.len() < cipher_index {
+    let message_index = OPENSSL_SALT_PREFIX.len() + OPENSSL_SALT_LENGTH;
+    if data.len() < message_index {
         Err("Encrypted data is too small to contain OpenSSL-compatible salt")
     } else {
-        let (salt_with_prefix, ciphered) = data.split_at(cipher_index);
+        let (salt_with_prefix, message) = data.split_at(message_index);
         let (_, salt) = salt_with_prefix.split_at(OPENSSL_SALT_PREFIX.len());
 
         let (key, iv) = generate_aes_key_and_iv(32, 16, 1, Some(&salt), password);
         let cipher = Aes256Cbc::new_from_slices(&key, &iv).unwrap();
-        cipher.decrypt_vec(ciphered).map_err(|_| "Cannot decipher data")
+        cipher
+            .decrypt_vec(message)
+            .map_err(|_| "Prefixed AES cannot decipher data")
+    }
+}
+
+/// Returns IV within [3, 15) range, and encrypted message in base64-encoded part starting at 15 string index.
+pub fn encrypt_aes_prefixed_002(data: &[u8], password: &[u8]) -> Result<String, &'static str> {
+    let key = derive_key_from_password_256(password, password, 1);
+    let iv = utils::random_alpha_string(12);
+    let cipher = Aes256Gcm::new(Key::from_slice(&key));
+    let nonce = Nonce::from_slice(iv.as_bytes());
+    let encrypted = cipher.encrypt(nonce, data);
+    encrypted
+        .map(|e| "002".to_string() + &iv + &base64::encode(e))
+        .map_err(|_| "Prefixed AES GCM cannot decipher data")
+}
+
+pub fn decrypt_aes_prefixed_002(data: &[u8], password: &[u8]) -> Result<Vec<u8>, &'static str> {
+    let message_index = FILEN_VERSION_LENGTH + AES_GCM_IV_LENGTH;
+    if data.len() <= message_index {
+        Err("Encrypted data is too small to contain Filen API version and AES GCM iv")
+    } else {
+        let (prefix, iv_and_message) = data.split_at(FILEN_VERSION_LENGTH);
+        if prefix != b"002" {
+            Err("Unsupported Filen API version")
+        } else {
+            let (iv, encrypted_base64) = iv_and_message.split_at(AES_GCM_IV_LENGTH);
+            base64::decode(encrypted_base64)
+                .map_err(|_| "Encrypted data is not contained within base64")
+                .and_then(|encrypted| {
+                    let key = derive_key_from_password_256(password, password, 1);
+                    let cipher = Aes256Gcm::new(Key::from_slice(&key));
+                    let nonce = Nonce::from_slice(iv);
+                    cipher
+                        .decrypt(nonce, encrypted.as_ref())
+                        .map_err(|_| "Prefixed AES GCM cannot decipher data")
+                })
+        }
     }
 }
 
@@ -131,9 +173,31 @@ mod tests {
     use galvanic_assert::*;
 
     #[test]
+    fn encrypt_aes_002_should_return_valid_aes_hash() {
+        let expected_prefix = b"002".to_vec();
+        let data = b"This is Jimmy.";
+        let encrypted_data = encrypt_aes_prefixed_002(data, b"test").unwrap();
+
+        assert_that!(&encrypted_data.len(), eq(55));
+        assert_that!(&encrypted_data.into_bytes(), contains_subset(expected_prefix));
+    }
+
+    #[test]
+    fn decrypt_aes_002_should_decrypt_previously_encrypted() {
+        let key = b"test";
+        let expected_data = "This is Jimmy.".to_string();
+        let encrypted_data = b"002N6wfUUJnj9q3NMz0v9RS39ZiZi+AJLAWcHfVfHkZQZQ4J7ZV32qA";
+
+        let decrypted_data = decrypt_aes_prefixed_002(encrypted_data, key).unwrap();
+
+        assert_that!(&String::from_utf8(decrypted_data).unwrap(), eq(expected_data));
+    }
+
+    #[test]
     fn encrypt_aes_should_return_valid_aes_hash_without_explicit_salt() {
+        let key = b"test";
         let expected_prefix = b"Salted__".to_vec();
-        let actual_aes_hash_bytes = encrypt_aes_prefixed(b"This is Jimmy.", b"test", None);
+        let actual_aes_hash_bytes = encrypt_aes_prefixed(b"This is Jimmy.", key, None);
 
         assert_that!(&actual_aes_hash_bytes.len(), eq(32));
         assert_that!(&actual_aes_hash_bytes, contains_subset(expected_prefix));
@@ -141,7 +205,8 @@ mod tests {
 
     #[test]
     fn encrypt_aes_should_return_valid_aes_hash_with_explicit_salt() {
-        let actual_aes_hash_bytes = encrypt_aes_prefixed(b"This is Jimmy.", b"test", Some(&[0u8, 1, 2, 3, 4, 5, 6, 7]));
+        let key = b"test";
+        let actual_aes_hash_bytes = encrypt_aes_prefixed(b"This is Jimmy.", key, Some(&[0u8, 1, 2, 3, 4, 5, 6, 7]));
         let actual_aes_hash = base64::encode(&actual_aes_hash_bytes);
 
         assert_that!(
