@@ -17,6 +17,7 @@ use crate::utils;
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
 const OPENSSL_SALT_PREFIX: &[u8] = b"Salted__";
+const OPENSSL_SALT_PREFIX_BASE64: &[u8] = b"U2FsdGVk";
 const OPENSSL_SALT_LENGTH: usize = 8;
 const FILEN_VERSION_LENGTH: usize = 3;
 const AES_GCM_IV_LENGTH: usize = 12;
@@ -155,10 +156,10 @@ pub fn decrypt_aes_prefixed_002(data: &[u8], password: &[u8]) -> Result<Vec<u8>,
     Ok(decrypted_data)
 }
 
-pub fn encrypt_metadata(data: &[u8], password: &[u8], metadata_version: u32) -> Result<Vec<u8>, Box<dyn Error>> {
+pub fn encrypt_metadata(data: &[u8], m_key: &[u8], metadata_version: u32) -> Result<Vec<u8>, Box<dyn Error>> {
     let encrypted_metadata = match metadata_version {
-        1 => encrypt_aes_prefixed(data, password, None), // Deprecated since August 21
-        2 => encrypt_aes_prefixed_002(data, password)?,
+        1 => encrypt_aes_prefixed(data, m_key, None), // Deprecated since August 21
+        2 => encrypt_aes_prefixed_002(data, m_key)?,
         version => Err(format!("Unsupported metadata version: {}", version))?,
     };
     Ok(encrypted_metadata)
@@ -169,6 +170,8 @@ pub fn decrypt_metadata(data: &[u8], password: &[u8]) -> Result<Vec<u8>, Box<dyn
     let possible_version_mark = &data[..FILEN_VERSION_LENGTH];
     let metadata_version = if possible_salted_mark == OPENSSL_SALT_PREFIX {
         1
+    } else if possible_salted_mark == OPENSSL_SALT_PREFIX_BASE64 {
+        Err("Given data should not be base64-encoded")?
     } else {
         let possible_version_string = String::from_utf8(possible_version_mark.to_vec())?;
         possible_version_string
