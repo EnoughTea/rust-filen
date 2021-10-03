@@ -75,11 +75,10 @@ pub fn derived_key_to_sent_password(derived_key_hex: &str) -> SentPasswordWithMa
 }
 
 pub fn encrypt_aes_prefixed(data: &[u8], password: &[u8], maybe_salt: Option<&[u8]>) -> Vec<u8> {
-    let mut rand = rand::thread_rng();
     let mut salt = [0u8; OPENSSL_SALT_LENGTH];
     match maybe_salt {
         Some(user_salt) if user_salt.len() == OPENSSL_SALT_LENGTH => salt.copy_from_slice(user_salt),
-        _ => rand.fill(&mut salt),
+        _ => rand::thread_rng().fill(&mut salt),
     };
 
     let (key, iv) = generate_aes_key_and_iv(32, 16, 1, Some(&salt), password);
