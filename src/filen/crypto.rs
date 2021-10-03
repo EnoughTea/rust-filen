@@ -168,9 +168,6 @@ pub fn decrypt_metadata(data: &str, key: &str) {
 #[cfg(test)]
 mod tests {
     use crate::{filen::crypto::*, utils};
-    use galvanic_assert::matchers::collection::*;
-    use galvanic_assert::matchers::*;
-    use galvanic_assert::*;
 
     #[test]
     fn encrypt_aes_002_should_return_valid_aes_hash() {
@@ -178,8 +175,8 @@ mod tests {
         let data = b"This is Jimmy.";
         let encrypted_data = encrypt_aes_prefixed_002(data, b"test").unwrap();
 
-        assert_that!(&encrypted_data.len(), eq(55));
-        assert_that!(&encrypted_data.into_bytes(), contains_subset(expected_prefix));
+        assert_eq!(encrypted_data.len(), 55);
+        assert_eq!(encrypted_data.into_bytes()[..expected_prefix.len()], expected_prefix);
     }
 
     #[test]
@@ -190,7 +187,7 @@ mod tests {
 
         let decrypted_data = decrypt_aes_prefixed_002(encrypted_data, key).unwrap();
 
-        assert_that!(&String::from_utf8(decrypted_data).unwrap(), eq(expected_data));
+        assert_eq!(String::from_utf8(decrypted_data).unwrap(), expected_data);
     }
 
     #[test]
@@ -199,8 +196,8 @@ mod tests {
         let expected_prefix = b"Salted__".to_vec();
         let actual_aes_hash_bytes = encrypt_aes_prefixed(b"This is Jimmy.", key, None);
 
-        assert_that!(&actual_aes_hash_bytes.len(), eq(32));
-        assert_that!(&actual_aes_hash_bytes, contains_subset(expected_prefix));
+        assert_eq!(actual_aes_hash_bytes.len(), 32);
+        assert_eq!(actual_aes_hash_bytes[..expected_prefix.len()], expected_prefix);
     }
 
     #[test]
@@ -209,9 +206,9 @@ mod tests {
         let actual_aes_hash_bytes = encrypt_aes_prefixed(b"This is Jimmy.", key, Some(&[0u8, 1, 2, 3, 4, 5, 6, 7]));
         let actual_aes_hash = base64::encode(&actual_aes_hash_bytes);
 
-        assert_that!(
-            &actual_aes_hash,
-            eq("U2FsdGVkX18AAQIDBAUGBzdjQTWH/ITXhkA7NCAPFOw=".to_string())
+        assert_eq!(
+            actual_aes_hash,
+            "U2FsdGVkX18AAQIDBAUGBzdjQTWH/ITXhkA7NCAPFOw=".to_owned()
         );
     }
 
@@ -224,7 +221,7 @@ mod tests {
         let actual_data_result = decrypt_aes_prefixed(&encrypted_data, key);
         let actual_data = actual_data_result.unwrap();
 
-        assert_that!(expected_data, contains_in_order(actual_data));
+        assert_eq!(actual_data, expected_data);
     }
 
     #[test]
@@ -236,7 +233,7 @@ mod tests {
         let actual_data_result = decrypt_aes_prefixed(&encrypted_data, key);
         let actual_data = actual_data_result.unwrap();
 
-        assert_that!(expected_data, contains_in_order(actual_data));
+        assert_eq!(actual_data, expected_data);
     }
 
     #[test]
