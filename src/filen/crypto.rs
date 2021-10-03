@@ -260,7 +260,7 @@ mod tests {
 
         let actual_pbkdf2_hash = derive_key_from_password_256(password, salt, 200_000);
 
-        assert_eq!(expected_pbkdf2_hash, actual_pbkdf2_hash);
+        assert_eq!(actual_pbkdf2_hash, expected_pbkdf2_hash);
     }
 
     #[test]
@@ -275,18 +275,14 @@ mod tests {
 
         let actual_pbkdf2_hash = derive_key_from_password_512(password, salt, 200_000);
 
-        assert_eq!(expected_pbkdf2_hash, actual_pbkdf2_hash);
+        assert_eq!(actual_pbkdf2_hash, expected_pbkdf2_hash);
     }
 
     #[test]
     fn derived_key_to_sent_password_should_return_valid_mkey_and_password() {
-        let expected_m_key =
-            utils::hex_string_to_bytes("f82a1812080acab7ed5751e7193984565c8b159be00bb6c66eac70ff0c8ad8dd").unwrap();
-        let expected_password = utils::hex_string_to_bytes(
-            &("7a499370cf3f72fd2ce351297916fa8926daf33a01d592c92e3ee9e83c152".to_owned()
-                + "1c342e60f2ecbde37bfdc00c45923c2568bc6a9c85c8653e19ade89e71ed9deac1d"),
-        )
-        .unwrap();
+        let expected_m_key = "f82a1812080acab7ed5751e7193984565c8b159be00bb6c66eac70ff0c8ad8dd".to_owned();
+        let expected_password = "7a499370cf3f72fd2ce351297916fa8926daf33a01d592c92e3ee9e83c152".to_owned()
+            + "1c342e60f2ecbde37bfdc00c45923c2568bc6a9c85c8653e19ade89e71ed9deac1d";
         let pbkdf2_hash: [u8; 64] = [
             248, 42, 24, 18, 8, 10, 202, 183, 237, 87, 81, 231, 25, 57, 132, 86, 92, 139, 21, 155, 224, 11, 182, 198,
             110, 172, 112, 255, 12, 138, 216, 221, 58, 253, 102, 41, 117, 40, 216, 13, 51, 181, 109, 144, 46, 10, 63,
@@ -295,8 +291,13 @@ mod tests {
 
         let parts = derived_key_to_sent_password(&pbkdf2_hash).unwrap();
 
-        assert_eq!(expected_m_key, parts.m_key);
-        assert_eq!(expected_password, parts.sent_password);
+        assert_eq!(parts.m_key, utils::hex_string_to_bytes(&expected_m_key).unwrap());
+        assert_eq!(parts.m_key_as_hex_string(), expected_m_key);
+        assert_eq!(
+            parts.sent_password,
+            utils::hex_string_to_bytes(&expected_password).unwrap()
+        );
+        assert_eq!(parts.sent_password_as_hex_string(), expected_password);
     }
 
     #[test]
@@ -309,6 +310,6 @@ mod tests {
 
         let actual_hash = hash_password(&password);
 
-        assert_eq!(expected_hash, actual_hash);
+        assert_eq!(actual_hash, expected_hash);
     }
 }
