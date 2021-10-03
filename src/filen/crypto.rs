@@ -215,6 +215,29 @@ mod tests {
     use crate::{filen::crypto::*, utils};
 
     #[test]
+    fn encrypt_metadata_v1_should_use_simple_aes() {
+        let m_key = hash_fn("test");
+        let metadata = "{\"name\":\"perform.js\",\"size\":156,\"mime\":\"application/javascript\",\"key\":\"tqNrczqVdTCgFzB1b1gyiQBIYmwDBwa9\",\"lastModified\":499162500}";
+
+        let encrypted_metadata = encrypt_metadata(metadata.as_bytes(), m_key.as_bytes(), 1).unwrap();
+
+        assert_eq!(encrypted_metadata.len(), 160);
+        assert_eq!(&encrypted_metadata[..8], OPENSSL_SALT_PREFIX);
+    }
+
+    #[test]
+    fn decrypt_metadata_v1_should_use_simple_aes() {
+        let m_key = hash_fn("test");
+        let metadata_base64 = "U2FsdGVkX1//gOpv81xPNI3PuT1CryNCVXpcfmISGNR+1g2OPT8SBP2/My7G6o5lSvVtkn2smbYrAo1Mgaq9RIJlCEjcYpMsr+A9RSpkX7zLyXtMPV6q+PRbQj1WkP8ymuh0lmmnFRa+oRy0EvJnw97m3aLTHN4DD5XmJ36tecA2cwSrFskYn9E8+0y+Wj/LcXh1l5n4Q1l5j8TSjS5mIQ==";
+        let metadata = base64::decode(&metadata_base64).unwrap();
+        let expected_metadata = "{\"name\":\"perform.js\",\"size\":156,\"mime\":\"application/javascript\",\"key\":\"tqNrczqVdTCgFzB1b1gyiQBIYmwDBwa9\",\"lastModified\":499162500}";
+
+        let decrypted_metadata = decrypt_metadata(&metadata, m_key.as_bytes()).unwrap();
+
+        assert_eq!(String::from_utf8(decrypted_metadata).unwrap(), expected_metadata);
+    }
+
+    #[test]
     fn encrypt_aes_002_should_return_valid_aes_hash() {
         let expected_prefix = b"002".to_vec();
         let data = b"This is Jimmy.";
