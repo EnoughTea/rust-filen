@@ -54,18 +54,19 @@ pub fn derive_key_from_password_256(password: &[u8], salt: &[u8], iterations: u3
 }
 
 /// Calculates login key from the given user password. Deprecated since August 21.
-pub fn hash_password(password: &String) -> String {
+pub fn hash_password(password: &str) -> String {
     let mut sha512_part_1 =
-        sha512(&sha384(&sha256(&sha1(password).to_hex_string()).to_hex_string()).to_hex_string()).to_hex_string();
+        sha512(&sha384(&sha256(&sha1(&password.to_owned()).to_hex_string()).to_hex_string()).to_hex_string())
+            .to_hex_string();
     let sha512_part_2 =
-        sha512(&md5(&md4(&md2(password).to_hex_string()).to_hex_string()).to_hex_string()).to_hex_string();
+        sha512(&md5(&md4(&md2(&password.to_owned()).to_hex_string()).to_hex_string()).to_hex_string()).to_hex_string();
     sha512_part_1.push_str(&sha512_part_2);
     sha512_part_1
 }
 
-/// Calculates something similar to pbkdf2 hash from the given string. Deprecated since August 21.
-pub fn hash_fn(value: &String) -> String {
-    sha1(&sha512(value).to_hex_string()).to_hex_string()
+/// Calculates poor man's alternative to pbkdf2 hash from the given string. Deprecated since August 21.
+pub fn hash_fn(value: &str) -> String {
+    sha1(&sha512(&value.to_owned()).to_hex_string()).to_hex_string()
 }
 
 pub fn derived_key_to_sent_password(derived_key: &[u8]) -> Result<SentPasswordWithMasterKey, Box<dyn Error>> {
