@@ -21,16 +21,20 @@ const OPENSSL_SALT_LENGTH: usize = 8;
 const FILEN_VERSION_LENGTH: usize = 3;
 const AES_GCM_IV_LENGTH: usize = 12;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct SentPasswordWithMasterKey {
-    pub m_key: String,
-    pub sent_password: String,
+    pub m_key: Vec<u8>,
+    pub sent_password: Vec<u8>,
 }
 
-/// Calculates login key from the given user password and service-provided salt.
-fn derive_key_from_password_generic<M: Mac>(salt: &[u8], iterations: u32, mac: &mut M, pbkdf2_hash: &mut [u8]) {
-    let iterations_or_default = if iterations <= 0 { 200_000 } else { iterations };
-    pbkdf2(mac, salt, iterations_or_default, pbkdf2_hash);
+impl SentPasswordWithMasterKey {
+    fn m_key_as_hex_string(&self) -> String {
+        utils::byte_vec_to_hex(&self.m_key)
+    }
+
+    fn sent_password_as_hex_string(&self) -> String {
+        utils::byte_vec_to_hex(&self.sent_password)
+    }
 }
 
 /// Calculates login key from the given user password and service-provided salt using SHA512 with 64 bytes output.
@@ -64,13 +68,17 @@ pub fn hash_fn(value: &String) -> String {
     sha1(&sha512(value).to_hex_string()).to_hex_string()
 }
 
-pub fn derived_key_to_sent_password(derived_key_hex: &str) -> SentPasswordWithMasterKey {
-    let m_key = &derived_key_hex[..derived_key_hex.len() / 2];
-    let password_part_hex = derived_key_hex[derived_key_hex.len() / 2..].to_string();
-    let sent_password_hex = sha512(&password_part_hex).to_hex_string();
-    SentPasswordWithMasterKey {
-        m_key: m_key.to_string(),
-        sent_password: sent_password_hex,
+pub fn derived_key_to_sent_password(derived_key: &[u8]) -> Result<SentPasswordWithMasterKey, &'static str> {
+    if derived_key.len() != 64 {
+        Err("Derived key should be 64 bytes long")
+    } else {
+        let m_key = &derived_key[..derived_key.len() / 2];
+        let password_part = &derived_key[derived_key.len() / 2..];
+        let sent_password = sha512(&utils::byte_arr_to_hex(password_part));
+        Ok(SentPasswordWithMasterKey {
+            m_key: m_key.to_vec(),
+            sent_password: sent_password.to_vec(),
+        })
     }
 }
 
@@ -143,6 +151,16 @@ pub fn decrypt_aes_prefixed_002(data: &[u8], password: &[u8]) -> Result<Vec<u8>,
     }
 }
 
+pub fn decrypt_metadata(data: &str, key: &str) {
+    let sliced = &data[..8];
+}
+
+/// Calculates login key from the given user password and service-provided salt.
+fn derive_key_from_password_generic<M: Mac>(salt: &[u8], iterations: u32, mac: &mut M, pbkdf2_hash: &mut [u8]) {
+    let iterations_or_default = if iterations <= 0 { 200_000 } else { iterations };
+    pbkdf2(mac, salt, iterations_or_default, pbkdf2_hash);
+}
+
 fn generate_aes_key_and_iv(
     key_length: usize,
     iv_length: usize,
@@ -158,10 +176,6 @@ fn generate_aes_key_and_iv(
     evpkdf::<md5::Md5>(password, salt, iterations, &mut output);
     let (key, iv) = output.split_at(key_length);
     (Vec::from(key), Vec::from(iv))
-}
-
-pub fn decrypt_metadata(data: &str, key: &str) {
-    let sliced = &data[..8];
 }
 
 #[cfg(test)]
@@ -266,17 +280,20 @@ mod tests {
 
     #[test]
     fn derived_key_to_sent_password_should_return_valid_mkey_and_password() {
-        let expected_m_key = "f82a1812080acab7ed5751e7193984565c8b159be00bb6c66eac70ff0c8ad8dd";
-        let expected_password = "7a499370cf3f72fd2ce351297916fa8926daf33a01d592c92e3ee9e83c152".to_owned()
-            + "1c342e60f2ecbde37bfdc00c45923c2568bc6a9c85c8653e19ade89e71ed9deac1d";
+        let expected_m_key =
+            utils::hex_to_bytes("f82a1812080acab7ed5751e7193984565c8b159be00bb6c66eac70ff0c8ad8dd").unwrap();
+        let expected_password = utils::hex_to_bytes(
+            &("7a499370cf3f72fd2ce351297916fa8926daf33a01d592c92e3ee9e83c152".to_owned()
+                + "1c342e60f2ecbde37bfdc00c45923c2568bc6a9c85c8653e19ade89e71ed9deac1d"),
+        )
+        .unwrap();
         let pbkdf2_hash: [u8; 64] = [
             248, 42, 24, 18, 8, 10, 202, 183, 237, 87, 81, 231, 25, 57, 132, 86, 92, 139, 21, 155, 224, 11, 182, 198,
             110, 172, 112, 255, 12, 138, 216, 221, 58, 253, 102, 41, 117, 40, 216, 13, 51, 181, 109, 144, 46, 10, 63,
             172, 173, 165, 89, 54, 223, 115, 173, 131, 123, 157, 117, 100, 113, 185, 63, 49,
         ];
-        let pbkdf2_hash_hex = utils::byte_vec_to_hex(&pbkdf2_hash.to_vec());
 
-        let parts = derived_key_to_sent_password(&pbkdf2_hash_hex);
+        let parts = derived_key_to_sent_password(&pbkdf2_hash).unwrap();
 
         assert_eq!(expected_m_key, parts.m_key);
         assert_eq!(expected_password, parts.sent_password);
