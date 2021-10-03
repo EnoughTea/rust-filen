@@ -13,15 +13,15 @@ pub(crate) fn random_alpha_string(size: usize) -> String {
 }
 
 /// Converts the specified bytes into corresponding hex-encoded string.
-pub(crate) fn byte_vec_to_hex(data: &Vec<u8>) -> String {
+pub(crate) fn byte_vec_to_hex_string(data: &Vec<u8>) -> String {
     data.iter().map(|byte| format!("{:02x}", byte)).collect()
 }
 
-pub(crate) fn byte_arr_to_hex(data: &[u8]) -> String {
+pub(crate) fn byte_slice_to_hex_string(data: &[u8]) -> String {
     data.iter().map(|byte| format!("{:02x}", byte)).collect()
 }
 
-pub(crate) fn hex_to_bytes(s: &str) -> Result<Vec<u8>, ParseIntError> {
+pub(crate) fn hex_string_to_bytes(s: &str) -> Result<Vec<u8>, ParseIntError> {
     (0..s.len())
         .step_by(2)
         .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
@@ -40,7 +40,7 @@ mod tests {
             110, 172, 112, 255, 12, 138, 216, 221,
         ];
 
-        let hash_hex = byte_vec_to_hex(&hash);
+        let hash_hex = byte_vec_to_hex_string(&hash);
 
         assert_eq!(expected_hash_hex, hash_hex);
     }

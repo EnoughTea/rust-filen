@@ -29,11 +29,11 @@ pub struct SentPasswordWithMasterKey {
 
 impl SentPasswordWithMasterKey {
     fn m_key_as_hex_string(&self) -> String {
-        utils::byte_vec_to_hex(&self.m_key)
+        utils::byte_vec_to_hex_string(&self.m_key)
     }
 
     fn sent_password_as_hex_string(&self) -> String {
-        utils::byte_vec_to_hex(&self.sent_password)
+        utils::byte_vec_to_hex_string(&self.sent_password)
     }
 }
 
@@ -74,7 +74,7 @@ pub fn derived_key_to_sent_password(derived_key: &[u8]) -> Result<SentPasswordWi
     } else {
         let m_key = &derived_key[..derived_key.len() / 2];
         let password_part = &derived_key[derived_key.len() / 2..];
-        let sent_password = sha512(&utils::byte_arr_to_hex(password_part));
+        let sent_password = sha512(&utils::byte_slice_to_hex_string(password_part));
         Ok(SentPasswordWithMasterKey {
             m_key: m_key.to_vec(),
             sent_password: sent_password.to_vec(),
@@ -281,8 +281,8 @@ mod tests {
     #[test]
     fn derived_key_to_sent_password_should_return_valid_mkey_and_password() {
         let expected_m_key =
-            utils::hex_to_bytes("f82a1812080acab7ed5751e7193984565c8b159be00bb6c66eac70ff0c8ad8dd").unwrap();
-        let expected_password = utils::hex_to_bytes(
+            utils::hex_string_to_bytes("f82a1812080acab7ed5751e7193984565c8b159be00bb6c66eac70ff0c8ad8dd").unwrap();
+        let expected_password = utils::hex_string_to_bytes(
             &("7a499370cf3f72fd2ce351297916fa8926daf33a01d592c92e3ee9e83c152".to_owned()
                 + "1c342e60f2ecbde37bfdc00c45923c2568bc6a9c85c8653e19ade89e71ed9deac1d"),
         )
