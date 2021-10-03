@@ -29,6 +29,32 @@ pub struct SentPasswordWithMasterKey {
 }
 
 impl SentPasswordWithMasterKey {
+    fn from_password(password: &str) -> Result<SentPasswordWithMasterKey, Box<dyn Error>> {
+        if password.len() < 1 {
+            Err("Password is too short")?
+        }
+
+        let m_key = hash_fn(password);
+        let sent_password = hash_password(password);
+        Ok(SentPasswordWithMasterKey {
+            m_key: m_key.into_bytes(),
+            sent_password: sent_password.into_bytes(),
+        })
+    }
+
+    pub fn from_derived_key(derived_key: &[u8]) -> Result<SentPasswordWithMasterKey, Box<dyn Error>> {
+        if derived_key.len() != 64 {
+            Err("Derived key should be 64 bytes long")?
+        }
+
+        let m_key = &derived_key[..derived_key.len() / 2];
+        let password_part = &derived_key[derived_key.len() / 2..];
+        let sent_password = sha512(&utils::byte_slice_to_hex_string(password_part));
+        Ok(SentPasswordWithMasterKey {
+            m_key: m_key.to_vec(),
+            sent_password: sent_password.to_vec(),
+        })
+    }
     fn m_key_as_hex_string(&self) -> String {
         utils::byte_vec_to_hex_string(&self.m_key)
     }
@@ -68,20 +94,6 @@ pub fn hash_password(password: &str) -> String {
 /// Calculates poor man's alternative to pbkdf2 hash from the given string. Deprecated since August 21.
 pub fn hash_fn(value: &str) -> String {
     sha1(&sha512(&value.to_owned()).to_hex_string()).to_hex_string()
-}
-
-pub fn derived_key_to_sent_password(derived_key: &[u8]) -> Result<SentPasswordWithMasterKey, Box<dyn Error>> {
-    if derived_key.len() != 64 {
-        Err("Derived key should be 64 bytes long")?
-    }
-
-    let m_key = &derived_key[..derived_key.len() / 2];
-    let password_part = &derived_key[derived_key.len() / 2..];
-    let sent_password = sha512(&utils::byte_slice_to_hex_string(password_part));
-    Ok(SentPasswordWithMasterKey {
-        m_key: m_key.to_vec(),
-        sent_password: sent_password.to_vec(),
-    })
 }
 
 pub fn encrypt_aes_prefixed(data: &[u8], password: &[u8], maybe_salt: Option<&[u8]>) -> Vec<u8> {
@@ -344,7 +356,7 @@ mod tests {
             172, 173, 165, 89, 54, 223, 115, 173, 131, 123, 157, 117, 100, 113, 185, 63, 49,
         ];
 
-        let parts = derived_key_to_sent_password(&pbkdf2_hash).unwrap();
+        let parts = SentPasswordWithMasterKey::from_derived_key(&pbkdf2_hash).unwrap();
 
         assert_eq!(parts.m_key, utils::hex_string_to_bytes(&expected_m_key).unwrap());
         assert_eq!(parts.m_key_as_hex_string(), expected_m_key);
