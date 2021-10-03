@@ -10,7 +10,7 @@ use crypto::pbkdf2::pbkdf2;
 use easy_hasher::easy_hasher::*;
 use evpkdf::evpkdf;
 use rand::Rng;
-use std::str;
+use std::error::Error;
 
 use crate::utils;
 
@@ -53,7 +53,7 @@ pub fn derive_key_from_password_256(password: &[u8], salt: &[u8], iterations: u3
     pbkdf2_hash
 }
 
-/// Calculates login key from the given user password. Deprecated.
+/// Calculates login key from the given user password. Deprecated since August 21.
 pub fn hash_password(password: &String) -> String {
     let mut sha512_part_1 =
         sha512(&sha384(&sha256(&sha1(password).to_hex_string()).to_hex_string()).to_hex_string()).to_hex_string();
@@ -63,23 +63,23 @@ pub fn hash_password(password: &String) -> String {
     sha512_part_1
 }
 
-/// Calculates something similar to pbkdf2 hash from the given string. Deprecated.
+/// Calculates something similar to pbkdf2 hash from the given string. Deprecated since August 21.
 pub fn hash_fn(value: &String) -> String {
     sha1(&sha512(value).to_hex_string()).to_hex_string()
 }
 
-pub fn derived_key_to_sent_password(derived_key: &[u8]) -> Result<SentPasswordWithMasterKey, &'static str> {
+pub fn derived_key_to_sent_password(derived_key: &[u8]) -> Result<SentPasswordWithMasterKey, Box<dyn Error>> {
     if derived_key.len() != 64 {
-        Err("Derived key should be 64 bytes long")
-    } else {
-        let m_key = &derived_key[..derived_key.len() / 2];
-        let password_part = &derived_key[derived_key.len() / 2..];
-        let sent_password = sha512(&utils::byte_slice_to_hex_string(password_part));
-        Ok(SentPasswordWithMasterKey {
-            m_key: m_key.to_vec(),
-            sent_password: sent_password.to_vec(),
-        })
+        Err("Derived key should be 64 bytes long")?
     }
+
+    let m_key = &derived_key[..derived_key.len() / 2];
+    let password_part = &derived_key[derived_key.len() / 2..];
+    let sent_password = sha512(&utils::byte_slice_to_hex_string(password_part));
+    Ok(SentPasswordWithMasterKey {
+        m_key: m_key.to_vec(),
+        sent_password: sent_password.to_vec(),
+    })
 }
 
 pub fn encrypt_aes_prefixed(data: &[u8], password: &[u8], maybe_salt: Option<&[u8]>) -> Vec<u8> {
@@ -99,60 +99,88 @@ pub fn encrypt_aes_prefixed(data: &[u8], password: &[u8], maybe_salt: Option<&[u
     result
 }
 
-pub fn decrypt_aes_prefixed(data: &[u8], password: &[u8]) -> Result<Vec<u8>, &'static str> {
+pub fn decrypt_aes_prefixed(data: &[u8], password: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
     let message_index = OPENSSL_SALT_PREFIX.len() + OPENSSL_SALT_LENGTH;
     if data.len() < message_index {
-        Err("Encrypted data is too small to contain OpenSSL-compatible salt")
-    } else {
-        let (salt_with_prefix, message) = data.split_at(message_index);
-        let (_, salt) = salt_with_prefix.split_at(OPENSSL_SALT_PREFIX.len());
-
-        let (key, iv) = generate_aes_key_and_iv(32, 16, 1, Some(&salt), password);
-        let cipher = Aes256Cbc::new_from_slices(&key, &iv).unwrap();
-        cipher
-            .decrypt_vec(message)
-            .map_err(|_| "Prefixed AES cannot decipher data")
+        Err("Encrypted data is too small to contain OpenSSL-compatible salt")?
     }
+
+    let (salt_with_prefix, message) = data.split_at(message_index);
+    let (_, salt) = salt_with_prefix.split_at(OPENSSL_SALT_PREFIX.len());
+
+    let (key, iv) = generate_aes_key_and_iv(32, 16, 1, Some(&salt), password);
+    let cipher = Aes256Cbc::new_from_slices(&key, &iv).unwrap();
+    let decrypted_data = cipher
+        .decrypt_vec(message)
+        .map_err(|_| "Prefixed AES cannot decipher data")?;
+    Ok(decrypted_data)
 }
 
 /// Returns IV within [3, 15) range, and encrypted message in base64-encoded part starting at 15 string index.
-pub fn encrypt_aes_prefixed_002(data: &[u8], password: &[u8]) -> Result<String, &'static str> {
+pub fn encrypt_aes_prefixed_002(data: &[u8], password: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
     let key = derive_key_from_password_256(password, password, 1);
     let iv = utils::random_alpha_string(12);
     let cipher = Aes256Gcm::new(Key::from_slice(&key));
     let nonce = Nonce::from_slice(iv.as_bytes());
     let encrypted = cipher.encrypt(nonce, data);
-    encrypted
+    let combined = encrypted
         .map(|e| "002".to_string() + &iv + &base64::encode(e))
-        .map_err(|_| "Prefixed AES GCM cannot decipher data")
+        .map_err(|_| "Prefixed AES GCM cannot decipher data")?;
+    Ok(combined.into_bytes())
 }
 
-pub fn decrypt_aes_prefixed_002(data: &[u8], password: &[u8]) -> Result<Vec<u8>, &'static str> {
+pub fn decrypt_aes_prefixed_002(data: &[u8], password: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
     let message_index = FILEN_VERSION_LENGTH + AES_GCM_IV_LENGTH;
     if data.len() <= message_index {
-        Err("Encrypted data is too small to contain Filen API version and AES GCM iv")
-    } else {
-        let (prefix, iv_and_message) = data.split_at(FILEN_VERSION_LENGTH);
-        if prefix != b"002" {
-            Err("Unsupported Filen API version")
-        } else {
-            let (iv, encrypted_base64) = iv_and_message.split_at(AES_GCM_IV_LENGTH);
-            base64::decode(encrypted_base64)
-                .map_err(|_| "Encrypted data is not contained within base64")
-                .and_then(|encrypted| {
-                    let key = derive_key_from_password_256(password, password, 1);
-                    let cipher = Aes256Gcm::new(Key::from_slice(&key));
-                    let nonce = Nonce::from_slice(iv);
-                    cipher
-                        .decrypt(nonce, encrypted.as_ref())
-                        .map_err(|_| "Prefixed AES GCM cannot decipher data")
-                })
-        }
+        Err("Encrypted data is too small to contain Filen API version and AES GCM iv")?
     }
+
+    let (prefix, iv_and_message) = data.split_at(FILEN_VERSION_LENGTH);
+    if prefix != b"002" {
+        Err("Unsupported Filen API version")?
+    }
+
+    let (iv, encrypted_base64) = iv_and_message.split_at(AES_GCM_IV_LENGTH);
+    let decrypted_data = base64::decode(encrypted_base64)
+        .map_err(|_| "Encrypted data is not contained within base64")
+        .and_then(|encrypted| {
+            let key = derive_key_from_password_256(password, password, 1);
+            let cipher = Aes256Gcm::new(Key::from_slice(&key));
+            let nonce = Nonce::from_slice(iv);
+            cipher
+                .decrypt(nonce, encrypted.as_ref())
+                .map_err(|_| "Prefixed AES GCM cannot decipher data")
+        })?;
+    Ok(decrypted_data)
 }
 
-pub fn decrypt_metadata(data: &str, key: &str) {
-    let sliced = &data[..8];
+pub fn encrypt_metadata(data: &[u8], password: &[u8], metadata_version: u32) -> Result<Vec<u8>, Box<dyn Error>> {
+    let encrypted_metadata = match metadata_version {
+        1 => encrypt_aes_prefixed(data, password, None), // Deprecated since August 21
+        2 => encrypt_aes_prefixed_002(data, password)?,
+        version => Err(format!("Unsupported metadata version: {}", version))?,
+    };
+    Ok(encrypted_metadata)
+}
+
+pub fn decrypt_metadata(data: &[u8], password: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
+    let possible_salted_mark = &data[..OPENSSL_SALT_PREFIX.len()];
+    let possible_version_mark = &data[..FILEN_VERSION_LENGTH];
+    let metadata_version = if possible_salted_mark == OPENSSL_SALT_PREFIX {
+        1
+    } else {
+        let possible_version_string = String::from_utf8(possible_version_mark.to_vec())?;
+        possible_version_string
+            .parse()
+            .map_err(|_| format!("Invalid metadata version: {}", possible_version_string))?
+    };
+
+    let decrypted_metadata = match metadata_version {
+        1 => decrypt_aes_prefixed(data, password)?, // Deprecated since August 21
+        2 => decrypt_aes_prefixed_002(data, password)?,
+        version => Err(format!("Unsupported metadata version: {}", version))?,
+    };
+    Ok(decrypted_metadata)
 }
 
 /// Calculates login key from the given user password and service-provided salt.
@@ -189,7 +217,7 @@ mod tests {
         let encrypted_data = encrypt_aes_prefixed_002(data, b"test").unwrap();
 
         assert_eq!(encrypted_data.len(), 55);
-        assert_eq!(encrypted_data.into_bytes()[..expected_prefix.len()], expected_prefix);
+        assert_eq!(encrypted_data[..expected_prefix.len()], expected_prefix);
     }
 
     #[test]
