@@ -8,7 +8,7 @@ use crypto::hmac::Hmac;
 use crypto::mac::Mac;
 use crypto::pbkdf2::pbkdf2;
 use easy_hasher::easy_hasher::*;
-use evpkdf::evpkdf;
+use md5::{Digest, Md5};
 use rand::Rng;
 use std::error::Error;
 
@@ -215,6 +215,34 @@ fn derive_key_from_password_256(password: &[u8], salt: &[u8], iterations: u32) -
     pbkdf2_hash
 }
 
+/// Rust implementation of OpenSSL EVP_bytesToKey function. Courtesy of https://github.com/poiscript/evpkdf, which is incompatible with latest md-5 crate.
+fn evpkdf(pass: &[u8], salt: &[u8], count: usize, output: &mut [u8]) {
+    let mut hasher = Md5::default();
+    let mut derived_key = Vec::with_capacity(output.len());
+    let mut block = Vec::new();
+
+    while derived_key.len() < output.len() {
+        if !block.is_empty() {
+            hasher.update(block);
+        }
+        hasher.update(pass);
+        hasher.update(salt.as_ref());
+        block = hasher.finalize_reset().to_vec();
+
+        // avoid subtract with overflow
+        if count > 1 {
+            for _ in 0..(count - 1) {
+                hasher.update(block);
+                block = hasher.finalize_reset().to_vec();
+            }
+        }
+
+        derived_key.extend_from_slice(&block);
+    }
+
+    output.copy_from_slice(&derived_key[0..output.len()]);
+}
+
 /// OpenSSL-compatible plain AES key and IV.
 fn generate_aes_key_and_iv(
     key_length: usize,
@@ -228,7 +256,7 @@ fn generate_aes_key_and_iv(
         Some(salt) => salt,
         None => &[0; 0],
     };
-    evpkdf::<md5::Md5>(password, salt, iterations, &mut output);
+    evpkdf(password, salt, iterations, &mut output);
     let (key, iv) = output.split_at(key_length);
     (Vec::from(key), Vec::from(iv))
 }
