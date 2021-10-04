@@ -35,11 +35,11 @@ struct AuthInfoResponse {
 
 #[cfg(test)]
 mod tests {
+    use crate::{filen::requests::*, test_utils};
     use httpmock::prelude::*;
+    use pretty_assertions::assert_eq;
     use reqwest::blocking::Client;
     use serde_json::*;
-
-    use crate::{filen::requests::*, test_utils};
 
     // TODO: remove
     #[test]
