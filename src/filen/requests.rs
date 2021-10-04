@@ -3,7 +3,7 @@ use serde_with::*;
 use std::str;
 
 /// Used for requests to /v1/auth/info endpoint.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 struct AuthInfoRequest {
     pub email: String,
 
@@ -13,7 +13,7 @@ struct AuthInfoRequest {
 }
 
 #[serde_as]
-#[derive(Deserialize, Serialize, PartialEq, Debug)]
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 struct AuthInfoResponseData {
     pub email: String,
 
@@ -26,7 +26,7 @@ struct AuthInfoResponseData {
     pub salt: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 struct AuthInfoResponse {
     pub status: bool,
     pub message: String,
