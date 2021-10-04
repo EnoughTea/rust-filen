@@ -1,4 +1,4 @@
-//! This module contains crypto functions used by Filen to generate and process its keys.
+//! This module contains crypto functions used by Filen to generate and process its keys and metadata.
 use ::aes::Aes256;
 use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
@@ -29,6 +29,7 @@ pub struct SentPasswordWithMasterKey {
 }
 
 impl SentPasswordWithMasterKey {
+    /// Expects plain text password.
     fn from_password(password: &str) -> Result<SentPasswordWithMasterKey, Box<dyn Error>> {
         if password.len() < 1 {
             Err("Password is too short")?
@@ -42,7 +43,13 @@ impl SentPasswordWithMasterKey {
         })
     }
 
-    pub fn from_derived_key(derived_key: &[u8]) -> Result<SentPasswordWithMasterKey, Box<dyn Error>> {
+    /// Expects plain text password.
+    pub fn from_password_and_salt(password: &str, salt: &str) -> Result<SentPasswordWithMasterKey, Box<dyn Error>> {
+        let pbkdf2_hash = derive_key_from_password_512(password.as_bytes(), salt.as_bytes(), 200_000);
+        SentPasswordWithMasterKey::from_derived_key(&pbkdf2_hash)
+    }
+
+    pub(crate) fn from_derived_key(derived_key: &[u8]) -> Result<SentPasswordWithMasterKey, Box<dyn Error>> {
         if derived_key.len() != 64 {
             Err("Derived key should be 64 bytes long")?
         }
@@ -64,38 +71,12 @@ impl SentPasswordWithMasterKey {
     }
 }
 
-/// Calculates login key from the given user password and service-provided salt using SHA512 with 64 bytes output.
-pub fn derive_key_from_password_512(password: &[u8], salt: &[u8], iterations: u32) -> [u8; 64] {
-    let mut mac = Hmac::new(crypto::sha2::Sha512::new(), password);
-    let mut pbkdf2_hash = [0u8; 64];
-    derive_key_from_password_generic(salt, iterations, &mut mac, &mut pbkdf2_hash);
-    pbkdf2_hash
-}
-
-/// Calculates login key from the given user password and service-provided salt using SHA512 with 32 bytes output.
-pub fn derive_key_from_password_256(password: &[u8], salt: &[u8], iterations: u32) -> [u8; 32] {
-    let mut mac = Hmac::new(crypto::sha2::Sha512::new(), password);
-    let mut pbkdf2_hash = [0u8; 32];
-    derive_key_from_password_generic(salt, iterations, &mut mac, &mut pbkdf2_hash);
-    pbkdf2_hash
-}
-
-/// Calculates login key from the given user password. Deprecated since August 21.
-pub fn hash_password(password: &str) -> String {
-    let mut sha512_part_1 =
-        sha512(&sha384(&sha256(&sha1(&password.to_owned()).to_hex_string()).to_hex_string()).to_hex_string())
-            .to_hex_string();
-    let sha512_part_2 =
-        sha512(&md5(&md4(&md2(&password.to_owned()).to_hex_string()).to_hex_string()).to_hex_string()).to_hex_string();
-    sha512_part_1.push_str(&sha512_part_2);
-    sha512_part_1
-}
-
 /// Calculates poor man's alternative to pbkdf2 hash from the given string. Deprecated since August 21.
 pub fn hash_fn(value: &str) -> String {
     sha1(&sha512(&value.to_owned()).to_hex_string()).to_hex_string()
 }
 
+/// Calculates OpenSSL-compatible AES 256 CBC (Pkcs7 padding) hash with 'Salted__' prefix, then 8 bytes of salt, rest is ciphered.
 pub fn encrypt_aes_prefixed(data: &[u8], password: &[u8], maybe_salt: Option<&[u8]>) -> Vec<u8> {
     let mut salt = [0u8; OPENSSL_SALT_LENGTH];
     match maybe_salt {
@@ -113,6 +94,7 @@ pub fn encrypt_aes_prefixed(data: &[u8], password: &[u8], maybe_salt: Option<&[u
     result
 }
 
+/// Restores data prefiously encrypted with [encrypt_aes_prefixed].
 pub fn decrypt_aes_prefixed(data: &[u8], password: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
     let message_index = OPENSSL_SALT_PREFIX.len() + OPENSSL_SALT_LENGTH;
     if data.len() < message_index {
@@ -130,7 +112,7 @@ pub fn decrypt_aes_prefixed(data: &[u8], password: &[u8]) -> Result<Vec<u8>, Box
     Ok(decrypted_data)
 }
 
-/// Returns IV within [3, 15) range, and encrypted message in base64-encoded part starting at 15 string index.
+/// Calculates AES-GCM hash. Returns IV within [3, 15) range, and encrypted message in base64-encoded part starting at 15 string index.
 pub fn encrypt_aes_prefixed_002(data: &[u8], password: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
     let key = derive_key_from_password_256(password, password, 1);
     let iv = utils::random_alpha_string(12);
@@ -143,17 +125,23 @@ pub fn encrypt_aes_prefixed_002(data: &[u8], password: &[u8]) -> Result<Vec<u8>,
     Ok(combined.into_bytes())
 }
 
+/// Restores data prefiously encrypted with [encrypt_aes_prefixed_002].
 pub fn decrypt_aes_prefixed_002(data: &[u8], password: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
-    let message_index = FILEN_VERSION_LENGTH + AES_GCM_IV_LENGTH;
-    if data.len() <= message_index {
-        Err("Encrypted data is too small to contain Filen API version and AES GCM iv")?
+    fn extract_iv_and_message<'a>(data: &'a [u8]) -> Result<&'a [u8], Box<dyn Error>> {
+        let message_index = FILEN_VERSION_LENGTH + AES_GCM_IV_LENGTH;
+        if data.len() <= message_index {
+            Err("Encrypted data is too small to contain Filen API version and AES GCM iv")?
+        }
+
+        let (prefix, iv_and_message) = data.split_at(FILEN_VERSION_LENGTH);
+        if prefix != b"002" {
+            Err("Unsupported Filen API version")?
+        }
+
+        Ok(iv_and_message)
     }
 
-    let (prefix, iv_and_message) = data.split_at(FILEN_VERSION_LENGTH);
-    if prefix != b"002" {
-        Err("Unsupported Filen API version")?
-    }
-
+    let iv_and_message = extract_iv_and_message(data)?;
     let (iv, encrypted_base64) = iv_and_message.split_at(AES_GCM_IV_LENGTH);
     let decrypted_data = base64::decode(encrypted_base64)
         .map_err(|_| "Encrypted data is not contained within base64")
@@ -168,32 +156,38 @@ pub fn decrypt_aes_prefixed_002(data: &[u8], password: &[u8]) -> Result<Vec<u8>,
     Ok(decrypted_data)
 }
 
-pub fn encrypt_metadata(data: &[u8], m_key: &[u8], metadata_version: u32) -> Result<Vec<u8>, Box<dyn Error>> {
+/// Encrypts file metadata with hashed user's master key. Depending on metadata version, different encryption algos will be used.
+pub fn encrypt_metadata(data: &[u8], hashed_m_key: &[u8], metadata_version: u32) -> Result<Vec<u8>, Box<dyn Error>> {
     let encrypted_metadata = match metadata_version {
-        1 => encrypt_aes_prefixed(data, m_key, None), // Deprecated since August 21
-        2 => encrypt_aes_prefixed_002(data, m_key)?,
+        1 => encrypt_aes_prefixed(data, hashed_m_key, None), // Deprecated since August 21
+        2 => encrypt_aes_prefixed_002(data, hashed_m_key)?,
         version => Err(format!("Unsupported metadata version: {}", version))?,
     };
     Ok(encrypted_metadata)
 }
 
-pub fn decrypt_metadata(data: &[u8], password: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
-    let possible_salted_mark = &data[..OPENSSL_SALT_PREFIX.len()];
-    let possible_version_mark = &data[..FILEN_VERSION_LENGTH];
-    let metadata_version = if possible_salted_mark == OPENSSL_SALT_PREFIX {
-        1
-    } else if possible_salted_mark == OPENSSL_SALT_PREFIX_BASE64 {
-        Err("Given data should not be base64-encoded")?
-    } else {
-        let possible_version_string = String::from_utf8(possible_version_mark.to_vec())?;
-        possible_version_string
-            .parse()
-            .map_err(|_| format!("Invalid metadata version: {}", possible_version_string))?
-    };
+/// Restores file metadata prefiously encrypted with [encrypt_metadata].
+pub fn decrypt_metadata(data: &[u8], hashed_m_key: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
+    fn read_metadata_version(data: &[u8]) -> Result<i32, Box<dyn Error>> {
+        let possible_salted_mark = &data[..OPENSSL_SALT_PREFIX.len()];
+        let possible_version_mark = &data[..FILEN_VERSION_LENGTH];
+        let metadata_version = if possible_salted_mark == OPENSSL_SALT_PREFIX {
+            1
+        } else if possible_salted_mark == OPENSSL_SALT_PREFIX_BASE64 {
+            Err("Given data should not be base64-encoded")?
+        } else {
+            let possible_version_string = String::from_utf8(possible_version_mark.to_vec())?;
+            possible_version_string
+                .parse::<i32>()
+                .map_err(|_| format!("Invalid metadata version: {}", possible_version_string))?
+        };
+        Ok(metadata_version)
+    }
 
+    let metadata_version = read_metadata_version(data)?;
     let decrypted_metadata = match metadata_version {
-        1 => decrypt_aes_prefixed(data, password)?, // Deprecated since August 21
-        2 => decrypt_aes_prefixed_002(data, password)?,
+        1 => decrypt_aes_prefixed(data, hashed_m_key)?, // Deprecated since August 21
+        2 => decrypt_aes_prefixed_002(data, hashed_m_key)?,
         version => Err(format!("Unsupported metadata version: {}", version))?,
     };
     Ok(decrypted_metadata)
@@ -205,6 +199,23 @@ fn derive_key_from_password_generic<M: Mac>(salt: &[u8], iterations: u32, mac: &
     pbkdf2(mac, salt, iterations_or_default, pbkdf2_hash);
 }
 
+/// Calculates login key from the given user password and service-provided salt using SHA512 with 64 bytes output.
+fn derive_key_from_password_512(password: &[u8], salt: &[u8], iterations: u32) -> [u8; 64] {
+    let mut mac = Hmac::new(crypto::sha2::Sha512::new(), password);
+    let mut pbkdf2_hash = [0u8; 64];
+    derive_key_from_password_generic(salt, iterations, &mut mac, &mut pbkdf2_hash);
+    pbkdf2_hash
+}
+
+/// Calculates login key from the given user password and service-provided salt using SHA512 with 32 bytes output.
+fn derive_key_from_password_256(password: &[u8], salt: &[u8], iterations: u32) -> [u8; 32] {
+    let mut mac = Hmac::new(crypto::sha2::Sha512::new(), password);
+    let mut pbkdf2_hash = [0u8; 32];
+    derive_key_from_password_generic(salt, iterations, &mut mac, &mut pbkdf2_hash);
+    pbkdf2_hash
+}
+
+/// OpenSSL-compatible plain AES key and IV.
 fn generate_aes_key_and_iv(
     key_length: usize,
     iv_length: usize,
@@ -220,6 +231,17 @@ fn generate_aes_key_and_iv(
     evpkdf::<md5::Md5>(password, salt, iterations, &mut output);
     let (key, iv) = output.split_at(key_length);
     (Vec::from(key), Vec::from(iv))
+}
+
+/// Calculates login key from the given user password. Deprecated since August 21.
+fn hash_password(password: &str) -> String {
+    let mut sha512_part_1 =
+        sha512(&sha384(&sha256(&sha1(&password.to_owned()).to_hex_string()).to_hex_string()).to_hex_string())
+            .to_hex_string();
+    let sha512_part_2 =
+        sha512(&md5(&md4(&md2(&password.to_owned()).to_hex_string()).to_hex_string()).to_hex_string()).to_hex_string();
+    sha512_part_1.push_str(&sha512_part_2);
+    sha512_part_1
 }
 
 #[cfg(test)]
