@@ -1,6 +1,4 @@
 //! This module contains crypto functions used by Filen to generate and process its keys and metadata.
-use std::borrow::Borrow;
-
 use ::aes::Aes256;
 use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
