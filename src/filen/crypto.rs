@@ -1,4 +1,6 @@
 //! This module contains crypto functions used by Filen to generate and process its keys and metadata.
+use std::borrow::Borrow;
+
 use ::aes::Aes256;
 use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
@@ -11,6 +13,7 @@ use crypto::pbkdf2::pbkdf2;
 use easy_hasher::easy_hasher::*;
 use md5::{Digest, Md5};
 use rand::Rng;
+use secstr::SecStr;
 
 use crate::utils;
 
@@ -24,32 +27,24 @@ const AES_GCM_IV_LENGTH: usize = 12;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct SentPasswordWithMasterKey {
-    pub m_key: Vec<u8>,
-    pub sent_password: Vec<u8>,
+    pub m_key: SecStr,
+    pub sent_password: SecStr,
 }
 
 impl SentPasswordWithMasterKey {
     /// Expects plain text password.
-    pub fn from_password(password: &str) -> Result<SentPasswordWithMasterKey> {
-        if password.len() < 1 {
-            bail!("Password is too short")
-        }
-
-        let m_key = hash_fn(password);
-        let sent_password = hash_password(password);
+    pub fn from_password(password: &SecStr) -> Result<SentPasswordWithMasterKey> {
+        let m_key = SecStr::from(hash_fn(&String::from_utf8_lossy(password.unsecure())));
+        let sent_password = SecStr::from(hash_password(&String::from_utf8_lossy(password.unsecure())));
         Ok(SentPasswordWithMasterKey {
-            m_key: m_key.into_bytes(),
-            sent_password: sent_password.into_bytes(),
+            m_key: m_key,
+            sent_password: sent_password,
         })
     }
 
     /// Expects plain text password.
-    pub fn from_password_and_salt(password: &str, salt: &str) -> Result<SentPasswordWithMasterKey> {
-        if !salt.chars().all(char::is_alphanumeric) {
-            bail!("Non-alphanumeric salt is unsupported") // Filen seems to be using alphanumeric salt
-        }
-
-        let pbkdf2_hash = derive_key_from_password_512(password.as_bytes(), salt.as_bytes(), 200_000);
+    pub fn from_password_and_salt(password: &SecStr, salt: &SecStr) -> Result<SentPasswordWithMasterKey> {
+        let pbkdf2_hash = derive_key_from_password_512(password.unsecure(), salt.unsecure(), 200_000);
         SentPasswordWithMasterKey::from_derived_key(&pbkdf2_hash)
     }
 
@@ -62,16 +57,16 @@ impl SentPasswordWithMasterKey {
         let password_part = &derived_key[derived_key.len() / 2..];
         let sent_password = sha512(&utils::byte_slice_to_hex_string(password_part));
         Ok(SentPasswordWithMasterKey {
-            m_key: m_key.to_vec(),
-            sent_password: sent_password.to_vec(),
+            m_key: SecStr::new(m_key.to_vec()),
+            sent_password: SecStr::new(sent_password.to_vec()),
         })
     }
     fn m_key_as_hex_string(&self) -> String {
-        utils::byte_vec_to_hex_string(&self.m_key)
+        utils::byte_slice_to_hex_string(self.m_key.unsecure())
     }
 
     fn sent_password_as_hex_string(&self) -> String {
-        utils::byte_vec_to_hex_string(&self.sent_password)
+        utils::byte_slice_to_hex_string(self.sent_password.unsecure())
     }
 }
 
@@ -438,10 +433,13 @@ mod tests {
 
         let parts = SentPasswordWithMasterKey::from_derived_key(&pbkdf2_hash).unwrap();
 
-        assert_eq!(parts.m_key, utils::hex_string_to_bytes(&expected_m_key).unwrap());
+        assert_eq!(
+            parts.m_key.unsecure(),
+            utils::hex_string_to_bytes(&expected_m_key).unwrap()
+        );
         assert_eq!(parts.m_key_as_hex_string(), expected_m_key);
         assert_eq!(
-            parts.sent_password,
+            parts.sent_password.unsecure(),
             utils::hex_string_to_bytes(&expected_password).unwrap()
         );
         assert_eq!(parts.sent_password_as_hex_string(), expected_password);
