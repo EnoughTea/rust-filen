@@ -45,6 +45,10 @@ impl SentPasswordWithMasterKey {
 
     /// Expects plain text password.
     pub fn from_password_and_salt(password: &str, salt: &str) -> Result<SentPasswordWithMasterKey> {
+        if !salt.chars().all(char::is_alphanumeric) {
+            bail!("Non-alphanumeric salt is unsupported") // Filen seems to be using alphanumeric salt
+        }
+
         let pbkdf2_hash = derive_key_from_password_512(password.as_bytes(), salt.as_bytes(), 200_000);
         SentPasswordWithMasterKey::from_derived_key(&pbkdf2_hash)
     }
