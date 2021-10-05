@@ -30,7 +30,7 @@ pub struct SentPasswordWithMasterKey {
 
 impl SentPasswordWithMasterKey {
     /// Expects plain text password.
-    fn from_password(password: &str) -> Result<SentPasswordWithMasterKey> {
+    pub fn from_password(password: &str) -> Result<SentPasswordWithMasterKey> {
         if password.len() < 1 {
             bail!("Password is too short")
         }
@@ -53,7 +53,7 @@ impl SentPasswordWithMasterKey {
         SentPasswordWithMasterKey::from_derived_key(&pbkdf2_hash)
     }
 
-    pub(crate) fn from_derived_key(derived_key: &[u8]) -> Result<SentPasswordWithMasterKey> {
+    fn from_derived_key(derived_key: &[u8]) -> Result<SentPasswordWithMasterKey> {
         if derived_key.len() != 64 {
             bail!("Derived key should be 64 bytes long")
         }
@@ -76,12 +76,12 @@ impl SentPasswordWithMasterKey {
 }
 
 /// Calculates poor man's alternative to pbkdf2 hash from the given string. Deprecated since August 21.
-pub fn hash_fn(value: &str) -> String {
+fn hash_fn(value: &str) -> String {
     sha1(&sha512(&value.to_owned()).to_hex_string()).to_hex_string()
 }
 
 /// Calculates OpenSSL-compatible AES 256 CBC (Pkcs7 padding) hash with 'Salted__' prefix, then 8 bytes of salt, rest is ciphered.
-pub fn encrypt_aes_prefixed(data: &[u8], password: &[u8], maybe_salt: Option<&[u8]>) -> Vec<u8> {
+fn encrypt_aes_openssl(data: &[u8], password: &[u8], maybe_salt: Option<&[u8]>) -> Vec<u8> {
     let mut salt = [0u8; OPENSSL_SALT_LENGTH];
     match maybe_salt {
         Some(user_salt) if user_salt.len() == OPENSSL_SALT_LENGTH => salt.copy_from_slice(user_salt),
@@ -98,8 +98,8 @@ pub fn encrypt_aes_prefixed(data: &[u8], password: &[u8], maybe_salt: Option<&[u
     result
 }
 
-/// Restores data prefiously encrypted with [encrypt_aes_prefixed].
-pub fn decrypt_aes_prefixed(data: &[u8], password: &[u8]) -> Result<Vec<u8>> {
+/// Restores data prefiously encrypted with [encrypt_aes_001].
+fn decrypt_aes_openssl(data: &[u8], password: &[u8]) -> Result<Vec<u8>> {
     let message_index = OPENSSL_SALT_PREFIX.len() + OPENSSL_SALT_LENGTH;
     if data.len() < message_index {
         bail!("Encrypted data is too small to contain OpenSSL-compatible salt")
@@ -116,37 +116,32 @@ pub fn decrypt_aes_prefixed(data: &[u8], password: &[u8]) -> Result<Vec<u8>> {
     Ok(decrypted_data)
 }
 
-/// Calculates AES-GCM hash. Returns IV within [3, 15) range, and encrypted message in base64-encoded part starting at 15 string index.
-pub fn encrypt_aes_prefixed_002(data: &[u8], password: &[u8]) -> Result<Vec<u8>> {
+/// Calculates AES-GCM hash. Returns IV within [0, [AES_GCM_IV_LENGTH]) range,
+/// and encrypted message in base64-encoded part starting at [AES_GCM_IV_LENGTH] string index.
+fn encrypt_aes_gcm(data: &[u8], password: &[u8]) -> Result<Vec<u8>> {
     let key = derive_key_from_password_256(password, password, 1);
-    let iv = utils::random_alpha_string(12);
+    let iv = utils::random_alpha_string(AES_GCM_IV_LENGTH);
     let cipher = Aes256Gcm::new(Key::from_slice(&key));
     let nonce = Nonce::from_slice(iv.as_bytes());
     let encrypted = cipher.encrypt(nonce, data);
     let combined = encrypted
-        .map(|e| "002".to_string() + &iv + &base64::encode(e))
+        .map(|e| iv + &base64::encode(e))
         .map_err(|_| anyhow!("Prefixed AES GCM cannot decipher data"))?;
     Ok(combined.into_bytes())
 }
 
-/// Restores data prefiously encrypted with [encrypt_aes_prefixed_002].
-pub fn decrypt_aes_prefixed_002(data: &[u8], password: &[u8]) -> Result<Vec<u8>> {
-    fn extract_iv_and_message<'a>(data: &'a [u8]) -> Result<&'a [u8]> {
-        let message_index = FILEN_VERSION_LENGTH + AES_GCM_IV_LENGTH;
-        if data.len() <= message_index {
-            bail!("Encrypted data is too small to contain Filen API version and AES GCM iv")
+/// Restores data prefiously encrypted with [encrypt_aes_002].
+fn decrypt_aes_gcm(data: &[u8], password: &[u8]) -> Result<Vec<u8>> {
+    fn extract_iv_and_message<'a>(data: &'a [u8]) -> Result<(&'a [u8], &'a [u8])> {
+        if data.len() <= AES_GCM_IV_LENGTH {
+            bail!("Encrypted data is too small to contain AES GCM IV")
         }
 
-        let (prefix, iv_and_message) = data.split_at(FILEN_VERSION_LENGTH);
-        if prefix != b"002" {
-            bail!("Unsupported Filen API version")
-        }
-
-        Ok(iv_and_message)
+        let (iv, message) = data.split_at(AES_GCM_IV_LENGTH);
+        Ok((iv, message))
     }
 
-    let iv_and_message = extract_iv_and_message(data)?;
-    let (iv, encrypted_base64) = iv_and_message.split_at(AES_GCM_IV_LENGTH);
+    let (iv, encrypted_base64) = extract_iv_and_message(data)?;
     let decrypted_data = base64::decode(encrypted_base64)
         .map_err(|_| anyhow!("Encrypted data is not contained within base64"))
         .and_then(|encrypted| {
@@ -163,8 +158,12 @@ pub fn decrypt_aes_prefixed_002(data: &[u8], password: &[u8]) -> Result<Vec<u8>>
 /// Encrypts file metadata with hashed user's master key. Depending on metadata version, different encryption algos will be used.
 pub fn encrypt_metadata(data: &[u8], hashed_m_key: &[u8], metadata_version: u32) -> Result<Vec<u8>> {
     let encrypted_metadata = match metadata_version {
-        1 => encrypt_aes_prefixed(data, hashed_m_key, None), // Deprecated since August 21
-        2 => encrypt_aes_prefixed_002(data, hashed_m_key)?,
+        1 => encrypt_aes_openssl(data, hashed_m_key, None), // Deprecated since August 21
+        2 => {
+            let mut version_mark = format!("{:0>3}", metadata_version).into_bytes();
+            version_mark.extend(encrypt_aes_gcm(data, hashed_m_key)?);
+            version_mark
+        }
         version => bail!("Unsupported metadata version: {}", version),
     };
     Ok(encrypted_metadata)
@@ -190,8 +189,8 @@ pub fn decrypt_metadata(data: &[u8], hashed_m_key: &[u8]) -> Result<Vec<u8>> {
 
     let metadata_version = read_metadata_version(data)?;
     let decrypted_metadata = match metadata_version {
-        1 => decrypt_aes_prefixed(data, hashed_m_key)?, // Deprecated since August 21
-        2 => decrypt_aes_prefixed_002(data, hashed_m_key)?,
+        1 => decrypt_aes_openssl(data, hashed_m_key)?, // Deprecated since August 21
+        2 => decrypt_aes_gcm(&data[FILEN_VERSION_LENGTH..], hashed_m_key)?,
         version => bail!("Unsupported metadata version: {}", version),
     };
     Ok(decrypted_metadata)
@@ -279,7 +278,7 @@ fn hash_password(password: &str) -> String {
 #[cfg(test)]
 mod tests {
     use crate::{filen::crypto::*, utils};
-    use pretty_assertions::assert_eq;
+    use pretty_assertions::{assert_eq, assert_ne};
 
     #[test]
     fn encrypt_metadata_v1_should_use_simple_aes() {
@@ -305,40 +304,66 @@ mod tests {
     }
 
     #[test]
-    fn encrypt_aes_002_should_return_valid_aes_hash() {
-        let expected_prefix = b"002".to_vec();
-        let data = b"This is Jimmy.";
-        let encrypted_data = encrypt_aes_prefixed_002(data, b"test").unwrap();
+    fn encrypt_metadata_v2_should_use_aes_gcm_with_version_mark() {
+        let m_key = hash_fn("test");
+        let metadata = "{\"name\":\"perform.js\",\"size\":156,\"mime\":\"application/javascript\",".to_owned()
+            + "\"key\":\"tqNrczqVdTCgFzB1b1gyiQBIYmwDBwa9\",\"lastModified\":499162500}";
 
-        assert_eq!(encrypted_data.len(), 55);
-        assert_eq!(encrypted_data[..expected_prefix.len()], expected_prefix);
+        let encrypted_metadata = encrypt_metadata(metadata.as_bytes(), m_key.as_bytes(), 2).unwrap();
+
+        assert_eq!(encrypted_metadata.len(), 211);
+        assert_eq!(&encrypted_metadata[..3], b"002");
     }
 
     #[test]
-    fn decrypt_aes_002_should_decrypt_previously_encrypted() {
+    fn decrypt_metadata_v2_should_use_aes_gcm_with_version_mark() {
+        let m_key = hash_fn("test");
+        let encrypted_metadata = "002CWAZWUt8h5n0Il13bkeirz7uY05vmrO58ZXemzaIGnmy+iLe95hXtwiAWHF4s".to_owned()
+            + "9+g7gcj3LmwykWnZzUEZIAu8zIEyqe2J//iKaZOJMSIqGIg05GvVBl9INeqf2ACU7wRE9P7tCI5tKqgEWG/sMqRwPGwbNN"
+            + "rn3yI8McEqCBdPWNfi6gl8OwzcqUVnMKZI/DPVSkUZQpaN83zCtA=";
+        let expected_metadata = "{\"name\":\"perform.js\",\"size\":156,\"mime\":\"application/javascript\",".to_owned()
+            + "\"key\":\"tqNrczqVdTCgFzB1b1gyiQBIYmwDBwa9\",\"lastModified\":499162500}";
+
+        let decrypted_metadata = decrypt_metadata(encrypted_metadata.as_bytes(), m_key.as_bytes()).unwrap();
+        let decrypted_metadata_str = String::from_utf8_lossy(&decrypted_metadata);
+
+        assert_eq!(decrypted_metadata_str, expected_metadata);
+    }
+
+    #[test]
+    fn encrypt_aes_gcm_should_return_valid_aes_hash_without_prefix() {
+        let data = b"This is Jimmy.";
+        let encrypted_data = encrypt_aes_gcm(data, b"test").unwrap();
+
+        assert_eq!(encrypted_data.len(), 52);
+        assert_ne!(&encrypted_data[..3], b"002");
+    }
+
+    #[test]
+    fn decrypt_aes_gcm_should_decrypt_previously_encrypted() {
         let key = b"test";
         let expected_data = "This is Jimmy.".to_string();
-        let encrypted_data = b"002N6wfUUJnj9q3NMz0v9RS39ZiZi+AJLAWcHfVfHkZQZQ4J7ZV32qA";
+        let encrypted_data = b"N6wfUUJnj9q3NMz0v9RS39ZiZi+AJLAWcHfVfHkZQZQ4J7ZV32qA";
 
-        let decrypted_data = decrypt_aes_prefixed_002(encrypted_data, key).unwrap();
+        let decrypted_data = decrypt_aes_gcm(encrypted_data, key).unwrap();
 
         assert_eq!(String::from_utf8_lossy(&decrypted_data), expected_data);
     }
 
     #[test]
-    fn encrypt_aes_should_return_valid_aes_hash_without_explicit_salt() {
+    fn encrypt_aes_openssl_should_return_valid_aes_hash_without_explicit_salt() {
         let key = b"test";
         let expected_prefix = b"Salted__".to_vec();
-        let actual_aes_hash_bytes = encrypt_aes_prefixed(b"This is Jimmy.", key, None);
+        let actual_aes_hash_bytes = encrypt_aes_openssl(b"This is Jimmy.", key, None);
 
         assert_eq!(actual_aes_hash_bytes.len(), 32);
         assert_eq!(actual_aes_hash_bytes[..expected_prefix.len()], expected_prefix);
     }
 
     #[test]
-    fn encrypt_aes_should_return_valid_aes_hash_with_explicit_salt() {
+    fn encrypt_aes_openssl_should_return_valid_aes_hash_with_explicit_salt() {
         let key = b"test";
-        let actual_aes_hash_bytes = encrypt_aes_prefixed(b"This is Jimmy.", key, Some(&[0u8, 1, 2, 3, 4, 5, 6, 7]));
+        let actual_aes_hash_bytes = encrypt_aes_openssl(b"This is Jimmy.", key, Some(&[0u8, 1, 2, 3, 4, 5, 6, 7]));
         let actual_aes_hash = base64::encode(&actual_aes_hash_bytes);
 
         assert_eq!(
@@ -348,24 +373,24 @@ mod tests {
     }
 
     #[test]
-    fn decrypt_aes_should_decrypt_previously_encrypted() {
+    fn decrypt_aes_openssl_should_decrypt_previously_encrypted() {
         let key = b"test";
         let expected_data = b"This is Jimmy.";
         let encrypted_data = base64::decode(b"U2FsdGVkX1/Yn4fcMeb/VlvaU8447BMpZgao7xwEM9I=").unwrap();
 
-        let actual_data_result = decrypt_aes_prefixed(&encrypted_data, key);
+        let actual_data_result = decrypt_aes_openssl(&encrypted_data, key);
         let actual_data = actual_data_result.unwrap();
 
         assert_eq!(actual_data, expected_data);
     }
 
     #[test]
-    fn decrypt_aes_should_decrypt_currently_encrypted() {
+    fn decrypt_aes_openssl_should_decrypt_currently_encrypted() {
         let key = b"test";
         let expected_data = b"This is Jimmy.";
-        let encrypted_data = encrypt_aes_prefixed(expected_data, key, Some(&[0u8, 1, 2, 3, 4, 5, 6, 7])); //b"U2FsdGVkX1/Yn4fcMeb/VlvaU8447BMpZgao7xwEM9I=";
+        let encrypted_data = encrypt_aes_openssl(expected_data, key, Some(&[0u8, 1, 2, 3, 4, 5, 6, 7])); //b"U2FsdGVkX1/Yn4fcMeb/VlvaU8447BMpZgao7xwEM9I=";
 
-        let actual_data_result = decrypt_aes_prefixed(&encrypted_data, key);
+        let actual_data_result = decrypt_aes_openssl(&encrypted_data, key);
         let actual_data = actual_data_result.unwrap();
 
         assert_eq!(actual_data, expected_data);
