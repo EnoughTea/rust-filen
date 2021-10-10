@@ -1,5 +1,5 @@
 //! This module contains crypto functions used by Filen to generate and process its keys and metadata.
-use ::aes::Aes256;
+use aes::Aes256;
 use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
 use anyhow::*;
@@ -24,7 +24,7 @@ const FILEN_VERSION_LENGTH: usize = 3;
 const AES_GCM_IV_LENGTH: usize = 12;
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct SentPasswordWithMasterKey {
+pub(crate) struct SentPasswordWithMasterKey {
     pub m_key: SecStr,
     pub sent_password: SecStr,
 }
@@ -149,7 +149,7 @@ fn decrypt_aes_gcm(data: &[u8], password: &[u8]) -> Result<Vec<u8>> {
 }
 
 /// Encrypts file metadata with hashed user's master key. Depending on metadata version, different encryption algos will be used.
-pub fn encrypt_metadata(data: &[u8], hashed_m_key: &[u8], metadata_version: u32) -> Result<Vec<u8>> {
+pub(crate) fn encrypt_metadata(data: &[u8], hashed_m_key: &[u8], metadata_version: u32) -> Result<Vec<u8>> {
     let encrypted_metadata = match metadata_version {
         1 => encrypt_aes_openssl(data, hashed_m_key, None), // Deprecated since August 21
         2 => {
@@ -163,7 +163,7 @@ pub fn encrypt_metadata(data: &[u8], hashed_m_key: &[u8], metadata_version: u32)
 }
 
 /// Restores file metadata prefiously encrypted with [encrypt_metadata].
-pub fn decrypt_metadata(data: &[u8], hashed_m_key: &[u8]) -> Result<Vec<u8>> {
+pub(crate) fn decrypt_metadata(data: &[u8], hashed_m_key: &[u8]) -> Result<Vec<u8>> {
     fn read_metadata_version(data: &[u8]) -> Result<i32> {
         let possible_salted_mark = &data[..OPENSSL_SALT_PREFIX.len()];
         let possible_version_mark = &data[..FILEN_VERSION_LENGTH];
@@ -270,7 +270,7 @@ fn hash_password(password: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::{filen::crypto::*, utils};
+    use crate::{crypto::*, utils};
     use pretty_assertions::{assert_eq, assert_ne};
 
     #[test]

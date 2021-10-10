@@ -3,7 +3,7 @@
 
 pub use secstr;
 
-mod filen;
+mod crypto;
 mod utils;
 
 #[cfg(test)]
