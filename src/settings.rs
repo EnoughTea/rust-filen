@@ -16,12 +16,23 @@ static DEFAULT_API_SERVERS: Lazy<Vec<Url>> = Lazy::new(|| {
 
 static DEFAULT_DOWNLOAD_SERVERS: Lazy<Vec<Url>> = Lazy::new(|| {
     vec![
-        Url::parse("https://api.filen.io/").unwrap(),
-        Url::parse("https://api.filen-1.xyz/").unwrap(),
-        Url::parse("https://api.filen-2.xyz/").unwrap(),
-        Url::parse("https://api.filen-3.xyz/").unwrap(),
-        Url::parse("https://api.filen-4.xyz/").unwrap(),
-        Url::parse("https://api.filen-5.xyz/").unwrap(),
+        Url::parse("https://down.filen.io/").unwrap(),
+        Url::parse("https://down.filen-1.xyz/").unwrap(),
+        Url::parse("https://down.filen-2.xyz/").unwrap(),
+        Url::parse("https://down.filen-3.xyz/").unwrap(),
+        Url::parse("https://down.filen-4.xyz/").unwrap(),
+        Url::parse("https://down.filen-5.xyz/").unwrap(),
+    ]
+});
+
+static DEFAULT_UPLOAD_SERVERS: Lazy<Vec<Url>> = Lazy::new(|| {
+    vec![
+        Url::parse("https://up.filen.io/").unwrap(),
+        Url::parse("https://up.filen-1.xyz/").unwrap(),
+        Url::parse("https://up.filen-2.xyz/").unwrap(),
+        Url::parse("https://up.filen-3.xyz/").unwrap(),
+        Url::parse("https://up.filen-4.xyz/").unwrap(),
+        Url::parse("https://up.filen-5.xyz/").unwrap(),
     ]
 });
 
@@ -35,6 +46,10 @@ pub struct FilenSettings {
     #[serde(rename = "downloadServers")]
     #[serde_as(as = "Vec<DisplayFromStr>")]
     pub download_servers: Vec<Url>,
+
+    #[serde(rename = "upServers")]
+    #[serde_as(as = "Vec<DisplayFromStr>")]
+    pub upload_servers: Vec<Url>,
 }
 
 impl Default for FilenSettings {
@@ -42,6 +57,7 @@ impl Default for FilenSettings {
         Self {
             api_servers: DEFAULT_API_SERVERS.clone(),
             download_servers: DEFAULT_DOWNLOAD_SERVERS.clone(),
+            upload_servers: DEFAULT_UPLOAD_SERVERS.clone(),
         }
     }
 }

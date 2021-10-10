@@ -96,7 +96,8 @@ mod tests {
         let server = MockServer::start();
         let filen_settings = FilenSettings {
             api_servers: vec![Url::parse(&server.base_url()).unwrap()],
-            download_servers: Vec::with_capacity(0),
+            download_servers: vec![Url::parse(&server.base_url()).unwrap()],
+            upload_servers: vec![Url::parse(&server.base_url()).unwrap()],
         };
         (server, filen_settings)
     }
