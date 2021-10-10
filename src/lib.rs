@@ -3,7 +3,9 @@
 
 pub use secstr;
 
+mod auth;
 mod crypto;
+mod settings;
 mod utils;
 
 #[cfg(test)]
