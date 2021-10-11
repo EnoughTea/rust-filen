@@ -1,10 +1,32 @@
 use anyhow::*;
+use httpmock::Method::POST;
+use httpmock::{Mock, MockServer};
+use reqwest::Url;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+use serde_json::json;
 use std::env;
 use std::path::Path;
 
 use camino::Utf8PathBuf;
 
+use crate::settings::FilenSettings;
 use crate::utils;
+
+pub(crate) fn init_server() -> (MockServer, FilenSettings) {
+    let server = MockServer::start();
+    let filen_settings = FilenSettings {
+        api_servers: vec![Url::parse(&server.base_url()).unwrap()],
+        download_servers: vec![Url::parse(&server.base_url()).unwrap()],
+        upload_servers: vec![Url::parse(&server.base_url()).unwrap()],
+    };
+    (server, filen_settings)
+}
+
+pub(crate) fn deserialize_from_file<U: DeserializeOwned>(response_file_path: &str) -> U {
+    let response_contents = read_project_file(response_file_path);
+    serde_json::from_slice(&response_contents).unwrap()
+}
 
 pub(crate) fn project_path() -> Result<Utf8PathBuf> {
     match env::var("CARGO_MANIFEST_DIR") {
@@ -31,4 +53,21 @@ pub(crate) fn project_path_for(file_path: &str) -> Utf8PathBuf {
 pub(crate) fn read_project_file(file_path: &str) -> Vec<u8> {
     let target_path = project_path_for(file_path);
     utils::read_file(&target_path).expect(&format!("Cannot read file: {}", target_path))
+}
+
+pub(crate) fn setup_json_mock<'a, T: Serialize, U: Serialize>(
+    api_path: &str,
+    request_payload: &T,
+    response_payload: &U,
+    server: &'a MockServer,
+) -> Mock<'a> {
+    server.mock(|when, then| {
+        when.method(POST)
+            .path(api_path)
+            .header("content-type", "application/json")
+            .json_body(json!(request_payload));
+        then.status(200)
+            .header("content-type", "text/html")
+            .json_body(json!(response_payload));
+    })
 }

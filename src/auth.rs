@@ -25,7 +25,7 @@ pub struct AuthInfoResponseData {
     #[serde(rename = "authVersion")]
     pub auth_version: u32,
 
-    /// Can be null.
+    /// 256 alphanumeric characters or empty.
     pub salt: Option<String>,
 }
 
@@ -53,52 +53,53 @@ pub async fn auth_info_request_async(
 
 #[cfg(test)]
 mod tests {
-    use crate::{auth::*, test_utils};
+    use crate::{auth::*, test_utils::*};
     use anyhow::Result;
     use closure::closure;
-    use httpmock::prelude::*;
     use pretty_assertions::assert_eq;
-    use reqwest::Url;
-    use serde_json::json;
     use tokio::task::spawn_blocking;
 
     #[tokio::test]
-    async fn auth_info_request_and_async_should_() -> Result<()> {
-        let (server, filen_settings) = init();
-        let payload = AuthInfoRequestPayload {
+    async fn auth_info_request_and_async_should_work_with_v1() -> Result<()> {
+        let (server, filen_settings) = init_server();
+        let request_payload = AuthInfoRequestPayload {
             email: "test@email.com".to_owned(),
             two_factor_key: None,
         };
-        let response_contents = test_utils::read_project_file("tests/resources/auth_info_v1_response.json");
-        server.mock(|when, then| {
-            when.method(POST)
-                .path(AUTH_INFO_PATH)
-                .header("content-type", "application/json")
-                .json_body(json!(payload));
-            then.status(200)
-                .header("content-type", "text/html")
-                .body(&response_contents);
-        });
-        let expected_auth_info_response: AuthInfoResponsePayload = serde_json::from_slice(&response_contents).unwrap();
+        let expected_response: AuthInfoResponsePayload =
+            deserialize_from_file("tests/resources/auth_info_v1_response.json");
+        setup_json_mock(AUTH_INFO_PATH, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
-            closure!(clone payload, clone filen_settings, || { auth_info_request(&payload, &filen_settings) }),
+            closure!(clone request_payload, clone filen_settings, || { auth_info_request(&request_payload, &filen_settings) }),
         )
         .await??;
-        let async_response = auth_info_request_async(&payload, &filen_settings).await?;
+        let async_response = auth_info_request_async(&request_payload, &filen_settings).await?;
 
-        assert_eq!(response, expected_auth_info_response);
-        assert_eq!(async_response, expected_auth_info_response);
+        assert_eq!(response, expected_response);
+        assert_eq!(async_response, expected_response);
         Ok(())
     }
 
-    fn init() -> (MockServer, FilenSettings) {
-        let server = MockServer::start();
-        let filen_settings = FilenSettings {
-            api_servers: vec![Url::parse(&server.base_url()).unwrap()],
-            download_servers: vec![Url::parse(&server.base_url()).unwrap()],
-            upload_servers: vec![Url::parse(&server.base_url()).unwrap()],
+    #[tokio::test]
+    async fn auth_info_request_and_async_should_work_with_v2() -> Result<()> {
+        let (server, filen_settings) = init_server();
+        let request_payload = AuthInfoRequestPayload {
+            email: "test@email.com".to_owned(),
+            two_factor_key: None,
         };
-        (server, filen_settings)
+        let expected_response: AuthInfoResponsePayload =
+            deserialize_from_file("tests/resources/auth_info_v2_response.json");
+        setup_json_mock(AUTH_INFO_PATH, &request_payload, &expected_response, &server);
+
+        let response = spawn_blocking(
+            closure!(clone request_payload, clone filen_settings, || { auth_info_request(&request_payload, &filen_settings) }),
+        )
+        .await??;
+        let async_response = auth_info_request_async(&request_payload, &filen_settings).await?;
+
+        assert_eq!(response, expected_response);
+        assert_eq!(async_response, expected_response);
+        Ok(())
     }
 }
