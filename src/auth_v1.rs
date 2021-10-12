@@ -15,7 +15,7 @@ pub struct AuthInfoRequestPayload {
 
     /// XXXXXX means no key
     #[serde(rename = "twoFactorKey")]
-    pub two_factor_key: Option<String>,
+    pub two_factor_key: Option<SecUtf8>,
 }
 
 #[skip_serializing_none]
@@ -50,7 +50,7 @@ pub struct LoginRequestPayload {
 
     /// XXXXXX means no key
     #[serde(rename = "twoFactorKey")]
-    pub two_factor_key: Option<String>,
+    pub two_factor_key: Option<SecUtf8>,
 
     /// Currently values of 1 & 2 can be encountered.
     #[serde(rename = "authVersion")]
