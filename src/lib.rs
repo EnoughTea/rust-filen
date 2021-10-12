@@ -3,7 +3,7 @@
 
 pub use secstr;
 
-mod auth;
+mod auth_v1;
 mod crypto;
 mod settings;
 mod utils;

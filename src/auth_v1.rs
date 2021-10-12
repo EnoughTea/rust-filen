@@ -1,11 +1,13 @@
 use crate::{settings::FilenSettings, utils};
 use anyhow::*;
+use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_with::*;
 
-const AUTH_INFO_PATH: &str = "/auth/info";
+const AUTH_INFO_PATH: &str = "/v1/auth/info";
+const LOGIN_PATH: &str = "/v1/login";
 
-/// Used for requests to /v1/auth/info endpoint.
+/// Used for requests to [AUTH_INFO_PATH] endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct AuthInfoRequestPayload {
@@ -29,12 +31,53 @@ pub struct AuthInfoResponseData {
     pub salt: Option<String>,
 }
 
+/// Response for [AUTH_INFO_PATH] endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct AuthInfoResponsePayload {
     pub status: bool,
     pub message: String,
     pub data: Option<AuthInfoResponseData>,
+}
+
+/// Used for requests to [LOGIN_PATH] endpoint.
+#[skip_serializing_none]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct LoginRequestPayload {
+    pub email: String,
+
+    pub password: SecUtf8,
+
+    /// XXXXXX means no key
+    #[serde(rename = "twoFactorKey")]
+    pub two_factor_key: Option<String>,
+
+    /// Currently values of 1 & 2 can be encountered.
+    #[serde(rename = "authVersion")]
+    pub auth_version: u32,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct LoginResponseData {
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+
+    /// This is plural, but seems to return just one key...
+    #[serde(rename = "masterKeys")]
+    pub master_keys: SecUtf8,
+
+    #[serde(rename = "privateKey")]
+    pub private_key: SecUtf8,
+}
+
+/// Response for [LOGIN_PATH] endpoint.
+#[skip_serializing_none]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct LoginResponsePayload {
+    pub status: bool,
+    pub message: String,
+    pub data: Option<LoginResponseData>,
 }
 
 pub fn auth_info_request(
@@ -51,9 +94,20 @@ pub async fn auth_info_request_async(
     utils::query_filen_api_async(AUTH_INFO_PATH, payload, settings).await
 }
 
+pub fn login_request(payload: &LoginRequestPayload, settings: &FilenSettings) -> Result<LoginResponsePayload> {
+    utils::query_filen_api(LOGIN_PATH, payload, settings)
+}
+
+pub async fn login_request_async(
+    payload: &LoginRequestPayload,
+    settings: &FilenSettings,
+) -> Result<LoginResponsePayload> {
+    utils::query_filen_api_async(LOGIN_PATH, payload, settings).await
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::{auth::*, test_utils::*};
+    use crate::{auth_v1::*, test_utils::*};
     use anyhow::Result;
     use closure::closure;
     use pretty_assertions::assert_eq;
@@ -93,7 +147,7 @@ mod tests {
         setup_json_mock(AUTH_INFO_PATH, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { auth_info_request(&request_payload, &filen_settings) }),
+            closure!(clone request_payload, clone filen_settings, || auth_info_request(&request_payload, &filen_settings)),
         )
         .await??;
         let async_response = auth_info_request_async(&request_payload, &filen_settings).await?;
