@@ -20,7 +20,7 @@ md-5 = "0.9"
 rand = "0.8"
 reqwest = { version = "0.11", features = ["blocking", "json"] }
 rust-crypto = "0.2"
-secstr = "0.4"
+secstr = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_with = "1.10"
