@@ -10,6 +10,7 @@ use std::fs::File;
 use std::io::Read;
 use std::num::ParseIntError;
 use std::path::Path;
+use std::time::Duration;
 
 use crate::settings::FilenSettings;
 
@@ -47,7 +48,7 @@ pub(crate) fn query_filen_api<T: Serialize + ?Sized, U: DeserializeOwned>(
     filen_settings: &FilenSettings,
 ) -> Result<U> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.api_servers)?;
-    let filen_response = post(filen_endpoint.as_str(), payload)?;
+    let filen_response = post(filen_endpoint.as_str(), payload, filen_settings.timeout_secs)?;
     Ok(filen_response.json::<U>()?)
 }
 
@@ -57,7 +58,7 @@ pub(crate) async fn query_filen_api_async<T: Serialize + ?Sized, U: DeserializeO
     filen_settings: &FilenSettings,
 ) -> Result<U> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.api_servers)?;
-    let filen_response = post_async(filen_endpoint.as_str(), payload).await?;
+    let filen_response = post_async(filen_endpoint.as_str(), payload, filen_settings.timeout_secs).await?;
     Ok(filen_response.json::<U>().await?)
 }
 
@@ -73,18 +74,20 @@ fn choose_filen_server(servers: &[Url]) -> &Url {
     &servers[chosen_server_index]
 }
 
-fn post<T: Serialize + ?Sized>(url: &str, payload: &T) -> Result<reqwest::blocking::Response> {
+fn post<T: Serialize + ?Sized>(url: &str, payload: &T, timeout_secs: u64) -> Result<reqwest::blocking::Response> {
     BLOCKING_CLIENT
         .post(url)
         .json(&payload)
+        .timeout(Duration::from_secs(timeout_secs))
         .send()
         .with_context(|| format!("Failed to send POST to: {}", url))
 }
 
-async fn post_async<T: Serialize + ?Sized>(url: &str, payload: &T) -> Result<reqwest::Response> {
+async fn post_async<T: Serialize + ?Sized>(url: &str, payload: &T, timeout_secs: u64) -> Result<reqwest::Response> {
     ASYNC_CLIENT
         .post(url)
         .json(&payload)
+        .timeout(Duration::from_secs(timeout_secs))
         .send()
         .await
         .with_context(|| format!("Failed to send POST (async) to: {}", url))

@@ -36,9 +36,12 @@ static DEFAULT_UPLOAD_SERVERS: Lazy<Vec<Url>> = Lazy::new(|| {
     ]
 });
 
+const REQUEST_TIMEOUT_SECS: u64 = 120;
+
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FilenSettings {
+    /// List of API servers which will be randomly queried.
     #[serde(rename = "apiServers")]
     #[serde_as(as = "Vec<DisplayFromStr>")]
     pub api_servers: Vec<Url>,
@@ -50,6 +53,9 @@ pub struct FilenSettings {
     #[serde(rename = "upServers")]
     #[serde_as(as = "Vec<DisplayFromStr>")]
     pub upload_servers: Vec<Url>,
+
+    /// API requests timeout in seconds.
+    pub timeout_secs: u64,
 }
 
 impl Default for FilenSettings {
@@ -58,6 +64,7 @@ impl Default for FilenSettings {
             api_servers: DEFAULT_API_SERVERS.clone(),
             download_servers: DEFAULT_DOWNLOAD_SERVERS.clone(),
             upload_servers: DEFAULT_UPLOAD_SERVERS.clone(),
+            timeout_secs: REQUEST_TIMEOUT_SECS,
         }
     }
 }

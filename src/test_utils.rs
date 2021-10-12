@@ -19,6 +19,7 @@ pub(crate) fn init_server() -> (MockServer, FilenSettings) {
         api_servers: vec![Url::parse(&server.base_url()).unwrap()],
         download_servers: vec![Url::parse(&server.base_url()).unwrap()],
         upload_servers: vec![Url::parse(&server.base_url()).unwrap()],
+        timeout_secs: 10,
     };
     (server, filen_settings)
 }
