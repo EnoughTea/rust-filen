@@ -12,6 +12,7 @@ use std::num::ParseIntError;
 use std::path::Path;
 use std::time::Duration;
 
+use crate::errors::*;
 use crate::settings::FilenSettings;
 
 static BLOCKING_CLIENT: Lazy<reqwest::blocking::Client> = Lazy::new(|| reqwest::blocking::Client::new());
@@ -31,10 +32,12 @@ pub(crate) fn byte_vec_to_hex_string(data: &Vec<u8>) -> String {
     data.iter().map(|byte| format!("{:02x}", byte)).collect()
 }
 
+/// Converts the specified bytes into corresponding hex-encoded string.
 pub(crate) fn byte_slice_to_hex_string(data: &[u8]) -> String {
     data.iter().map(|byte| format!("{:02x}", byte)).collect()
 }
 
+/// Converts the specified hex-encoded string into bytes.
 pub(crate) fn hex_string_to_bytes(s: &str) -> Result<Vec<u8>, ParseIntError> {
     (0..s.len())
         .step_by(2)
@@ -42,6 +45,7 @@ pub(crate) fn hex_string_to_bytes(s: &str) -> Result<Vec<u8>, ParseIntError> {
         .collect()
 }
 
+/// Sends POST with given payload to one of Filen API servers.
 pub(crate) fn query_filen_api<T: Serialize + ?Sized, U: DeserializeOwned>(
     api_endpoint: &str,
     payload: &T,
@@ -52,6 +56,7 @@ pub(crate) fn query_filen_api<T: Serialize + ?Sized, U: DeserializeOwned>(
     Ok(filen_response.json::<U>()?)
 }
 
+/// Asynchronously sends POST with given payload to one of Filen API servers.
 pub(crate) async fn query_filen_api_async<T: Serialize + ?Sized, U: DeserializeOwned>(
     api_endpoint: &str,
     payload: &T,
@@ -62,27 +67,31 @@ pub(crate) async fn query_filen_api_async<T: Serialize + ?Sized, U: DeserializeO
     Ok(filen_response.json::<U>().await?)
 }
 
-pub(crate) fn read_file<P: AsRef<Path>>(absolute_resource_path: P) -> Result<Vec<u8>> {
-    let mut f = File::open(&absolute_resource_path)?;
+/// Reads file at the specified path to the end.
+pub(crate) fn read_file<P: AsRef<Path>>(file_path: P) -> Result<Vec<u8>> {
+    let mut f = File::open(&file_path)?;
     let mut buffer = Vec::new();
     let _bytes_read = f.read_to_end(&mut buffer)?;
     Ok(buffer)
 }
 
+/// Randomly chooses one of the URLs in the given slice.
 fn choose_filen_server(servers: &[Url]) -> &Url {
     let chosen_server_index = thread_rng().gen_range(0..servers.len());
     &servers[chosen_server_index]
 }
 
+/// Sends POST with given payload and timeout to the specified URL.
 fn post<T: Serialize + ?Sized>(url: &str, payload: &T, timeout_secs: u64) -> Result<reqwest::blocking::Response> {
     BLOCKING_CLIENT
         .post(url)
         .json(&payload)
         .timeout(Duration::from_secs(timeout_secs))
         .send()
-        .with_context(|| format!("Failed to send POST to: {}", url))
+        .map_err(|err| anyhow!(web_request_fail(&format!("Failed to send POST to: {}", url), err)))
 }
 
+/// Asynchronously sends POST with given payload and timeout to the specified URL.
 async fn post_async<T: Serialize + ?Sized>(url: &str, payload: &T, timeout_secs: u64) -> Result<reqwest::Response> {
     ASYNC_CLIENT
         .post(url)
@@ -90,17 +99,20 @@ async fn post_async<T: Serialize + ?Sized>(url: &str, payload: &T, timeout_secs:
         .timeout(Duration::from_secs(timeout_secs))
         .send()
         .await
-        .with_context(|| format!("Failed to send POST (async) to: {}", url))
+        .map_err(|err| {
+            let message = &format!("Failed to send POST (async) to: {}", url);
+            anyhow!(web_request_fail(message, err))
+        })
 }
 
+/// Randomly chooses one of the URLs in servers slice and joins it with the given API endpoint path.
 fn produce_filen_endpoint(api_endpoint: &str, servers: &[Url]) -> Result<Url> {
     let chosen_server = choose_filen_server(servers);
     chosen_server.join(api_endpoint).map_err(|_| {
-        anyhow!(
-            "Cannot join chosen server '{}' with API endpoint '{}'",
-            chosen_server.as_str(),
-            api_endpoint
-        )
+        anyhow!(bad_argument(&format!(
+            "Cannot join chosen server URL '{}' with API endpoint '{}'",
+            chosen_server, api_endpoint
+        )))
     })
 }
 

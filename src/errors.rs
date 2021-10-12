@@ -1,12 +1,18 @@
 use thiserror::Error;
 
-#[derive(Debug, Error, Eq, PartialEq)]
+#[derive(Debug, Error)]
 pub enum RFError {
     #[error("{message:?}")]
     BadArgument { message: String },
 
     #[error("{message:?}")]
     DecryptionFail { message: String },
+
+    #[error("{message:?}")]
+    WebRequestFail {
+        message: String,
+        reqwest_error: reqwest::Error,
+    },
 
     #[error("{message:?}")]
     Unsupported { message: String },
@@ -21,6 +27,13 @@ pub(crate) fn bad_argument(message: &str) -> RFError {
 pub(crate) fn decryption_fail(message: &str) -> RFError {
     RFError::DecryptionFail {
         message: message.to_owned(),
+    }
+}
+
+pub(crate) fn web_request_fail(message: &str, reqwest_error: reqwest::Error) -> RFError {
+    RFError::WebRequestFail {
+        message: message.to_owned(),
+        reqwest_error: reqwest_error,
     }
 }
 
