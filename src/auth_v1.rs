@@ -122,7 +122,7 @@ mod tests {
             two_factor_key: None,
         };
         let expected_response: AuthInfoResponsePayload =
-            deserialize_from_file("tests/resources/auth_info_v1_response.json");
+            deserialize_from_file("tests/resources/responses/auth_info_v1.json");
         let mock: Mock = setup_json_mock(AUTH_INFO_PATH, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
@@ -146,7 +146,7 @@ mod tests {
             two_factor_key: None,
         };
         let expected_response: AuthInfoResponsePayload =
-            deserialize_from_file("tests/resources/auth_info_v2_response.json");
+            deserialize_from_file("tests/resources/responses/auth_info_v2.json");
         let mock: Mock = setup_json_mock(AUTH_INFO_PATH, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
@@ -171,7 +171,7 @@ mod tests {
             two_factor_key: Some(SecUtf8::from("XXXXXX")),
             auth_version: 1,
         };
-        let expected_response: LoginResponsePayload = deserialize_from_file("tests/resources/login_v1_response.json");
+        let expected_response: LoginResponsePayload = deserialize_from_file("tests/resources/responses/login_v1.json");
         let mock: Mock = setup_json_mock(LOGIN_PATH, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
