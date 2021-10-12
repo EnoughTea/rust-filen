@@ -11,7 +11,7 @@ use crypto::pbkdf2::pbkdf2;
 use easy_hasher::easy_hasher::*;
 use md5::{Digest, Md5};
 use rand::Rng;
-use secstr::SecStr;
+use secstr::SecUtf8;
 
 use crate::utils;
 
@@ -25,15 +25,15 @@ const AES_GCM_IV_LENGTH: usize = 12;
 
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) struct SentPasswordWithMasterKey {
-    pub m_key: SecStr,
-    pub sent_password: SecStr,
+    pub m_key: SecUtf8,
+    pub sent_password: SecUtf8,
 }
 
 impl SentPasswordWithMasterKey {
     /// Expects plain text password.
-    pub fn from_password(password: &SecStr) -> Result<SentPasswordWithMasterKey> {
-        let m_key = SecStr::from(hash_fn(&String::from_utf8_lossy(password.unsecure())));
-        let sent_password = SecStr::from(hash_password(&String::from_utf8_lossy(password.unsecure())));
+    pub fn from_password(password: &SecUtf8) -> Result<SentPasswordWithMasterKey> {
+        let m_key = SecUtf8::from(hash_fn(password.unsecure()));
+        let sent_password = SecUtf8::from(hash_password(password.unsecure()));
         Ok(SentPasswordWithMasterKey {
             m_key: m_key,
             sent_password: sent_password,
@@ -41,8 +41,9 @@ impl SentPasswordWithMasterKey {
     }
 
     /// Expects plain text password.
-    pub fn from_password_and_salt(password: &SecStr, salt: &SecStr) -> Result<SentPasswordWithMasterKey> {
-        let pbkdf2_hash = derive_key_from_password_512(password.unsecure(), salt.unsecure(), 200_000);
+    pub fn from_password_and_salt(password: &SecUtf8, salt: &SecUtf8) -> Result<SentPasswordWithMasterKey> {
+        let pbkdf2_hash =
+            derive_key_from_password_512(password.unsecure().as_bytes(), salt.unsecure().as_bytes(), 200_000);
         SentPasswordWithMasterKey::from_derived_key(&pbkdf2_hash)
     }
 
@@ -51,20 +52,14 @@ impl SentPasswordWithMasterKey {
             bail!("Derived key should be 64 bytes long")
         }
 
-        let m_key = &derived_key[..derived_key.len() / 2];
-        let password_part = &derived_key[derived_key.len() / 2..];
-        let sent_password = sha512(&utils::byte_slice_to_hex_string(password_part));
+        let (m_key, password_part) = derived_key.split_at(derived_key.len() / 2);
+        let m_key_hex = utils::byte_slice_to_hex_string(m_key);
+        let sent_password = sha512(&utils::byte_slice_to_hex_string(password_part)).to_vec();
+        let sent_password_hex = utils::byte_slice_to_hex_string(&sent_password);
         Ok(SentPasswordWithMasterKey {
-            m_key: SecStr::new(m_key.to_vec()),
-            sent_password: SecStr::new(sent_password.to_vec()),
+            m_key: SecUtf8::from(m_key_hex),
+            sent_password: SecUtf8::from(sent_password_hex),
         })
-    }
-    fn m_key_as_hex_string(&self) -> String {
-        utils::byte_slice_to_hex_string(self.m_key.unsecure())
-    }
-
-    fn sent_password_as_hex_string(&self) -> String {
-        utils::byte_slice_to_hex_string(self.sent_password.unsecure())
     }
 }
 
@@ -270,7 +265,7 @@ fn hash_password(password: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::{crypto::*, utils};
+    use crate::crypto::*;
     use pretty_assertions::{assert_eq, assert_ne};
 
     #[test]
@@ -431,16 +426,8 @@ mod tests {
 
         let parts = SentPasswordWithMasterKey::from_derived_key(&pbkdf2_hash).unwrap();
 
-        assert_eq!(
-            parts.m_key.unsecure(),
-            utils::hex_string_to_bytes(&expected_m_key).unwrap()
-        );
-        assert_eq!(parts.m_key_as_hex_string(), expected_m_key);
-        assert_eq!(
-            parts.sent_password.unsecure(),
-            utils::hex_string_to_bytes(&expected_password).unwrap()
-        );
-        assert_eq!(parts.sent_password_as_hex_string(), expected_password);
+        assert_eq!(parts.m_key.unsecure(), expected_m_key);
+        assert_eq!(parts.sent_password.unsecure(), expected_password);
     }
 
     #[test]
