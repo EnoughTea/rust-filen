@@ -12,7 +12,7 @@ const LOGIN_PATH: &str = "/v1/login";
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct AuthInfoRequestPayload {
     /// Registered user email.
-    pub email: String,
+    pub email: SecUtf8,
 
     /// Registered user 2FA key, if present. XXXXXX means no 2FA key.
     #[serde(rename = "twoFactorKey")]
@@ -24,9 +24,9 @@ pub struct AuthInfoRequestPayload {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct AuthInfoResponseData {
     /// Registered user email.
-    pub email: String,
+    pub email: SecUtf8,
 
-    /// Currently values of 1 & 2 can be encountered.
+    /// User-associated value which determines auth algorithm. Currently values of 1 & 2 can be encountered.
     /// 1 means [FilenPasswordWithMasterKey::from_user_password] should be used to generate Filen password for login;
     /// 2 means [FilenPasswordWithMasterKey::from_user_password_and_auth_info_salt] should be used instead.
     #[serde(rename = "authVersion")]
@@ -55,7 +55,7 @@ pub struct AuthInfoResponsePayload {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LoginRequestPayload {
     /// Registered user email.
-    pub email: String,
+    pub email: SecUtf8,
 
     /// Filen-processed password. Note that this is not a registered user password, but its hash.
     /// Use one of [FilenPasswordWithMasterKey]::from... methods to calculate it.
@@ -65,8 +65,7 @@ pub struct LoginRequestPayload {
     #[serde(rename = "twoFactorKey")]
     pub two_factor_key: SecUtf8,
 
-    /// Currently values of 1 & 2 can be encountered.
-    /// Set to a value you received from auth/info call.
+    /// Set this to a value you received from auth/info call and used to generate Filen password.
     #[serde(rename = "authVersion")]
     pub auth_version: u32,
 }
@@ -79,13 +78,17 @@ pub struct LoginResponseData {
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 
-    /// This is plural, but seems to return just one key... Used to decrypt various metadata.
+    /// This is a Filen 'metadata' encrypted by the last master key. It contains either a single master key or multiple master keys delimited by '|'.
+    /// Master key is in turn used to decrypt various file system metadata.
+    /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "masterKeys")]
-    pub master_keys: SecUtf8,
+    pub master_keys_metadata: Option<SecUtf8>,
 
-    /// For now it seems to be used only when decrypting shared download folder name.
+    /// This is a Filen 'metadata' encrypted by the last master key. It contains user private key.
+    /// Private key seems to be used only when decrypting shared download folder name.
+    /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "privateKey")]
-    pub private_key: SecUtf8,
+    pub private_key_metadata: Option<SecUtf8>,
 }
 
 /// Response for [LOGIN_PATH] endpoint.
@@ -144,7 +147,7 @@ mod tests {
     async fn auth_info_request_and_async_should_work_with_v1() -> Result<()> {
         let (server, filen_settings) = init_server();
         let request_payload = AuthInfoRequestPayload {
-            email: "test@email.com".to_owned(),
+            email: SecUtf8::from("test@email.com"),
             two_factor_key: SecUtf8::from("XXXXXX"),
         };
         let expected_response: AuthInfoResponsePayload =
@@ -168,7 +171,7 @@ mod tests {
     async fn auth_info_request_and_async_should_work_with_v2() -> Result<()> {
         let (server, filen_settings) = init_server();
         let request_payload = AuthInfoRequestPayload {
-            email: "test@email.com".to_owned(),
+            email: SecUtf8::from("test@email.com"),
             two_factor_key: SecUtf8::from("XXXXXX"),
         };
         let expected_response: AuthInfoResponsePayload =
@@ -192,7 +195,7 @@ mod tests {
     async fn login_request_and_async_should_work_with_v1() -> Result<()> {
         let (server, filen_settings) = init_server();
         let request_payload = LoginRequestPayload {
-            email: "test@email.com".to_owned(),
+            email: SecUtf8::from("test@email.com"),
             password: SecUtf8::from("test"),
             two_factor_key: SecUtf8::from("XXXXXX"),
             auth_version: 1,
