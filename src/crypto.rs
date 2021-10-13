@@ -163,7 +163,7 @@ pub(crate) fn decrypt_metadata(data: &[u8], m_key: &[u8]) -> Result<Vec<u8>> {
         let metadata_version = if possible_salted_mark == OPENSSL_SALT_PREFIX {
             1
         } else if possible_salted_mark == OPENSSL_SALT_PREFIX_BASE64 {
-            bail!("Given data should not be base64-encoded")
+            -1 // Means data is base_64 encoded, so we will have to decode later.
         } else {
             let possible_version_string = String::from_utf8_lossy(&possible_version_mark);
             possible_version_string.parse::<i32>().map_err(|_| {
@@ -176,6 +176,7 @@ pub(crate) fn decrypt_metadata(data: &[u8], m_key: &[u8]) -> Result<Vec<u8>> {
 
     let metadata_version = read_metadata_version(data)?;
     let decrypted_metadata = match metadata_version {
+        -1 => decrypt_aes_openssl(&base64::decode(data)?, m_key)?,
         1 => decrypt_aes_openssl(data, m_key)?, // Deprecated since August 21
         2 => decrypt_aes_gcm(&data[FILEN_VERSION_LENGTH..], m_key)?,
         version => bail!(unsupported(&format!("Unsupported metadata version: {}", version))),
@@ -184,6 +185,7 @@ pub(crate) fn decrypt_metadata(data: &[u8], m_key: &[u8]) -> Result<Vec<u8>> {
 }
 
 /// Encrypts file metadata with user's master key. Depending on metadata version, different encryption algos will be used.
+/// Convenience overload for [SecUtf8] params.
 pub(crate) fn encrypt_metadata_strings(data: &SecUtf8, m_key: &SecUtf8, metadata_version: u32) -> Result<SecUtf8> {
     encrypt_metadata(
         data.unsecure().as_bytes(),
@@ -193,9 +195,9 @@ pub(crate) fn encrypt_metadata_strings(data: &SecUtf8, m_key: &SecUtf8, metadata
     .map(|bytes| SecUtf8::from(String::from_utf8_lossy(&bytes)))
 }
 
-/// Restores file metadata prefiously encrypted with [encrypt_metadata]. Convenience overload for [SecUtf8] params.
+/// Restores file metadata prefiously encrypted with [encrypt_metadata] or [encrypt_metadata_strings]. Convenience overload for [SecUtf8] params.
 pub(crate) fn decrypt_metadata_strings(data: &SecUtf8, m_key: &SecUtf8) -> Result<SecUtf8> {
-    decrypt_metadata(data.unsecure().as_bytes(), m_key.unsecure().as_bytes())
+    decrypt_metadata(&data.unsecure().as_bytes(), m_key.unsecure().as_bytes())
         .map(|bytes| SecUtf8::from(String::from_utf8_lossy(&bytes)))
 }
 
