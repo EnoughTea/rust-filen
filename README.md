@@ -6,7 +6,7 @@ This library is **not in a usable state**. Most of the crypto stuff is implement
 
 ## 
 ```
-use crate::{auth_v1, settings::FilenSettings, crypto::FilenPasswordWithMasterKey};
+use crate::{v1::auth, settings::FilenSettings, crypto::FilenPasswordWithMasterKey};
 use anyhow::*;
 use secstr::SecUtf8;
 
@@ -16,11 +16,11 @@ fn how_login_may_look() -> Result<LoginResponseData> {
     let user_two_factor_key = SecUtf8::from("XXXXXX"); // Filen actually uses XXXXXX when 2FA is absent.
 
     let filen_settings = FilenSettings::default();
-    let auth_info_request_payload = auth_v1::AuthInfoRequestPayload {
+    let auth_info_request_payload = auth::AuthInfoRequestPayload {
         email: user_email.clone(),
         two_factor_key: user_two_factor_key.clone(),
     };
-    let auth_info_response = auth_v1::auth_info_request(&auth_info_request_payload, &filen_settings)?;
+    let auth_info_response = auth::auth_info_request(&auth_info_request_payload, &filen_settings)?;
     if !auth_info_response.status || auth_info_response.data.is_none() {
         bail!("Filen API failed to return auth info: {}", auth_info_response.message);
     }
@@ -34,13 +34,13 @@ fn how_login_may_look() -> Result<LoginResponseData> {
         _ => bail!("Unsupported auth version"),
     };
 
-    let login_request_payload = auth_v1::LoginRequestPayload {
+    let login_request_payload = auth::LoginRequestPayload {
         email: user_email,
         password: filen_password_and_m_key.sent_password,
         two_factor_key: user_two_factor_key.clone(),
         auth_version: auth_info_response_data.auth_version,
     };
-    let login_response = auth_v1::login_request(&login_request_payload, &filen_settings)?;
+    let login_response = auth::login_request(&login_request_payload, &filen_settings)?;
     if !login_response.status || login_response.data.is_none() {
         bail!("Filen API failed to login: {}", auth_info_response.message);
     }

@@ -133,7 +133,7 @@ pub async fn login_request_async(
 
 #[cfg(test)]
 mod tests {
-    use crate::{auth_v1::*, test_utils::*};
+    use crate::{test_utils::*, v1::auth::*};
     use anyhow::Result;
     use closure::closure;
     use httpmock::Mock;
