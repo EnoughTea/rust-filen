@@ -38,7 +38,7 @@ fn how_login_may_look() -> Result<LoginResponseData> {
         email: user_email,
         password: filen_password_and_m_key.sent_password,
         two_factor_key: user_two_factor_key.clone(),
-        auth_version: 1,
+        auth_version: auth_info_response_data.auth_version,
     };
     let login_response = auth_v1::login_request(&login_request_payload, &filen_settings)?;
     if !login_response.status || login_response.data.is_none() {
