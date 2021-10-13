@@ -27,7 +27,6 @@ serde_json = "1.0"
 serde_with = "1.10"
 thiserror = "1.0"
 tokio = { version = "1.12", features = ["full"] }
-tokio-test = "0.4"
 
 [dev-dependencies]
 camino = "1.0"
@@ -35,3 +34,4 @@ cargo-husky = "1.5"
 closure = "0.3"
 httpmock = "0.6"
 pretty_assertions = "1.0"
+tokio-test = "0.4"
