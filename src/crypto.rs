@@ -25,36 +25,36 @@ const OPENSSL_SALT_LENGTH: usize = 8;
 const FILEN_VERSION_LENGTH: usize = 3;
 const AES_GCM_IV_LENGTH: usize = 12;
 
-#[derive(Debug, Eq, PartialEq)]
-pub(crate) struct SentPasswordWithMasterKey {
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct FilenPasswordWithMasterKey {
     pub m_key: SecUtf8,
     pub sent_password: SecUtf8,
 }
 
-impl SentPasswordWithMasterKey {
+impl FilenPasswordWithMasterKey {
     /// Expects plain text password.
-    pub fn from_password(password: &SecUtf8) -> SentPasswordWithMasterKey {
+    pub fn from_user_password(password: &SecUtf8) -> FilenPasswordWithMasterKey {
         let m_key = SecUtf8::from(hash_fn(password.unsecure()));
         let sent_password = SecUtf8::from(hash_password(password.unsecure()));
-        SentPasswordWithMasterKey {
+        FilenPasswordWithMasterKey {
             m_key: m_key,
             sent_password: sent_password,
         }
     }
 
     /// Expects plain text password.
-    pub fn from_password_and_salt(password: &SecUtf8, salt: &SecUtf8) -> SentPasswordWithMasterKey {
+    pub fn from_user_password_and_auth_info_salt(password: &SecUtf8, salt: &SecUtf8) -> FilenPasswordWithMasterKey {
         let (password_bytes, salt_bytes) = (password.unsecure().as_bytes(), salt.unsecure().as_bytes());
         let pbkdf2_hash = derive_key_from_password_512(password_bytes, salt_bytes, 200_000);
-        SentPasswordWithMasterKey::from_derived_key(&pbkdf2_hash)
+        FilenPasswordWithMasterKey::from_derived_key(&pbkdf2_hash)
     }
 
-    fn from_derived_key(derived_key: &[u8; 64]) -> SentPasswordWithMasterKey {
+    fn from_derived_key(derived_key: &[u8; 64]) -> FilenPasswordWithMasterKey {
         let (m_key, password_part) = derived_key.split_at(derived_key.len() / 2);
         let m_key_hex = utils::byte_slice_to_hex_string(m_key);
         let sent_password = sha512(&utils::byte_slice_to_hex_string(password_part)).to_vec();
         let sent_password_hex = utils::byte_slice_to_hex_string(&sent_password);
-        SentPasswordWithMasterKey {
+        FilenPasswordWithMasterKey {
             m_key: SecUtf8::from(m_key_hex),
             sent_password: SecUtf8::from(sent_password_hex),
         }
@@ -395,7 +395,7 @@ mod tests {
             172, 173, 165, 89, 54, 223, 115, 173, 131, 123, 157, 117, 100, 113, 185, 63, 49,
         ];
 
-        let parts = SentPasswordWithMasterKey::from_derived_key(&pbkdf2_hash);
+        let parts = FilenPasswordWithMasterKey::from_derived_key(&pbkdf2_hash);
 
         assert_eq!(parts.m_key.unsecure(), expected_m_key);
         assert_eq!(parts.sent_password.unsecure(), expected_password);
