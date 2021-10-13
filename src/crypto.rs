@@ -141,13 +141,13 @@ fn decrypt_aes_gcm(data: &[u8], password: &[u8]) -> Result<Vec<u8>> {
     Ok(decrypted_data)
 }
 
-/// Encrypts file metadata with hashed user's master key. Depending on metadata version, different encryption algos will be used.
-pub(crate) fn encrypt_metadata(data: &[u8], hashed_m_key: &[u8], metadata_version: u32) -> Result<Vec<u8>> {
+/// Encrypts file metadata with user's master key. Depending on metadata version, different encryption algos will be used.
+pub(crate) fn encrypt_metadata(data: &[u8], m_key: &[u8], metadata_version: u32) -> Result<Vec<u8>> {
     let encrypted_metadata = match metadata_version {
-        1 => encrypt_aes_openssl(data, hashed_m_key, None), // Deprecated since August 21
+        1 => encrypt_aes_openssl(data, m_key, None), // Deprecated since August 21
         2 => {
             let mut version_mark = format!("{:0>3}", metadata_version).into_bytes();
-            version_mark.extend(encrypt_aes_gcm(data, hashed_m_key));
+            version_mark.extend(encrypt_aes_gcm(data, m_key));
             version_mark
         }
         version => bail!(unsupported(&format!("Unsupported metadata version: {}", version))),
@@ -156,7 +156,7 @@ pub(crate) fn encrypt_metadata(data: &[u8], hashed_m_key: &[u8], metadata_versio
 }
 
 /// Restores file metadata prefiously encrypted with [encrypt_metadata].
-pub(crate) fn decrypt_metadata(data: &[u8], hashed_m_key: &[u8]) -> Result<Vec<u8>> {
+pub(crate) fn decrypt_metadata(data: &[u8], m_key: &[u8]) -> Result<Vec<u8>> {
     fn read_metadata_version(data: &[u8]) -> Result<i32> {
         let possible_salted_mark = &data[..OPENSSL_SALT_PREFIX.len()];
         let possible_version_mark = &data[..FILEN_VERSION_LENGTH];
@@ -176,11 +176,27 @@ pub(crate) fn decrypt_metadata(data: &[u8], hashed_m_key: &[u8]) -> Result<Vec<u
 
     let metadata_version = read_metadata_version(data)?;
     let decrypted_metadata = match metadata_version {
-        1 => decrypt_aes_openssl(data, hashed_m_key)?, // Deprecated since August 21
-        2 => decrypt_aes_gcm(&data[FILEN_VERSION_LENGTH..], hashed_m_key)?,
+        1 => decrypt_aes_openssl(data, m_key)?, // Deprecated since August 21
+        2 => decrypt_aes_gcm(&data[FILEN_VERSION_LENGTH..], m_key)?,
         version => bail!(unsupported(&format!("Unsupported metadata version: {}", version))),
     };
     Ok(decrypted_metadata)
+}
+
+/// Encrypts file metadata with user's master key. Depending on metadata version, different encryption algos will be used.
+pub(crate) fn encrypt_metadata_strings(data: &SecUtf8, m_key: &SecUtf8, metadata_version: u32) -> Result<SecUtf8> {
+    encrypt_metadata(
+        data.unsecure().as_bytes(),
+        m_key.unsecure().as_bytes(),
+        metadata_version,
+    )
+    .map(|bytes| SecUtf8::from(String::from_utf8_lossy(&bytes)))
+}
+
+/// Restores file metadata prefiously encrypted with [encrypt_metadata]. Convenience overload for [SecUtf8] params.
+pub(crate) fn decrypt_metadata_strings(data: &SecUtf8, m_key: &SecUtf8) -> Result<SecUtf8> {
+    decrypt_metadata(data.unsecure().as_bytes(), m_key.unsecure().as_bytes())
+        .map(|bytes| SecUtf8::from(String::from_utf8_lossy(&bytes)))
 }
 
 /// Calculates login key from the given user password and service-provided salt.
