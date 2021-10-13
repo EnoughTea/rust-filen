@@ -10,8 +10,8 @@ use crate::{v1::auth, settings::FilenSettings, crypto::FilenPasswordWithMasterKe
 use anyhow::*;
 use secstr::SecUtf8;
 
-fn how_login_may_look() -> Result<LoginResponseData> {
-    let user_email = "registered.user@email.com".to_owned();
+fn how_login_may_look() -> Result<auth::LoginResponseData> {
+    let user_email = SecUtf8::from("registered.user@email.com");
     let user_password = SecUtf8::from("user.password");
     let user_two_factor_key = SecUtf8::from("XXXXXX"); // Filen actually uses XXXXXX when 2FA is absent.
 
@@ -35,8 +35,8 @@ fn how_login_may_look() -> Result<LoginResponseData> {
     };
 
     let login_request_payload = auth::LoginRequestPayload {
-        email: user_email,
-        password: filen_password_and_m_key.sent_password,
+        email: user_email.clone(),
+        password: filen_password_and_m_key.sent_password.clone(),
         two_factor_key: user_two_factor_key.clone(),
         auth_version: auth_info_response_data.auth_version,
     };
