@@ -1,6 +1,6 @@
 use crate::{crypto, errors::*, settings::FilenSettings, utils};
 use anyhow::*;
-use secstr::SecUtf8;
+use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
 use serde_with::*;
 
@@ -78,14 +78,14 @@ pub struct LoginResponseData {
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 
-    /// This string is a Filen metadata encrypted by the last master key.
+    /// This string is a Filen metadata encrypted by the last master key and base64-encoded.
     /// It contains either a single master key or multiple master keys delimited by '|'.
     /// Master key is in turn used to decrypt various file system metadata.
     /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "masterKeys")]
     pub master_keys_metadata: Option<SecUtf8>,
 
-    /// This string is a Filen metadata encrypted by the last master key. It contains user private key.
+    /// This string is a Filen metadata encrypted by the last master key and base64-encoded. It contains user private key.
     /// Private key seems to be used only when decrypting shared download folder name.
     /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "privateKey")]
@@ -94,17 +94,20 @@ pub struct LoginResponseData {
 
 impl LoginResponseData {
     /// Decrypts [LoginResponseData].master_keys_metadata field with given user's last master key.
-    fn decrypt_master_keys(&self, last_master_key: &SecUtf8) -> Result<SecUtf8> {
+    pub fn decrypt_master_keys(&self, last_master_key: &SecUtf8) -> Result<SecUtf8> {
         match &self.master_keys_metadata {
-            Some(metadata) => crypto::decrypt_metadata_strings(metadata, last_master_key),
+            Some(metadata) => crypto::decrypt_metadata_strings(&metadata, last_master_key),
             None => bail!(decryption_fail("Cannot decrypt master keys metadata, it is empty")),
         }
     }
 
     /// Decrypts [LoginResponseData].private_key_metadata field with given user's last master key.
-    fn decrypt_private_key(&self, last_master_key: &SecUtf8) -> Result<SecUtf8> {
+    pub fn decrypt_private_key(&self, last_master_key: &SecUtf8) -> Result<SecVec<u8>> {
         match &self.private_key_metadata {
-            Some(metadata) => crypto::decrypt_metadata_strings(metadata, last_master_key),
+            Some(metadata) => {
+                crypto::decrypt_metadata(&metadata.unsecure().as_bytes(), last_master_key.unsecure().as_bytes())
+                    .map(|bytes| SecVec::from(bytes))
+            }
             None => bail!(decryption_fail("Cannot decrypt private key metadata, it is empty")),
         }
     }
@@ -155,12 +158,48 @@ pub async fn login_request_async(
 
 #[cfg(test)]
 mod tests {
-    use crate::{test_utils::*, v1::auth::*};
+    use crate::{
+        test_utils::{self, *},
+        v1::auth::*,
+    };
     use anyhow::Result;
     use closure::closure;
     use httpmock::Mock;
     use pretty_assertions::assert_eq;
     use tokio::task::spawn_blocking;
+
+    #[test]
+    fn login_response_data_should_decrypt_master_keys() {
+        let m_key = SecUtf8::from("ed8d39b6c2d00ece398199a3e83988f1c4942b24");
+        let master_keys_metadata_encrypted =
+            SecUtf8::from("U2FsdGVkX1/P4QDMaiaanx8kpL7fY+v/f3dSzC9Ajl58gQg5bffqGUbOIzROwGQn8m5NAZa0tRnVya84aJnf1w==");
+        let response_data = LoginResponseData {
+            api_key: SecUtf8::from(""),
+            master_keys_metadata: Some(master_keys_metadata_encrypted),
+            private_key_metadata: Some(SecUtf8::from("")),
+        };
+
+        let decrypted_m_key = response_data.decrypt_master_keys(&m_key).unwrap();
+
+        assert_eq!(decrypted_m_key, m_key)
+    }
+
+    #[test]
+    fn login_response_data_should_decrypt_private_key() {
+        let m_key = SecUtf8::from("ed8d39b6c2d00ece398199a3e83988f1c4942b24");
+        let expected_rsa_key_length = 3168;
+        let private_key_file_contents = test_utils::read_project_file("tests/resources/private_key.txt");
+        let private_key_metadata_encrypted = String::from_utf8_lossy(&private_key_file_contents);
+        let response_data = LoginResponseData {
+            api_key: SecUtf8::from(""),
+            master_keys_metadata: Some(SecUtf8::from("")),
+            private_key_metadata: Some(SecUtf8::from(private_key_metadata_encrypted.clone())),
+        };
+
+        let decrypted_private_key = response_data.decrypt_private_key(&m_key).unwrap();
+
+        assert_eq!(decrypted_private_key.unsecure().len(), expected_rsa_key_length)
+    }
 
     #[tokio::test]
     async fn auth_info_request_and_async_should_work_with_v1() -> Result<()> {
