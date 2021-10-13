@@ -1,4 +1,4 @@
-use crate::{settings::FilenSettings, utils};
+use crate::{crypto, errors::*, settings::FilenSettings, utils};
 use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
@@ -78,17 +78,36 @@ pub struct LoginResponseData {
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 
-    /// This is a Filen 'metadata' encrypted by the last master key. It contains either a single master key or multiple master keys delimited by '|'.
+    /// This string is a Filen metadata encrypted by the last master key.
+    /// It contains either a single master key or multiple master keys delimited by '|'.
     /// Master key is in turn used to decrypt various file system metadata.
     /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "masterKeys")]
     pub master_keys_metadata: Option<SecUtf8>,
 
-    /// This is a Filen 'metadata' encrypted by the last master key. It contains user private key.
+    /// This string is a Filen metadata encrypted by the last master key. It contains user private key.
     /// Private key seems to be used only when decrypting shared download folder name.
     /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "privateKey")]
     pub private_key_metadata: Option<SecUtf8>,
+}
+
+impl LoginResponseData {
+    /// Decrypts [LoginResponseData].master_keys_metadata field with given user's last master key.
+    fn decrypt_master_keys(&self, last_master_key: &SecUtf8) -> Result<SecUtf8> {
+        match &self.master_keys_metadata {
+            Some(metadata) => crypto::decrypt_metadata_strings(metadata, last_master_key),
+            None => bail!(decryption_fail("Cannot decrypt master keys metadata, it is empty")),
+        }
+    }
+
+    /// Decrypts [LoginResponseData].private_key_metadata field with given user's last master key.
+    fn decrypt_private_key(&self, last_master_key: &SecUtf8) -> Result<SecUtf8> {
+        match &self.private_key_metadata {
+            Some(metadata) => crypto::decrypt_metadata_strings(metadata, last_master_key),
+            None => bail!(decryption_fail("Cannot decrypt private key metadata, it is empty")),
+        }
+    }
 }
 
 /// Response for [LOGIN_PATH] endpoint.
