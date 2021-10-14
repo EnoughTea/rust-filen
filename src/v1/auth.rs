@@ -86,7 +86,7 @@ pub struct LoginResponseData {
     pub master_keys_metadata: Option<SecUtf8>,
 
     /// This string is a Filen metadata encrypted by the last master key and base64-encoded.
-    /// Decoded metadata contains user private key, which is RSA bytes and not a valid UTF-8 string.
+    /// It contains a user's private key as base64-encoded RSA key.
     /// Private key is currently used for encrypting then name and metadata of the shared download folders.
     /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "privateKey")]
@@ -104,13 +104,12 @@ impl LoginResponseData {
         }
     }
 
-    /// Decrypts [LoginResponseData].private_key_metadata field with given user's last master key.
+    /// Decrypts [LoginResponseData].private_key_metadata field with given user's last master key
+    /// into RSA key bytes.
     pub fn decrypt_private_key(&self, last_master_key: &SecUtf8) -> Result<SecVec<u8>> {
         match &self.private_key_metadata {
-            Some(metadata) => {
-                crypto::decrypt_metadata(&metadata.unsecure().as_bytes(), last_master_key.unsecure().as_bytes())
-                    .map(|bytes| SecVec::from(bytes))
-            }
+            Some(metadata) => crypto::decrypt_metadata_strings(metadata, last_master_key)
+                .and_then(|str| utils::decode_secutf8_base64(&str)),
             None => bail!(decryption_fail("Cannot decrypt private key metadata, it is empty")),
         }
     }
@@ -191,8 +190,8 @@ mod tests {
     #[test]
     fn login_response_data_should_decrypt_private_key() {
         let m_key = SecUtf8::from("ed8d39b6c2d00ece398199a3e83988f1c4942b24");
-        let expected_rsa_key_length = 3168;
-        let private_key_file_contents = test_utils::read_project_file("tests/resources/private_key.txt");
+        let expected_rsa_key_length = 2374;
+        let private_key_file_contents = test_utils::read_project_file("tests/resources/filen_private_key.txt");
         let private_key_metadata_encrypted = String::from_utf8_lossy(&private_key_file_contents);
         let response_data = LoginResponseData {
             api_key: SecUtf8::from(""),
@@ -202,7 +201,7 @@ mod tests {
 
         let decrypted_private_key = response_data.decrypt_private_key(&m_key).unwrap();
 
-        assert_eq!(decrypted_private_key.unsecure().len(), expected_rsa_key_length)
+        assert_eq!(decrypted_private_key.unsecure().len(), expected_rsa_key_length);
     }
 
     #[tokio::test]
