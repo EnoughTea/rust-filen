@@ -1,4 +1,4 @@
-use crate::{crypto, errors::*, settings::FilenSettings, utils};
+use crate::{crypto, settings::FilenSettings, utils};
 use anyhow::*;
 use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
@@ -91,14 +91,14 @@ pub struct LoginResponseData {
 }
 
 impl LoginResponseData {
-    /// Decrypts [LoginResponseData].master_keys_metadata field with given user's last master key
-    /// into a list of master keys strings.
+    /// Decrypts [LoginResponseData].master_keys_metadata field into a list of key strings,
+    /// using specified user's last master key.
     pub fn decrypt_master_keys(&self, last_master_key: &SecUtf8) -> Result<Vec<SecUtf8>> {
         crypto::decrypt_master_keys_metadata(&self.master_keys_metadata, last_master_key)
     }
 
-    /// Decrypts [LoginResponseData].private_key_metadata field with given user's last master key
-    /// into RSA key bytes.
+    /// Decrypts [LoginResponseData].private_key_metadata field into RSA key bytes,
+    /// using specified user's last master key.
     pub fn decrypt_private_key(&self, last_master_key: &SecUtf8) -> Result<SecVec<u8>> {
         crypto::decrypt_private_key_metadata(&self.private_key_metadata, last_master_key)
     }
@@ -118,7 +118,7 @@ pub struct LoginResponsePayload {
     pub data: Option<LoginResponseData>,
 }
 
-/// Calls /v1/auth/info endpoint. Used to get used auth version and Filen salt.
+/// Calls [AUTH_INFO_PATH] endpoint. Used to get used auth version and Filen salt.
 pub fn auth_info_request(
     payload: &AuthInfoRequestPayload,
     settings: &FilenSettings,
@@ -126,7 +126,7 @@ pub fn auth_info_request(
     utils::query_filen_api(AUTH_INFO_PATH, payload, settings)
 }
 
-/// Calls /v1/auth/info endpoint asynchronously. Used to get used auth version and Filen salt.
+/// Calls [AUTH_INFO_PATH] endpoint asynchronously. Used to get used auth version and Filen salt.
 pub async fn auth_info_request_async(
     payload: &AuthInfoRequestPayload,
     settings: &FilenSettings,
@@ -134,12 +134,12 @@ pub async fn auth_info_request_async(
     utils::query_filen_api_async(AUTH_INFO_PATH, payload, settings).await
 }
 
-/// Calls /v1/login endpoint. Used to get API key, master key(s?) and private key.
+/// Calls [LOGIN_PATH] endpoint. Used to get API key, master keys and private key.
 pub fn login_request(payload: &LoginRequestPayload, settings: &FilenSettings) -> Result<LoginResponsePayload> {
     utils::query_filen_api(LOGIN_PATH, payload, settings)
 }
 
-/// Calls /v1/login endpoint asynchronously. Used to get API key, master key(s?) and private key.
+/// Calls [LOGIN_PATH] endpoint asynchronously. Used to get API key, master keys and private key.
 pub async fn login_request_async(
     payload: &LoginRequestPayload,
     settings: &FilenSettings,
