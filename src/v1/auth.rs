@@ -8,7 +8,6 @@ const AUTH_INFO_PATH: &str = "/v1/auth/info";
 const LOGIN_PATH: &str = "/v1/login";
 
 /// Used for requests to [AUTH_INFO_PATH] endpoint.
-#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct AuthInfoRequestPayload {
     /// Registered user email.
@@ -51,7 +50,6 @@ pub struct AuthInfoResponsePayload {
 }
 
 /// Used for requests to [LOGIN_PATH] endpoint.
-#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LoginRequestPayload {
     /// Registered user email.
