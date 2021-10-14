@@ -14,7 +14,7 @@ use md5::Md5;
 use rand::{thread_rng, Rng};
 use rsa::pkcs8::{FromPrivateKey, FromPublicKey};
 use rsa::PublicKey;
-use secstr::SecUtf8;
+use secstr::*;
 
 use crate::errors::*;
 use crate::utils;
@@ -219,6 +219,32 @@ pub(crate) fn encrypt_metadata_strings(data: &SecUtf8, m_key: &SecUtf8, metadata
 pub(crate) fn decrypt_metadata_strings(data: &SecUtf8, m_key: &SecUtf8) -> Result<SecUtf8> {
     decrypt_metadata(&data.unsecure().as_bytes(), m_key.unsecure().as_bytes())
         .map(|bytes| SecUtf8::from(String::from_utf8_lossy(&bytes)))
+}
+
+/// Helper which decrypts master keys stored in a metadata into a list of key strings, using specified master key.
+pub(crate) fn decrypt_master_keys_metadata(
+    master_keys_metadata: &Option<SecUtf8>,
+    last_master_key: &SecUtf8,
+) -> Result<Vec<SecUtf8>> {
+    match master_keys_metadata {
+        Some(metadata) => decrypt_metadata_strings(metadata, last_master_key)
+            .map(|keys| keys.unsecure().split('|').map(|str| SecUtf8::from(str)).collect()),
+        None => bail!(decryption_fail("Cannot decrypt master keys metadata, it is empty")),
+    }
+}
+
+/// Helper which decrypts user's RSA private key stored in a metadata into key bytes, using specified master key.
+pub(crate) fn decrypt_private_key_metadata(
+    private_key_metadata: &Option<SecUtf8>,
+    last_master_key: &SecUtf8,
+) -> Result<SecVec<u8>> {
+    match private_key_metadata {
+        Some(metadata) => {
+            decrypt_metadata_strings(metadata, last_master_key).and_then(|str| utils::decode_secutf8_base64(&str))
+        }
+
+        None => bail!(decryption_fail("Cannot decrypt private key metadata, it is empty")),
+    }
 }
 
 /// Calculates login key from the given user password and service-provided salt.

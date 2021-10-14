@@ -83,9 +83,8 @@ pub struct LoginResponseData {
     #[serde(rename = "masterKeys")]
     pub master_keys_metadata: Option<SecUtf8>,
 
-    /// This string is a Filen metadata encrypted by the last master key and base64-encoded.
-    /// It contains a user's private key as base64-encoded RSA key.
-    /// Private key is currently used for encrypting then name and metadata of the shared download folders.
+    /// A user's RSA private key stored as Filen metadata encrypted by user's last master key, containing a base64-encoded key bytes.
+    /// Private key is currently used for decrypting name and metadata of the shared download folders.
     /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "privateKey")]
     pub private_key_metadata: Option<SecUtf8>,
@@ -95,21 +94,13 @@ impl LoginResponseData {
     /// Decrypts [LoginResponseData].master_keys_metadata field with given user's last master key
     /// into a list of master keys strings.
     pub fn decrypt_master_keys(&self, last_master_key: &SecUtf8) -> Result<Vec<SecUtf8>> {
-        match &self.master_keys_metadata {
-            Some(metadata) => crypto::decrypt_metadata_strings(metadata, last_master_key)
-                .map(|keys| keys.unsecure().split('|').map(|str| SecUtf8::from(str)).collect()),
-            None => bail!(decryption_fail("Cannot decrypt master keys metadata, it is empty")),
-        }
+        crypto::decrypt_master_keys_metadata(&self.master_keys_metadata, last_master_key)
     }
 
     /// Decrypts [LoginResponseData].private_key_metadata field with given user's last master key
     /// into RSA key bytes.
     pub fn decrypt_private_key(&self, last_master_key: &SecUtf8) -> Result<SecVec<u8>> {
-        match &self.private_key_metadata {
-            Some(metadata) => crypto::decrypt_metadata_strings(metadata, last_master_key)
-                .and_then(|str| utils::decode_secutf8_base64(&str)),
-            None => bail!(decryption_fail("Cannot decrypt private key metadata, it is empty")),
-        }
+        crypto::decrypt_private_key_metadata(&self.private_key_metadata, last_master_key)
     }
 }
 
