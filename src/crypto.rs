@@ -61,20 +61,15 @@ impl FilenPasswordWithMasterKey {
     }
 }
 
-/// Calculates poor man's alternative to pbkdf2 hash from the given string. Deprecated since August 21.
-fn hash_fn(value: &str) -> String {
-    sha1(&sha512(&value.to_owned()).to_hex_string()).to_hex_string()
-}
-
 /// Calculates OpenSSL-compatible AES 256 CBC (Pkcs7 padding) hash with 'Salted__' prefix, then 8 bytes of salt, rest is ciphered.
-fn encrypt_aes_openssl(data: &[u8], password: &[u8], maybe_salt: Option<&[u8]>) -> Vec<u8> {
+fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -> Vec<u8> {
     let mut salt = [0u8; OPENSSL_SALT_LENGTH];
     match maybe_salt {
         Some(user_salt) if user_salt.len() == OPENSSL_SALT_LENGTH => salt.copy_from_slice(user_salt),
         _ => rand::thread_rng().fill(&mut salt),
     };
 
-    let (key, iv) = generate_aes_key_and_iv(32, 16, 1, Some(&salt), password);
+    let (key, iv) = generate_aes_key_and_iv(32, 16, 1, Some(&salt), key);
     let cipher = Aes256Cbc::new_from_slices(&key, &iv).unwrap();
 
     let mut encrypted = cipher.encrypt_vec(data);
@@ -85,7 +80,7 @@ fn encrypt_aes_openssl(data: &[u8], password: &[u8], maybe_salt: Option<&[u8]>) 
 }
 
 /// Restores data prefiously encrypted with [encrypt_aes_001].
-fn decrypt_aes_openssl(aes_encrypted_data: &[u8], password: &[u8]) -> Result<Vec<u8>> {
+fn decrypt_aes_openssl(aes_encrypted_data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     let message_index = OPENSSL_SALT_PREFIX.len() + OPENSSL_SALT_LENGTH;
     if aes_encrypted_data.len() < message_index {
         bail!(bad_argument(
@@ -96,7 +91,7 @@ fn decrypt_aes_openssl(aes_encrypted_data: &[u8], password: &[u8]) -> Result<Vec
     let (salt_with_prefix, message) = aes_encrypted_data.split_at(message_index);
     let (_, salt) = salt_with_prefix.split_at(OPENSSL_SALT_PREFIX.len());
 
-    let (key, iv) = generate_aes_key_and_iv(32, 16, 1, Some(&salt), password);
+    let (key, iv) = generate_aes_key_and_iv(32, 16, 1, Some(&salt), key);
     let cipher = Aes256Cbc::new_from_slices(&key, &iv).unwrap();
     let decrypted_data = cipher
         .decrypt_vec(message)
@@ -106,8 +101,8 @@ fn decrypt_aes_openssl(aes_encrypted_data: &[u8], password: &[u8]) -> Result<Vec
 
 /// Calculates AES-GCM hash. Returns IV within [0, [AES_GCM_IV_LENGTH]) range,
 /// and encrypted message in base64-encoded part starting at [AES_GCM_IV_LENGTH] string index.
-fn encrypt_aes_gcm(data: &[u8], password: &[u8]) -> Vec<u8> {
-    let key = derive_key_from_password_256(password, password, 1);
+fn encrypt_aes_gcm(data: &[u8], key: &[u8]) -> Vec<u8> {
+    let key = derive_key_from_password_256(key, key, 1);
     let iv = utils::random_alpha_string(AES_GCM_IV_LENGTH);
     let cipher = Aes256Gcm::new(Key::from_slice(&key));
     let nonce = Nonce::from_slice(iv.as_bytes());
@@ -117,7 +112,7 @@ fn encrypt_aes_gcm(data: &[u8], password: &[u8]) -> Vec<u8> {
 }
 
 /// Restores data prefiously encrypted with [encrypt_aes_002].
-fn decrypt_aes_gcm(data: &[u8], password: &[u8]) -> Result<Vec<u8>> {
+fn decrypt_aes_gcm(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     fn extract_iv_and_message<'a>(data: &'a [u8]) -> Result<(&'a [u8], &'a [u8])> {
         if data.len() <= AES_GCM_IV_LENGTH {
             bail!(bad_argument("Encrypted data is too small to contain AES GCM IV"))
@@ -131,7 +126,7 @@ fn decrypt_aes_gcm(data: &[u8], password: &[u8]) -> Result<Vec<u8>> {
     let decrypted_data = base64::decode(encrypted_base64)
         .map_err(|_| anyhow!(bad_argument("Given data to decrypt did not contain message in base64")))
         .and_then(|encrypted| {
-            let key = derive_key_from_password_256(password, password, 1);
+            let key = derive_key_from_password_256(key, key, 1);
             let cipher = Aes256Gcm::new(Key::from_slice(&key));
             let nonce = Nonce::from_slice(iv);
             cipher
@@ -141,13 +136,13 @@ fn decrypt_aes_gcm(data: &[u8], password: &[u8]) -> Result<Vec<u8>> {
     Ok(decrypted_data)
 }
 
-/// Encrypts file metadata with user's master key. Depending on metadata version, different encryption algos will be used.
-pub(crate) fn encrypt_metadata(data: &[u8], m_key: &[u8], metadata_version: u32) -> Result<Vec<u8>> {
+/// Encrypts file metadata with given key. Depending on metadata version, different encryption algos will be used.
+pub fn encrypt_metadata(data: &[u8], key: &[u8], metadata_version: u32) -> Result<Vec<u8>> {
     let encrypted_metadata = match metadata_version {
-        1 => encrypt_aes_openssl(data, m_key, None), // Deprecated since August 21
+        1 => encrypt_aes_openssl(data, key, None), // Deprecated since August 21
         2 => {
             let mut version_mark = format!("{:0>3}", metadata_version).into_bytes();
-            version_mark.extend(encrypt_aes_gcm(data, m_key));
+            version_mark.extend(encrypt_aes_gcm(data, key));
             version_mark
         }
         version => bail!(unsupported(&format!("Unsupported metadata version: {}", version))),
@@ -155,8 +150,8 @@ pub(crate) fn encrypt_metadata(data: &[u8], m_key: &[u8], metadata_version: u32)
     Ok(encrypted_metadata)
 }
 
-/// Restores file metadata prefiously encrypted with [encrypt_metadata].
-pub(crate) fn decrypt_metadata(data: &[u8], m_key: &[u8]) -> Result<Vec<u8>> {
+/// Restores file metadata prefiously encrypted with [encrypt_metadata] and given key.
+pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     fn read_metadata_version(data: &[u8]) -> Result<i32> {
         let possible_salted_mark = &data[..OPENSSL_SALT_PREFIX.len()];
         let possible_version_mark = &data[..FILEN_VERSION_LENGTH];
@@ -176,9 +171,9 @@ pub(crate) fn decrypt_metadata(data: &[u8], m_key: &[u8]) -> Result<Vec<u8>> {
 
     let metadata_version = read_metadata_version(data)?;
     let decrypted_metadata = match metadata_version {
-        -1 => decrypt_aes_openssl(&base64::decode(data)?, m_key)?,
-        1 => decrypt_aes_openssl(data, m_key)?, // Deprecated since August 21
-        2 => decrypt_aes_gcm(&data[FILEN_VERSION_LENGTH..], m_key)?,
+        -1 => decrypt_aes_openssl(&base64::decode(data)?, key)?,
+        1 => decrypt_aes_openssl(data, key)?, // Deprecated since August 21
+        2 => decrypt_aes_gcm(&data[FILEN_VERSION_LENGTH..], key)?,
         version => bail!(unsupported(&format!("Unsupported metadata version: {}", version))),
     };
     Ok(decrypted_metadata)
@@ -195,7 +190,8 @@ pub(crate) fn encrypt_metadata_strings(data: &SecUtf8, m_key: &SecUtf8, metadata
     .map(|bytes| SecUtf8::from(String::from_utf8_lossy(&bytes)))
 }
 
-/// Restores file metadata prefiously encrypted with [encrypt_metadata] or [encrypt_metadata_strings]. Convenience overload for [SecUtf8] params.
+/// Restores file metadata prefiously encrypted with [encrypt_metadata] or [encrypt_metadata_strings].
+/// Convenience overload for [SecUtf8] params. Not all metadata is a valid UTF-8 string (e.g. user's private key).
 pub(crate) fn decrypt_metadata_strings(data: &SecUtf8, m_key: &SecUtf8) -> Result<SecUtf8> {
     decrypt_metadata(&data.unsecure().as_bytes(), m_key.unsecure().as_bytes())
         .map(|bytes| SecUtf8::from(String::from_utf8_lossy(&bytes)))
@@ -250,6 +246,11 @@ fn hash_password(password: &str) -> String {
         sha512(&md5(&md4(&md2(&password.to_owned()).to_hex_string()).to_hex_string()).to_hex_string()).to_hex_string();
     sha512_part_1.push_str(&sha512_part_2);
     sha512_part_1
+}
+
+/// Calculates poor man's alternative to pbkdf2 hash from the given string. Deprecated since August 21.
+fn hash_fn(value: &str) -> String {
+    sha1(&sha512(&value.to_owned()).to_hex_string()).to_hex_string()
 }
 
 #[cfg(test)]
