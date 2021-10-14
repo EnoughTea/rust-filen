@@ -2,8 +2,18 @@ pub mod auth;
 pub mod keys;
 
 /// This macro generates a struct to parse Filen API response into.
+///
 /// Filen API uses same format for all its responses, successfull or not.
-/// Status and message fields are always present, while data field is only returned on success.
+/// Status and message fields are always present, while data field can be returned on success,
+/// when said success implies getting some data.
+///
+/// To use, pass generated struct name and contained data type:
+/// ```
+/// api_response_struct!(
+///     /// Response for some endpoint.
+///     SomeResponsePayload<SomeResponseData>
+/// );
+/// ```
 macro_rules! api_response_struct {
     (
         $(#[$meta:meta])*
