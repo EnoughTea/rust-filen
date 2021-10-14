@@ -3,6 +3,7 @@ use anyhow::*;
 use once_cell::sync::Lazy;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
+use reqwest::header;
 use reqwest::Url;
 use secstr::*;
 use serde::de::DeserializeOwned;
@@ -16,8 +17,9 @@ use std::time::Duration;
 use crate::errors::*;
 use crate::settings::FilenSettings;
 
-static BLOCKING_CLIENT: Lazy<reqwest::blocking::Client> = Lazy::new(|| reqwest::blocking::Client::new());
 static ASYNC_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| reqwest::Client::new());
+static BLOCKING_CLIENT: Lazy<reqwest::blocking::Client> = Lazy::new(|| reqwest::blocking::Client::new());
+static CRATE_USER_AGENT: &str = "Rust-Filen API (+https://github.com/EnoughTea/rust-filen)";
 
 /// Generate random alphanumeric string of the specified length.
 pub(crate) fn random_alpha_string(size: usize) -> String {
@@ -92,6 +94,7 @@ fn post<T: Serialize + ?Sized>(url: &str, payload: &T, timeout_secs: u64) -> Res
     BLOCKING_CLIENT
         .post(url)
         .json(&payload)
+        .header(header::USER_AGENT, CRATE_USER_AGENT)
         .timeout(Duration::from_secs(timeout_secs))
         .send()
         .map_err(|err| anyhow!(web_request_fail(&format!("Failed to send POST to: {}", url), err)))
@@ -102,6 +105,7 @@ async fn post_async<T: Serialize + ?Sized>(url: &str, payload: &T, timeout_secs:
     ASYNC_CLIENT
         .post(url)
         .json(&payload)
+        .header(header::USER_AGENT, CRATE_USER_AGENT)
         .timeout(Duration::from_secs(timeout_secs))
         .send()
         .await
