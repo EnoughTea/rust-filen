@@ -4,6 +4,8 @@ use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
 use serde_with::*;
 
+use super::filen_api_response_struct;
+
 const KEY_PAIR_INFO_PATH: &str = "/v1/user/keyPair/info";
 const MASTER_KEYS_PATH: &str = "/v1/user/masterKeys";
 
@@ -47,19 +49,10 @@ impl UserKeyPairInfoResponseData {
     }
 }
 
-/// Response for [KEY_PAIR_PATH] endpoint.
-#[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UserKeyPairInfoResponsePayload {
-    /// True when API call was successful; false otherwise.
-    pub status: bool,
-
-    /// Filen reason for success or failure.
-    pub message: String,
-
-    /// Actual API call data.
-    pub data: Option<UserKeyPairInfoResponseData>,
-}
+filen_api_response_struct!(
+    /// Response for [KEY_PAIR_PATH] endpoint.
+    UserKeyPairInfoResponsePayload<UserKeyPairInfoResponseData>
+);
 
 /// Used for requests to [MASTER_KEYS_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -82,19 +75,10 @@ pub struct MasterKeysUpdateResponseData {
     pub keys: Option<SecUtf8>,
 }
 
-/// Response for [MASTER_KEYS_PATH] endpoint.
-#[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct MasterKeysUpdateResponsePayload {
-    /// True when API call was successful; false otherwise.
-    pub status: bool,
-
-    /// Filen reason for success or failure.
-    pub message: String,
-
-    /// Actual API call data.
-    pub data: Option<UserKeyPairInfoResponseData>,
-}
+filen_api_response_struct!(
+    /// Response for [KEY_PAIR_PATH] endpoint.
+    MasterKeysUpdateResponsePayload<MasterKeysUpdateResponseData>
+);
 
 /// Calls [KEY_PAIR_INFO_PATH] endpoint. Used to get RSA public/private key pair.
 pub fn key_pair_info_request(

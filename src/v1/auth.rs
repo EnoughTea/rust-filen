@@ -4,6 +4,8 @@ use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
 use serde_with::*;
 
+use super::filen_api_response_struct;
+
 const AUTH_INFO_PATH: &str = "/v1/auth/info";
 const LOGIN_PATH: &str = "/v1/login";
 
@@ -35,19 +37,10 @@ pub struct AuthInfoResponseData {
     pub salt: Option<String>,
 }
 
-/// Response for [AUTH_INFO_PATH] endpoint.
-#[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct AuthInfoResponsePayload {
-    /// True when API call was successful; false otherwise.
-    pub status: bool,
-
-    /// Filen reason for success or failure.
-    pub message: String,
-
-    /// Actual API call data.
-    pub data: Option<AuthInfoResponseData>,
-}
+filen_api_response_struct!(
+    /// Response for [AUTH_INFO_PATH] endpoint.
+    AuthInfoResponsePayload<AuthInfoResponseData>
+);
 
 /// Used for requests to [LOGIN_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -104,19 +97,10 @@ impl LoginResponseData {
     }
 }
 
-/// Response for [LOGIN_PATH] endpoint.
-#[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct LoginResponsePayload {
-    /// True when API call was successful; false otherwise.
-    pub status: bool,
-
-    /// Filen reason for success or failure.
-    pub message: String,
-
-    /// Actual API call data.
-    pub data: Option<LoginResponseData>,
-}
+filen_api_response_struct!(
+    /// Response for [LOGIN_PATH] endpoint.
+    LoginResponsePayload<LoginResponseData>
+);
 
 /// Calls [AUTH_INFO_PATH] endpoint. Used to get used auth version and Filen salt.
 pub fn auth_info_request(
