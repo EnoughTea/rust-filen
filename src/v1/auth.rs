@@ -4,7 +4,7 @@ use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
 use serde_with::*;
 
-use super::filen_api_response_struct;
+use super::api_response_struct;
 
 const AUTH_INFO_PATH: &str = "/v1/auth/info";
 const LOGIN_PATH: &str = "/v1/login";
@@ -37,7 +37,7 @@ pub struct AuthInfoResponseData {
     pub salt: Option<String>,
 }
 
-filen_api_response_struct!(
+api_response_struct!(
     /// Response for [AUTH_INFO_PATH] endpoint.
     AuthInfoResponsePayload<AuthInfoResponseData>
 );
@@ -97,7 +97,7 @@ impl LoginResponseData {
     }
 }
 
-filen_api_response_struct!(
+api_response_struct!(
     /// Response for [LOGIN_PATH] endpoint.
     LoginResponsePayload<LoginResponseData>
 );

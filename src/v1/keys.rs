@@ -4,7 +4,7 @@ use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
 use serde_with::*;
 
-use super::filen_api_response_struct;
+use super::api_response_struct;
 
 const KEY_PAIR_INFO_PATH: &str = "/v1/user/keyPair/info";
 const MASTER_KEYS_PATH: &str = "/v1/user/masterKeys";
@@ -49,7 +49,7 @@ impl UserKeyPairInfoResponseData {
     }
 }
 
-filen_api_response_struct!(
+api_response_struct!(
     /// Response for [KEY_PAIR_PATH] endpoint.
     UserKeyPairInfoResponsePayload<UserKeyPairInfoResponseData>
 );
@@ -75,7 +75,7 @@ pub struct MasterKeysUpdateResponseData {
     pub keys: Option<SecUtf8>,
 }
 
-filen_api_response_struct!(
+api_response_struct!(
     /// Response for [KEY_PAIR_PATH] endpoint.
     MasterKeysUpdateResponsePayload<MasterKeysUpdateResponseData>
 );

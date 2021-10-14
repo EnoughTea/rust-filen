@@ -1,7 +1,10 @@
 pub mod auth;
 pub mod keys;
 
-macro_rules! filen_api_response_struct {
+/// This macro generates a struct to parse Filen API response into.
+/// Filen API uses same format for all its responses, successfull or not.
+/// Status and message fields are always present, while data field is only returned on success.
+macro_rules! api_response_struct {
     (
         $(#[$meta:meta])*
         $struct_name:ident<$response_data_type:ty>
@@ -21,4 +24,4 @@ macro_rules! filen_api_response_struct {
         }
     }
 }
-pub(crate) use filen_api_response_struct;
+pub(crate) use api_response_struct;
