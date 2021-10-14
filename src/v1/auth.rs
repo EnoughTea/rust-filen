@@ -85,8 +85,9 @@ pub struct LoginResponseData {
     #[serde(rename = "masterKeys")]
     pub master_keys_metadata: Option<SecUtf8>,
 
-    /// This string is a Filen metadata encrypted by the last master key and base64-encoded. It contains user private key.
-    /// Private key seems to be used only when decrypting shared download folder name.
+    /// This string is a Filen metadata encrypted by the last master key and base64-encoded.
+    /// Decoded metadata contains user private key, which is RSA bytes and not a valid UTF-8 string.
+    /// Private key is currently used for encrypting then name and metadata of the shared download folders.
     /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "privateKey")]
     pub private_key_metadata: Option<SecUtf8>,
