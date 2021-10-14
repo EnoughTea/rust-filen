@@ -47,10 +47,45 @@ impl UserKeyPairInfoResponseData {
     }
 }
 
-/// Response for [AUTH_INFO_PATH] endpoint.
+/// Response for [KEY_PAIR_PATH] endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserKeyPairInfoResponsePayload {
+    /// True when API call was successful; false otherwise.
+    pub status: bool,
+
+    /// Filen reason for success or failure.
+    pub message: String,
+
+    /// Actual API call data.
+    pub data: Option<UserKeyPairInfoResponseData>,
+}
+
+/// Used for requests to [MASTER_KEYS_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct MasterKeysUpdateRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+
+    /// This string is a Filen metadata encrypted by the last master key and base64-encoded.
+    /// It contains either a single master key string or multiple master keys strings delimited by '|'.
+    #[serde(rename = "masterKeys")]
+    pub master_keys_metadata: SecUtf8,
+}
+
+/// Response data for [MASTER_KEYS_PATH] endpoint.
+#[skip_serializing_none]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct MasterKeysUpdateResponseData {
+    /// New master keys after update. Update current user master keys with this value.
+    pub keys: Option<SecUtf8>,
+}
+
+/// Response for [MASTER_KEYS_PATH] endpoint.
+#[skip_serializing_none]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct MasterKeysUpdateResponsePayload {
     /// True when API call was successful; false otherwise.
     pub status: bool,
 
@@ -75,4 +110,20 @@ pub async fn key_pair_info_request_async(
     settings: &FilenSettings,
 ) -> Result<UserKeyPairInfoResponsePayload> {
     utils::query_filen_api_async(KEY_PAIR_INFO_PATH, payload, settings).await
+}
+
+/// Calls [MASTER_KEYS_PATH] endpoint. Used to get RSA public/private key pair.
+pub fn master_keys_update_request(
+    payload: &MasterKeysUpdateRequestPayload,
+    settings: &FilenSettings,
+) -> Result<MasterKeysUpdateResponsePayload> {
+    utils::query_filen_api(MASTER_KEYS_PATH, payload, settings)
+}
+
+/// Calls [MASTER_KEYS_PATH] endpoint asynchronously. Used to get RSA public/private key pair.
+pub async fn master_keys_update_request_async(
+    payload: &MasterKeysUpdateRequestPayload,
+    settings: &FilenSettings,
+) -> Result<MasterKeysUpdateResponsePayload> {
+    utils::query_filen_api_async(MASTER_KEYS_PATH, payload, settings).await
 }
