@@ -79,8 +79,8 @@ pub struct LoginResponseData {
     pub api_key: SecUtf8,
 
     /// This string is a Filen metadata encrypted by the last master key and base64-encoded.
-    /// It contains either a single master key or multiple master keys delimited by '|'.
-    /// Master key is in turn used to decrypt various file system metadata.
+    /// It contains either a single master key string or multiple master keys strings delimited by '|'.
+    /// Master key is in turn used to decrypt various metadata.
     /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "masterKeys")]
     pub master_keys_metadata: Option<SecUtf8>,
@@ -94,10 +94,12 @@ pub struct LoginResponseData {
 }
 
 impl LoginResponseData {
-    /// Decrypts [LoginResponseData].master_keys_metadata field with given user's last master key.
-    pub fn decrypt_master_keys(&self, last_master_key: &SecUtf8) -> Result<SecUtf8> {
+    /// Decrypts [LoginResponseData].master_keys_metadata field with given user's last master key
+    /// into a list of master keys strings.
+    pub fn decrypt_master_keys(&self, last_master_key: &SecUtf8) -> Result<Vec<SecUtf8>> {
         match &self.master_keys_metadata {
-            Some(metadata) => crypto::decrypt_metadata_strings(&metadata, last_master_key),
+            Some(metadata) => crypto::decrypt_metadata_strings(metadata, last_master_key)
+                .map(|keys| keys.unsecure().split('|').map(|str| SecUtf8::from(str)).collect()),
             None => bail!(decryption_fail("Cannot decrypt master keys metadata, it is empty")),
         }
     }
@@ -180,9 +182,10 @@ mod tests {
             private_key_metadata: Some(SecUtf8::from("")),
         };
 
-        let decrypted_m_key = response_data.decrypt_master_keys(&m_key).unwrap();
+        let decrypted_m_keys = response_data.decrypt_master_keys(&m_key).unwrap();
 
-        assert_eq!(decrypted_m_key, m_key)
+        assert_eq!(decrypted_m_keys.len(), 1);
+        assert_eq!(decrypted_m_keys[0], m_key);
     }
 
     #[test]
