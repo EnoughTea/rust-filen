@@ -1,3 +1,4 @@
+//! This module contains helper functions for tests (aka test dump).
 use anyhow::*;
 use httpmock::Method::POST;
 use httpmock::{Mock, MockServer};

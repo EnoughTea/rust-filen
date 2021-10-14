@@ -1,3 +1,4 @@
+//! Contains [FilenSettings] used to provide Filen-specific information to API calls.
 use once_cell::sync::Lazy;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -38,6 +39,7 @@ static DEFAULT_UPLOAD_SERVERS: Lazy<Vec<Url>> = Lazy::new(|| {
 
 const REQUEST_TIMEOUT_SECS: u64 = 120;
 
+/// Filen-specific information for API calls.
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FilenSettings {

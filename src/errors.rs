@@ -1,3 +1,4 @@
+//! Contains [RFError], which can be used to discriminate crate's errors.
 use thiserror::Error;
 
 #[derive(Debug, Error)]

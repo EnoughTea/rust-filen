@@ -5,7 +5,7 @@ pub use reqwest;
 pub use secstr;
 
 mod crypto;
-mod errors;
+pub mod errors;
 pub mod settings;
 mod utils;
 pub mod v1;
