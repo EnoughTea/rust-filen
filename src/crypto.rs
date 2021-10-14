@@ -27,14 +27,19 @@ const OPENSSL_SALT_LENGTH: usize = 8;
 const FILEN_VERSION_LENGTH: usize = 3;
 const AES_GCM_IV_LENGTH: usize = 12;
 
+/// Contains a Filen master key and a password hash used for a login API call.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct FilenPasswordWithMasterKey {
+    /// A hex string with 'master key', a hash that is widely used by Filen to encrypt/decrypt metadata.
+    /// Note that master key is used to encrypt/decrypt metadata 'as is', without specific hex to bytes conversion.
     pub m_key: SecUtf8,
+
+    /// A hash based on user's password which is used for a login API call.
     pub sent_password: SecUtf8,
 }
 
 impl FilenPasswordWithMasterKey {
-    /// Expects plain text password.
+    /// Derives master key and login hash from user's password. Expects plain text password.
     pub fn from_user_password(password: &SecUtf8) -> FilenPasswordWithMasterKey {
         let m_key = SecUtf8::from(hash_fn(password.unsecure()));
         let sent_password = SecUtf8::from(hash_password(password.unsecure()));
@@ -44,7 +49,7 @@ impl FilenPasswordWithMasterKey {
         }
     }
 
-    /// Expects plain text password.
+    /// Derives master key and login hash from user's password and Filen salt (from /auth/info API call). Expects plain text password.
     pub fn from_user_password_and_auth_info_salt(password: &SecUtf8, salt: &SecUtf8) -> FilenPasswordWithMasterKey {
         let (password_bytes, salt_bytes) = (password.unsecure().as_bytes(), salt.unsecure().as_bytes());
         let pbkdf2_hash = derive_key_from_password_512(password_bytes, salt_bytes, 200_000);
