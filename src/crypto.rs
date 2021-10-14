@@ -11,7 +11,9 @@ use crypto::pbkdf2::pbkdf2;
 use easy_hasher::easy_hasher::*;
 use evpkdf::evpkdf;
 use md5::Md5;
-use rand::Rng;
+use rand::{thread_rng, Rng};
+use rsa::pkcs8::{FromPrivateKey, FromPublicKey};
+use rsa::PublicKey;
 use secstr::SecUtf8;
 
 use crate::errors::*;
@@ -136,10 +138,27 @@ fn decrypt_aes_gcm(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     Ok(decrypted_data)
 }
 
+fn encrypt_rsa(data: &[u8], public_key: &[u8]) -> Result<Vec<u8>> {
+    let mut rng = thread_rng();
+    let padding = rsa::PaddingScheme::new_oaep::<sha2::Sha512>();
+    let key = rsa::RsaPublicKey::from_public_key_der(public_key)?;
+    key.encrypt(&mut rng, padding, data).with_context(|| {
+        "Cannot encrypt data with given public key, assuming RSA-OAEP with SHA512 hash and PKCS8 format"
+    })
+}
+
+fn decrypt_rsa(data: &[u8], private_key: &[u8]) -> Result<Vec<u8>> {
+    let padding = rsa::PaddingScheme::new_oaep::<sha2::Sha512>();
+    let private_key = rsa::RsaPrivateKey::from_pkcs8_der(private_key)?;
+    private_key.decrypt(padding, data).with_context(|| {
+        "Cannot decrypt data with given private key, assuming non-base64 data encrypted by RSA-OAEP with SHA512 hash and PKCS8 format"
+    })
+}
+
 /// Encrypts file metadata with given key. Depending on metadata version, different encryption algos will be used.
 pub fn encrypt_metadata(data: &[u8], key: &[u8], metadata_version: u32) -> Result<Vec<u8>> {
     let encrypted_metadata = match metadata_version {
-        1 => encrypt_aes_openssl(data, key, None), // Deprecated since August 21
+        1 => encrypt_aes_openssl(data, key, None), // Deprecated since August 2021
         2 => {
             let mut version_mark = format!("{:0>3}", metadata_version).into_bytes();
             version_mark.extend(encrypt_aes_gcm(data, key));
@@ -171,15 +190,15 @@ pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
 
     let metadata_version = read_metadata_version(data)?;
     let decrypted_metadata = match metadata_version {
-        -1 => decrypt_aes_openssl(&base64::decode(data)?, key)?,
-        1 => decrypt_aes_openssl(data, key)?, // Deprecated since August 21
+        -1 => decrypt_aes_openssl(&base64::decode(data)?, key)?, // Deprecated since August 2021
+        1 => decrypt_aes_openssl(data, key)?,                    // Deprecated since August 2021
         2 => decrypt_aes_gcm(&data[FILEN_VERSION_LENGTH..], key)?,
         version => bail!(unsupported(&format!("Unsupported metadata version: {}", version))),
     };
     Ok(decrypted_metadata)
 }
 
-/// Encrypts file metadata with user's master key. Depending on metadata version, different encryption algos will be used.
+/// Encrypts file metadata with given key. Depending on metadata version, different encryption algos will be used.
 /// Convenience overload for [SecUtf8] params.
 pub(crate) fn encrypt_metadata_strings(data: &SecUtf8, m_key: &SecUtf8, metadata_version: u32) -> Result<SecUtf8> {
     encrypt_metadata(
@@ -191,7 +210,7 @@ pub(crate) fn encrypt_metadata_strings(data: &SecUtf8, m_key: &SecUtf8, metadata
 }
 
 /// Restores file metadata prefiously encrypted with [encrypt_metadata] or [encrypt_metadata_strings].
-/// Convenience overload for [SecUtf8] params. Not all metadata is a valid UTF-8 string (e.g. user's private key).
+/// Convenience overload for [SecUtf8] params.
 pub(crate) fn decrypt_metadata_strings(data: &SecUtf8, m_key: &SecUtf8) -> Result<SecUtf8> {
     decrypt_metadata(&data.unsecure().as_bytes(), m_key.unsecure().as_bytes())
         .map(|bytes| SecUtf8::from(String::from_utf8_lossy(&bytes)))
@@ -237,7 +256,7 @@ fn generate_aes_key_and_iv(
     (Vec::from(key), Vec::from(iv))
 }
 
-/// Calculates login key from the given user password. Deprecated since August 21.
+/// Calculates login key from the given user password. Deprecated since August 2021.
 fn hash_password(password: &str) -> String {
     let mut sha512_part_1 =
         sha512(&sha384(&sha256(&sha1(&password.to_owned()).to_hex_string()).to_hex_string()).to_hex_string())
@@ -248,14 +267,14 @@ fn hash_password(password: &str) -> String {
     sha512_part_1
 }
 
-/// Calculates poor man's alternative to pbkdf2 hash from the given string. Deprecated since August 21.
+/// Calculates poor man's alternative to pbkdf2 hash from the given string. Deprecated since August 2021.
 fn hash_fn(value: &str) -> String {
     sha1(&sha512(&value.to_owned()).to_hex_string()).to_hex_string()
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::crypto::*;
+    use crate::{crypto::*, test_utils};
     use pretty_assertions::{assert_eq, assert_ne};
 
     #[test]
@@ -309,22 +328,15 @@ mod tests {
     }
 
     #[test]
-    fn encrypt_aes_gcm_should_return_valid_aes_hash_without_prefix() {
-        let data = b"This is Jimmy.";
-        let encrypted_data = encrypt_aes_gcm(data, b"test");
+    fn encrypt_aes_gcm_should_should_work_and_have_same_algorithm() {
+        let key = b"test";
+        let expected_data = "This is Jimmy.";
+        let encrypted_data = encrypt_aes_gcm(expected_data.as_bytes(), key);
 
         assert_eq!(encrypted_data.len(), 52);
         assert_ne!(&encrypted_data[..3], b"002");
-    }
 
-    #[test]
-    fn decrypt_aes_gcm_should_decrypt_previously_encrypted() {
-        let key = b"test";
-        let expected_data = "This is Jimmy.".to_string();
-        let encrypted_data = b"N6wfUUJnj9q3NMz0v9RS39ZiZi+AJLAWcHfVfHkZQZQ4J7ZV32qA";
-
-        let decrypted_data = decrypt_aes_gcm(encrypted_data, key).unwrap();
-
+        let decrypted_data = decrypt_aes_gcm(&encrypted_data, key).unwrap();
         assert_eq!(String::from_utf8_lossy(&decrypted_data), expected_data);
     }
 
@@ -372,6 +384,25 @@ mod tests {
         let actual_data = actual_data_result.unwrap();
 
         assert_eq!(actual_data, expected_data);
+    }
+
+    #[test]
+    fn encrypt_rsa_and_decrypt_rsa_should_work_and_have_same_algorithm() {
+        let expected_data = "This is Jimmy.";
+        let m_key = SecUtf8::from("ed8d39b6c2d00ece398199a3e83988f1c4942b24");
+        let private_key_file_contents = test_utils::read_project_file("tests/resources/filen_private_key.txt");
+        let private_key_metadata_encrypted = SecUtf8::from(String::from_utf8_lossy(&private_key_file_contents));
+        let private_key_decrypted = decrypt_metadata_strings(&private_key_metadata_encrypted, &m_key)
+            .and_then(|str| utils::decode_secutf8_base64(&str))
+            .unwrap();
+        let public_key_file_contents = test_utils::read_project_file("tests/resources/filen_public_key.txt");
+        let public_key_file = base64::decode(public_key_file_contents).unwrap();
+
+        let encrypted_data = encrypt_rsa(expected_data.as_bytes(), &public_key_file).unwrap();
+        assert_eq!(encrypted_data.len(), 512);
+
+        let decrypted_data = decrypt_rsa(&encrypted_data, private_key_decrypted.unsecure()).unwrap();
+        assert_eq!(String::from_utf8_lossy(&decrypted_data), expected_data);
     }
 
     #[test]
