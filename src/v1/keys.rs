@@ -30,7 +30,7 @@ pub struct UserKeyPairInfoResponseData {
     /// Private key is currently used for decrypting name and metadata of the shared download folders.
     /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "privateKey")]
-    pub private_key_metadata: Option<SecUtf8>,
+    pub private_key_metadata: Option<String>,
 }
 
 impl UserKeyPairInfoResponseData {
@@ -51,7 +51,7 @@ impl UserKeyPairInfoResponseData {
 
 api_response_struct!(
     /// Response for [KEY_PAIR_PATH] endpoint.
-    UserKeyPairInfoResponsePayload<UserKeyPairInfoResponseData>
+    UserKeyPairInfoResponsePayload<Option<UserKeyPairInfoResponseData>>
 );
 
 /// Used for requests to [MASTER_KEYS_PATH] endpoint.
@@ -77,7 +77,7 @@ pub struct MasterKeysUpdateResponseData {
 
 api_response_struct!(
     /// Response for [KEY_PAIR_PATH] endpoint.
-    MasterKeysUpdateResponsePayload<MasterKeysUpdateResponseData>
+    MasterKeysUpdateResponsePayload<Option<MasterKeysUpdateResponseData>>
 );
 
 /// Calls [KEY_PAIR_INFO_PATH] endpoint. Used to get RSA public/private key pair.

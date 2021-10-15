@@ -11,7 +11,7 @@ pub mod keys;
 /// ```
 /// api_response_struct!(
 ///     /// Response for some endpoint.
-///     SomeResponsePayload<SomeResponseData>
+///     SomeResponsePayload<Option<SomeResponseData>>
 /// );
 /// ```
 macro_rules! api_response_struct {
@@ -30,7 +30,7 @@ macro_rules! api_response_struct {
             pub message: String,
 
             /// Resulting data.
-            pub data: Option<$response_data_type>,
+            pub data: $response_data_type,
         }
     }
 }

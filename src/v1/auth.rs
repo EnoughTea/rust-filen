@@ -39,7 +39,7 @@ pub struct AuthInfoResponseData {
 
 api_response_struct!(
     /// Response for [AUTH_INFO_PATH] endpoint.
-    AuthInfoResponsePayload<AuthInfoResponseData>
+    AuthInfoResponsePayload<Option<AuthInfoResponseData>>
 );
 
 /// Used for requests to [LOGIN_PATH] endpoint.
@@ -74,13 +74,13 @@ pub struct LoginResponseData {
     /// Master key is in turn used to decrypt various metadata.
     /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "masterKeys")]
-    pub master_keys_metadata: Option<SecUtf8>,
+    pub master_keys_metadata: Option<String>,
 
     /// A user's RSA private key stored as Filen metadata encrypted by user's last master key, containing a base64-encoded key bytes.
     /// Private key is currently used for decrypting name and metadata of the shared download folders.
     /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "privateKey")]
-    pub private_key_metadata: Option<SecUtf8>,
+    pub private_key_metadata: Option<String>,
 }
 
 impl LoginResponseData {
@@ -99,7 +99,7 @@ impl LoginResponseData {
 
 api_response_struct!(
     /// Response for [LOGIN_PATH] endpoint.
-    LoginResponsePayload<LoginResponseData>
+    LoginResponsePayload<Option<LoginResponseData>>
 );
 
 /// Calls [AUTH_INFO_PATH] endpoint. Used to get used auth version and Filen salt.
@@ -147,11 +147,11 @@ mod tests {
     fn login_response_data_should_decrypt_master_keys() {
         let m_key = SecUtf8::from("ed8d39b6c2d00ece398199a3e83988f1c4942b24");
         let master_keys_metadata_encrypted =
-            SecUtf8::from("U2FsdGVkX1/P4QDMaiaanx8kpL7fY+v/f3dSzC9Ajl58gQg5bffqGUbOIzROwGQn8m5NAZa0tRnVya84aJnf1w==");
+            "U2FsdGVkX1/P4QDMaiaanx8kpL7fY+v/f3dSzC9Ajl58gQg5bffqGUbOIzROwGQn8m5NAZa0tRnVya84aJnf1w==".to_owned();
         let response_data = LoginResponseData {
             api_key: SecUtf8::from(""),
             master_keys_metadata: Some(master_keys_metadata_encrypted),
-            private_key_metadata: Some(SecUtf8::from("")),
+            private_key_metadata: Some("".to_owned()),
         };
 
         let decrypted_m_keys = response_data.decrypt_master_keys(&m_key).unwrap();
@@ -165,11 +165,11 @@ mod tests {
         let m_key = SecUtf8::from("ed8d39b6c2d00ece398199a3e83988f1c4942b24");
         let expected_rsa_key_length = 2374;
         let private_key_file_contents = test_utils::read_project_file("tests/resources/filen_private_key.txt");
-        let private_key_metadata_encrypted = String::from_utf8_lossy(&private_key_file_contents);
+        let private_key_metadata_encrypted = String::from_utf8_lossy(&private_key_file_contents).to_string();
         let response_data = LoginResponseData {
             api_key: SecUtf8::from(""),
-            master_keys_metadata: Some(SecUtf8::from("")),
-            private_key_metadata: Some(SecUtf8::from(private_key_metadata_encrypted.clone())),
+            master_keys_metadata: Some("".to_owned()),
+            private_key_metadata: Some(private_key_metadata_encrypted),
         };
 
         let decrypted_private_key = response_data.decrypt_private_key(&m_key).unwrap();
@@ -190,8 +190,7 @@ mod tests {
 
         let response = spawn_blocking(
             closure!(clone request_payload, clone filen_settings, || { auth_info_request(&request_payload, &filen_settings) }),
-        )
-        .await??;
+        ).await??;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 

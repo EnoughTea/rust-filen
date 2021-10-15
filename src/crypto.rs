@@ -204,45 +204,42 @@ pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
 }
 
 /// Encrypts file metadata with given key. Depending on metadata version, different encryption algos will be used.
-/// Convenience overload for [SecUtf8] params.
-pub(crate) fn encrypt_metadata_strings(data: &SecUtf8, m_key: &SecUtf8, metadata_version: u32) -> Result<SecUtf8> {
-    encrypt_metadata(
-        data.unsecure().as_bytes(),
-        m_key.unsecure().as_bytes(),
-        metadata_version,
-    )
-    .map(|bytes| SecUtf8::from(String::from_utf8_lossy(&bytes)))
+/// Convenience overload for [String] params.
+pub(crate) fn encrypt_metadata_str(data: &str, m_key: &str, metadata_version: u32) -> Result<String> {
+    encrypt_metadata(data.as_bytes(), m_key.as_bytes(), metadata_version)
+        .map(|bytes| String::from_utf8_lossy(&bytes).to_string())
 }
 
-/// Restores file metadata prefiously encrypted with [encrypt_metadata] or [encrypt_metadata_strings].
-/// Convenience overload for [SecUtf8] params.
-pub(crate) fn decrypt_metadata_strings(data: &SecUtf8, m_key: &SecUtf8) -> Result<SecUtf8> {
-    decrypt_metadata(&data.unsecure().as_bytes(), m_key.unsecure().as_bytes())
-        .map(|bytes| SecUtf8::from(String::from_utf8_lossy(&bytes)))
+/// Restores file metadata prefiously encrypted with [encrypt_metadata]. Convenience overload for [String] params.
+pub(crate) fn decrypt_metadata_str(data: &str, m_key: &str) -> Result<String> {
+    decrypt_metadata(&data.as_bytes(), m_key.as_bytes()).map(|bytes| String::from_utf8_lossy(&bytes).to_string())
 }
 
 /// Helper which decrypts master keys stored in a metadata into a list of key strings, using specified master key.
 pub(crate) fn decrypt_master_keys_metadata(
-    master_keys_metadata: &Option<SecUtf8>,
+    master_keys_metadata: &Option<String>,
     last_master_key: &SecUtf8,
 ) -> Result<Vec<SecUtf8>> {
     match master_keys_metadata {
-        Some(metadata) => decrypt_metadata_strings(metadata, last_master_key)
-            .map(|keys| keys.unsecure().split('|').map(|str| SecUtf8::from(str)).collect()),
+        Some(metadata) => decrypt_metadata_str(metadata, last_master_key.unsecure())
+            .map(|keys| keys.split('|').map(|str| SecUtf8::from(str)).collect()),
         None => bail!(decryption_fail("Cannot decrypt master keys metadata, it is empty")),
     }
 }
 
 /// Helper which decrypts user's RSA private key stored in a metadata into key bytes, using specified master key.
 pub(crate) fn decrypt_private_key_metadata(
-    private_key_metadata: &Option<SecUtf8>,
+    private_key_metadata: &Option<String>,
     last_master_key: &SecUtf8,
 ) -> Result<SecVec<u8>> {
+    fn decode_base64_to_secvec(string: &str) -> Result<SecVec<u8>> {
+        Ok(SecVec::from(base64::decode(string)?))
+    }
+
     match private_key_metadata {
         Some(metadata) => {
-            decrypt_metadata_strings(metadata, last_master_key).and_then(|str| utils::decode_secutf8_base64(&str))
+            decrypt_metadata_str(metadata, last_master_key.unsecure()).and_then(|str| decode_base64_to_secvec(&str))
         }
-
         None => bail!(decryption_fail("Cannot decrypt private key metadata, it is empty")),
     }
 }
@@ -420,11 +417,11 @@ mod tests {
     #[test]
     fn encrypt_rsa_and_decrypt_rsa_should_work_and_have_same_algorithm() {
         let expected_data = "This is Jimmy.";
-        let m_key = SecUtf8::from("ed8d39b6c2d00ece398199a3e83988f1c4942b24");
+        let m_key = "ed8d39b6c2d00ece398199a3e83988f1c4942b24";
         let private_key_file_contents = test_utils::read_project_file("tests/resources/filen_private_key.txt");
-        let private_key_metadata_encrypted = SecUtf8::from(String::from_utf8_lossy(&private_key_file_contents));
-        let private_key_decrypted = decrypt_metadata_strings(&private_key_metadata_encrypted, &m_key)
-            .and_then(|str| utils::decode_secutf8_base64(&str))
+        let private_key_metadata_encrypted = String::from_utf8_lossy(&private_key_file_contents);
+        let private_key_decrypted = decrypt_metadata_str(&private_key_metadata_encrypted, &m_key)
+            .and_then(|str| Ok(SecVec::from(base64::decode(str).unwrap())))
             .unwrap();
         let public_key_file_contents = test_utils::read_project_file("tests/resources/filen_public_key.txt");
         let public_key_file = base64::decode(public_key_file_contents).unwrap();
