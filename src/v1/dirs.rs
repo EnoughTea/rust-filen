@@ -28,13 +28,23 @@ pub struct UserDirsResponseData {
     pub sync: bool,
     pub is_default: i32,
     pub is_sync: i32,
+    /// TODO: Actually, I have no idea what 'color' is, just a wild guess that it is most probably a string.
     pub color: Option<String>,
 }
 
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+struct NameMetadataTyped {
+    pub name: String,
+}
+
 impl UserDirsResponseData {
-    /// Conveniently decodes base64-encoded public key into bytes.
-    pub fn decode_name(&self, last_master_key: &SecUtf8) -> Result<String> {
-        crypto::decrypt_metadata_str(&self.name_metadata, last_master_key.unsecure())
+    /// Decrypt name metadata into actual folder name. "Default" means root folder.
+    pub fn decrypt_name_metadata_to_name(&self, last_master_key: &SecUtf8) -> Result<String> {
+        crypto::decrypt_metadata_str(&self.name_metadata, last_master_key.unsecure()).and_then(|metadata| {
+            serde_json::from_str::<NameMetadataTyped>(&metadata)
+                .with_context(|| "Cannot deserialize user dir name metadata")
+                .map(|typed| typed.name)
+        })
     }
 }
 
