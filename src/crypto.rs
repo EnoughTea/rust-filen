@@ -29,7 +29,7 @@ const AES_GCM_IV_LENGTH: usize = 12;
 
 /// Contains a Filen master key and a password hash used for a login API call.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct FilenPasswordWithMasterKey {
+pub struct FilenPasswordWithMasterKey {
     /// A hex string with 'master key', a hash that is widely used by Filen to encrypt/decrypt metadata.
     /// Note that master key is used to encrypt/decrypt metadata 'as is', without specific hex to bytes conversion.
     pub m_key: SecUtf8,
@@ -86,7 +86,7 @@ fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -> Ve
     result
 }
 
-/// Restores data prefiously encrypted with [encrypt_aes_001].
+/// Decrypts data prefiously encrypted with [encrypt_aes_001].
 fn decrypt_aes_openssl(aes_encrypted_data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     let message_index = OPENSSL_SALT_PREFIX.len() + OPENSSL_SALT_LENGTH;
     if aes_encrypted_data.len() < message_index {
@@ -118,7 +118,7 @@ fn encrypt_aes_gcm(data: &[u8], key: &[u8]) -> Vec<u8> {
     combined.into_bytes()
 }
 
-/// Restores data prefiously encrypted with [encrypt_aes_002].
+/// Decrypts data prefiously encrypted with [encrypt_aes_002].
 fn decrypt_aes_gcm(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     fn extract_iv_and_message<'a>(data: &'a [u8]) -> Result<(&'a [u8], &'a [u8])> {
         if data.len() <= AES_GCM_IV_LENGTH {
@@ -205,13 +205,13 @@ pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
 
 /// Encrypts file metadata with given key. Depending on metadata version, different encryption algos will be used.
 /// Convenience overload for [String] params.
-pub(crate) fn encrypt_metadata_str(data: &str, m_key: &str, metadata_version: u32) -> Result<String> {
+pub fn encrypt_metadata_str(data: &str, m_key: &str, metadata_version: u32) -> Result<String> {
     encrypt_metadata(data.as_bytes(), m_key.as_bytes(), metadata_version)
         .map(|bytes| String::from_utf8_lossy(&bytes).to_string())
 }
 
 /// Restores file metadata prefiously encrypted with [encrypt_metadata]. Convenience overload for [String] params.
-pub(crate) fn decrypt_metadata_str(data: &str, m_key: &str) -> Result<String> {
+pub fn decrypt_metadata_str(data: &str, m_key: &str) -> Result<String> {
     decrypt_metadata(&data.as_bytes(), m_key.as_bytes()).map(|bytes| String::from_utf8_lossy(&bytes).to_string())
 }
 
