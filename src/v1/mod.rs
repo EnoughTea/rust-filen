@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod dirs;
 pub mod keys;
 
 /// This macro generates a struct to parse Filen API response into.

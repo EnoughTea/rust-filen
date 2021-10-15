@@ -5,7 +5,6 @@ use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use reqwest::header;
 use reqwest::Url;
-use secstr::*;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fs::File;
@@ -46,11 +45,6 @@ pub(crate) fn hex_string_to_bytes(s: &str) -> Result<Vec<u8>, ParseIntError> {
         .step_by(2)
         .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
         .collect()
-}
-
-pub(crate) fn decode_secutf8_base64(encoded_string: &SecUtf8) -> Result<SecVec<u8>> {
-    let decoded = base64::decode(encoded_string.unsecure())?;
-    Ok(SecVec::from(decoded))
 }
 
 /// Sends POST with given payload to one of Filen API servers.
