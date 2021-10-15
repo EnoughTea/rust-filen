@@ -34,8 +34,11 @@ pub struct UserDirData {
     pub default: bool,
 
     /// True if this is a sync folder; false otherwise.
-    /// Filen sync folder is a special unique folder that needs to be created if it does not exist.
-    /// It is always named "Filen Sync" and created with a special type: "sync".
+    ///
+    /// Filen sync folder is a special unique folder that is created by Filen client to store all synced files.
+    /// If user never used Filen client, no sync folder would exist.
+    ///
+    /// Filen sync folder is always named "Filen Sync" and created with a special type: "sync".
     pub sync: bool,
 
     /// Seems like [UserDirData::default] field double, only with integer type instead of bool.
