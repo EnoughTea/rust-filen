@@ -16,28 +16,45 @@ pub struct UserDirsRequestPayload {
     pub api_key: SecUtf8,
 }
 
-/// Response data for [USER_DIRS_PATH] endpoint.
+/// One of the folders in response data for [USER_DIRS_PATH] endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UserDirsResponseData {
+pub struct UserDirData {
+    /// Folder identifier, hyphenated UUID V4 string.
     pub uuid: String,
+
+    /// Metadata containing folder name. Filen default folder is always named "Default".
     #[serde(rename = "name")]
     pub name_metadata: String,
+
+    /// Parent folder; None means this folder has no parents and is located at root.
     pub parent: Option<String>,
+
+    /// True if this is a default Filen folder; false otherwise.
     pub default: bool,
+
+    /// True if this is a sync folder; false otherwise.
+    /// Filen sync folder is a special unique folder that needs to be created if it does not exist.
+    /// It is always named "Filen Sync" and created with a special type: "sync".
     pub sync: bool,
+
+    /// Seems like [UserDirData::default] field double, only with integer type instead of bool.
     pub is_default: i32,
+
+    /// Seems like [UserDirData::sync] field double, only with integer type instead of bool.
     pub is_sync: i32,
-    /// TODO: Actually, I have no idea what 'color' is, just a wild guess that it is most probably a string.
+
+    /// Folder color name; None means default yellow color. Possible colors: "blue", "green", "purple", "red", "gray".
     pub color: Option<String>,
 }
 
+/// Typed folder name metadata.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 struct NameMetadataTyped {
     pub name: String,
 }
 
-impl UserDirsResponseData {
+impl UserDirData {
     /// Decrypt name metadata into actual folder name. "Default" means root folder.
     pub fn decrypt_name_metadata_to_name(&self, last_master_key: &SecUtf8) -> Result<String> {
         crypto::decrypt_metadata_str(&self.name_metadata, last_master_key.unsecure()).and_then(|metadata| {
@@ -50,10 +67,11 @@ impl UserDirsResponseData {
 
 api_response_struct!(
     /// Response for [USER_DIRS_PATH] endpoint.
-    UserDirsResponsePayload<Vec<UserDirsResponseData>>
+    UserDirsResponsePayload<Vec<UserDirData>>
 );
 
-/// Calls [USER_DIRS_PATH] endpoint. Used to get user folders.
+/// Calls [USER_DIRS_PATH] endpoint. Used to get a list of user's folders.
+/// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder, created by Filen's client.
 pub fn user_dirs_request(
     payload: &UserDirsRequestPayload,
     settings: &FilenSettings,
@@ -61,7 +79,8 @@ pub fn user_dirs_request(
     utils::query_filen_api(USER_DIRS_PATH, payload, settings)
 }
 
-/// Calls [USER_DIRS_PATH] endpoint asynchronously. Used to get user folders.
+/// Calls [USER_DIRS_PATH] endpoint asynchronously. Used to get a list of user's folders.
+/// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder, created by Filen's client.
 pub async fn user_dirs_request_async(
     payload: &UserDirsRequestPayload,
     settings: &FilenSettings,
