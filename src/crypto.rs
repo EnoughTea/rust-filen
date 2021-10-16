@@ -224,6 +224,21 @@ pub fn decrypt_metadata_str(data: &str, m_key: &str) -> Result<String> {
 }
 
 /// Helper which decrypts master keys stored in a metadata into a list of key strings, using specified master key.
+pub(crate) fn encrypt_master_keys_metadata(
+    master_keys: &Vec<SecUtf8>,
+    last_master_key: &SecUtf8,
+    metadata_version: u32,
+) -> Result<String> {
+    let master_keys_unsecure = master_keys
+        .iter()
+        .map(|sec| sec.unsecure())
+        .collect::<Vec<&str>>()
+        .join("|");
+
+    encrypt_metadata_str(&master_keys_unsecure, last_master_key.unsecure(), metadata_version)
+}
+
+/// Helper which decrypts master keys stored in a metadata into a list of key strings, using specified master key.
 pub(crate) fn decrypt_master_keys_metadata(
     master_keys_metadata: &Option<String>,
     last_master_key: &SecUtf8,
