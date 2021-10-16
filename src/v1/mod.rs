@@ -1,9 +1,22 @@
+use crate::utils;
+use serde::*;
+
 pub mod auth;
 pub mod dirs;
 pub mod keys;
 mod sync_dir;
 
 const METADATA_VERSION: u32 = 1;
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+pub struct PlainApiResponse {
+    /// True when API call was successful; false otherwise.
+    pub status: bool,
+
+    /// Filen reason for success or failure.
+    pub message: String,
+}
+utils::display_from_json!(PlainApiResponse);
 
 /// This macro generates a struct to parse Filen API response into.
 ///
@@ -41,37 +54,3 @@ macro_rules! api_response_struct {
     }
 }
 pub(crate) use api_response_struct;
-
-/// This macro generates a struct to parse Filen API response into, only without a 'data' field.
-///
-/// Filen API uses same format for all its responses, successfull or not.
-/// Status and message fields are always present, while data field can be returned on success,
-/// when said success implies getting some data.
-///
-/// To use, pass generated struct name:
-/// ```
-/// api_response_struct!(
-///     /// Response for some endpoint.
-///     SomeResponsePayload
-/// );
-/// ```
-macro_rules! api_response_struct_no_data {
-    (
-        $(#[$meta:meta])*
-        $struct_name:ident
-    ) => {
-        $(#[$meta])*
-        #[skip_serializing_none]
-        #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-        pub struct $struct_name {
-            /// True when API call was successful; false otherwise.
-            pub status: bool,
-
-            /// Filen reason for success or failure.
-            pub message: String,
-        }
-
-        crate::utils::display_from_json!($struct_name);
-    }
-}
-pub(crate) use api_response_struct_no_data;

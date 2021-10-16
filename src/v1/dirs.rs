@@ -6,7 +6,7 @@ use serde_json::json;
 use serde_with::*;
 use uuid::Uuid;
 
-use super::{api_response_struct, api_response_struct_no_data};
+use super::{api_response_struct, PlainApiResponse};
 
 pub use super::sync_dir::*;
 
@@ -142,11 +142,6 @@ impl DirCreateRequestPayload {
     }
 }
 
-api_response_struct_no_data!(
-    /// Response for [DIR_CREATE_PATH] endpoint.
-    DirCreateResponsePayload
-);
-
 // Used for requests to [DIR_EXISTS_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirExistsRequestPayload {
@@ -206,11 +201,6 @@ pub struct DirMoveRequestPayload {
 }
 utils::display_from_json!(DirMoveRequestPayload);
 
-api_response_struct_no_data!(
-    /// Response for [DIR_EXISTS_PATH] endpoint.
-    DirMoveResponsePayload
-);
-
 /// Calls [USER_DIRS_PATH] endpoint. Used to get a list of user's folders.
 /// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder, created by Filen's client.
 pub fn user_dirs_request(
@@ -230,10 +220,7 @@ pub async fn user_dirs_request_async(
 }
 
 /// Calls [DIR_CREATE_PATH] endpoint.
-pub fn dir_create_request(
-    payload: &DirCreateRequestPayload,
-    settings: &FilenSettings,
-) -> Result<DirCreateResponsePayload> {
+pub fn dir_create_request(payload: &DirCreateRequestPayload, settings: &FilenSettings) -> Result<PlainApiResponse> {
     utils::query_filen_api(DIR_CREATE_PATH, payload, settings)
 }
 
@@ -241,7 +228,7 @@ pub fn dir_create_request(
 pub async fn dir_create_request_async(
     payload: &DirCreateRequestPayload,
     settings: &FilenSettings,
-) -> Result<DirCreateResponsePayload> {
+) -> Result<PlainApiResponse> {
     utils::query_filen_api_async(DIR_CREATE_PATH, payload, settings).await
 }
 
@@ -265,7 +252,7 @@ pub async fn dir_exists_request_async(
 
 /// Calls [DIR_MOVE_PATH] endpoint.
 /// Checks if folder with the given name exists within the specified parent folder.
-pub fn dir_move_request(payload: &DirMoveRequestPayload, settings: &FilenSettings) -> Result<DirMoveResponsePayload> {
+pub fn dir_move_request(payload: &DirMoveRequestPayload, settings: &FilenSettings) -> Result<PlainApiResponse> {
     utils::query_filen_api(DIR_MOVE_PATH, payload, settings)
 }
 
@@ -274,7 +261,7 @@ pub fn dir_move_request(payload: &DirMoveRequestPayload, settings: &FilenSetting
 pub async fn dir_move_request_async(
     payload: &DirMoveRequestPayload,
     settings: &FilenSettings,
-) -> Result<DirMoveResponsePayload> {
+) -> Result<PlainApiResponse> {
     utils::query_filen_api_async(DIR_MOVE_PATH, payload, settings).await
 }
 
@@ -341,8 +328,7 @@ mod tests {
             name_hashed: NAME_HASHED.to_owned(),
             dir_type: "folder".to_owned(),
         };
-        let expected_response: DirCreateResponsePayload =
-            deserialize_from_file("tests/resources/responses/dir_create.json");
+        let expected_response: PlainApiResponse = deserialize_from_file("tests/resources/responses/dir_create.json");
         let mock = setup_json_mock(DIR_CREATE_PATH, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
