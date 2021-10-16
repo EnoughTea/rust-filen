@@ -6,7 +6,7 @@ use serde_json::json;
 use serde_with::*;
 use uuid::Uuid;
 
-use super::api_response_struct;
+use super::{api_response_struct, api_response_struct_no_data};
 
 pub use super::sync_dir::*;
 
@@ -17,6 +17,7 @@ pub const FILEN_SYNC_FOLDER_TYPE: &str = "sync";
 const USER_DIRS_PATH: &str = "/v1/user/dirs";
 const DIR_CREATE_PATH: &str = "/v1/dir/create";
 const DIR_EXISTS_PATH: &str = "/v1/dir/exists";
+const DIR_MOVE_PATH: &str = "/v1/dir/move";
 
 /// Typed folder name metadata.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -141,9 +142,9 @@ impl DirCreateRequestPayload {
     }
 }
 
-api_response_struct!(
+api_response_struct_no_data!(
     /// Response for [DIR_CREATE_PATH] endpoint.
-    DirCreateResponsePayload<Option<()>>
+    DirCreateResponsePayload
 );
 
 // Used for requests to [DIR_EXISTS_PATH] endpoint.
@@ -189,6 +190,27 @@ api_response_struct!(
     DirExistsResponsePayload<Option<DirExistsResponseData>>
 );
 
+// Used for requests to [DIR_MOVE_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DirMoveRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+
+    /// ID of the parent where target folder will be moved; UUID V4 in hyphenated lowercase format.
+    #[serde(rename = "folderUUID")]
+    pub folder_uuid: String,
+
+    /// ID of the folder to move, UUID V4 in hyphenated lowercase format.
+    pub uuid: String,
+}
+utils::display_from_json!(DirMoveRequestPayload);
+
+api_response_struct_no_data!(
+    /// Response for [DIR_EXISTS_PATH] endpoint.
+    DirMoveResponsePayload
+);
+
 /// Calls [USER_DIRS_PATH] endpoint. Used to get a list of user's folders.
 /// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder, created by Filen's client.
 pub fn user_dirs_request(
@@ -223,7 +245,8 @@ pub async fn dir_create_request_async(
     utils::query_filen_api_async(DIR_CREATE_PATH, payload, settings).await
 }
 
-/// Calls [DIR_CREATE_PATH] endpoint.
+/// Calls [DIR_EXISTS_PATH] endpoint.
+/// Checks if folder with the given name exists within the specified parent folder.
 pub fn dir_exists_request(
     payload: &DirExistsRequestPayload,
     settings: &FilenSettings,
@@ -231,12 +254,28 @@ pub fn dir_exists_request(
     utils::query_filen_api(DIR_EXISTS_PATH, payload, settings)
 }
 
-/// Calls [DIR_CREATE_PATH] endpoint asynchronously.
+/// Calls [DIR_EXISTS_PATH] endpoint asynchronously.
+/// Checks if folder with the given name exists within the specified parent folder.
 pub async fn dir_exists_request_async(
     payload: &DirExistsRequestPayload,
     settings: &FilenSettings,
 ) -> Result<DirExistsResponsePayload> {
     utils::query_filen_api_async(DIR_EXISTS_PATH, payload, settings).await
+}
+
+/// Calls [DIR_MOVE_PATH] endpoint.
+/// Checks if folder with the given name exists within the specified parent folder.
+pub fn dir_move_request(payload: &DirMoveRequestPayload, settings: &FilenSettings) -> Result<DirMoveResponsePayload> {
+    utils::query_filen_api(DIR_MOVE_PATH, payload, settings)
+}
+
+/// Calls [DIR_MOVE_PATH] endpoint asynchronously.
+/// Checks if folder with the given name exists within the specified parent folder.
+pub async fn dir_move_request_async(
+    payload: &DirMoveRequestPayload,
+    settings: &FilenSettings,
+) -> Result<DirMoveResponsePayload> {
+    utils::query_filen_api_async(DIR_MOVE_PATH, payload, settings).await
 }
 
 #[cfg(test)]
