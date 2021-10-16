@@ -133,8 +133,8 @@ mod tests {
 
     #[test]
     fn decrypt_private_key_should_return_decrypted_and_decoded_key_bytes() {
-        let private_key_file_contents_base64 = test_utils::read_project_file("tests/resources/filen_private_key.txt");
-        let private_key_metadata_encrypted = String::from_utf8_lossy(&private_key_file_contents_base64).to_string();
+        let private_key_file_contents = test_utils::read_project_file("tests/resources/filen_private_key.txt");
+        let private_key_metadata_encrypted = String::from_utf8_lossy(&private_key_file_contents).to_string();
         let m_key = "ed8d39b6c2d00ece398199a3e83988f1c4942b24";
         let expected = crypto::decrypt_metadata_str(&private_key_metadata_encrypted, &m_key)
             .and_then(|str| Ok(SecVec::from(base64::decode(str).unwrap())))
