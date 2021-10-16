@@ -1,0 +1,16 @@
+{
+  "status": true,
+  "message": "Successfully fetched folders.",
+  "data": [
+    {
+      "uuid": "cf2af9a0-6f4e-485d-862c-0459f4662cf1",
+      "name": "U2FsdGVkX1/dLc/dk880TcB6zFjAc+8HhqRSoLl9cCjrW54US/9UzLNWm8TVc/BX",
+      "parent": null,
+      "default": true,
+      "sync": false,
+      "is_default": 1,
+      "is_sync": 0,
+      "color": null
+    }
+  ]
+}
