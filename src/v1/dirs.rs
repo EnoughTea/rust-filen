@@ -6,7 +6,7 @@ use serde_json::json;
 use serde_with::*;
 use uuid::Uuid;
 
-use super::{api_response_struct, display_from_json};
+use super::api_response_struct;
 
 pub const FILEN_FOLDER_TYPE: &str = "folder";
 pub const FILEN_SYNC_FOLDER_NAME: &str = "Filen Sync";
@@ -39,7 +39,7 @@ pub struct UserDirsRequestPayload {
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 }
-display_from_json!(UserDirsRequestPayload);
+utils::display_from_json!(UserDirsRequestPayload);
 
 /// One of the folders in response data for [USER_DIRS_PATH] endpoint.
 #[skip_serializing_none]
@@ -75,7 +75,7 @@ pub struct UserDirData {
     /// Folder color name; None means default yellow color. Possible colors: "blue", "green", "purple", "red", "gray".
     pub color: Option<String>,
 }
-display_from_json!(UserDirData);
+utils::display_from_json!(UserDirData);
 
 impl UserDirData {
     /// Decrypt name metadata into actual folder name.
@@ -111,7 +111,7 @@ pub struct DirCreateRequestPayload {
     #[serde(rename = "type")]
     pub dir_type: String,
 }
-display_from_json!(DirCreateRequestPayload);
+utils::display_from_json!(DirCreateRequestPayload);
 
 impl DirCreateRequestPayload {
     /// Payload used for creation of the special Filen sync folder that is created by Filen client to store all synced files.

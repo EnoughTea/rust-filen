@@ -120,6 +120,23 @@ fn produce_filen_endpoint(api_endpoint: &str, servers: &[Url]) -> Result<Url> {
     })
 }
 
+/// This macro generates a simple [std::fmt::Display] implementation using Serde's json! on self.
+macro_rules! display_from_json {
+    (
+        $target_data_type:ty
+    ) => {
+        impl std::fmt::Display for $target_data_type {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                match *self {
+                    _ => write!(f, "{}", serde_json::json!(self)),
+                }
+            }
+        }
+    };
+}
+// TODO: Should this be a derive proc macro?
+pub(crate) use display_from_json;
+
 #[cfg(test)]
 mod tests {
     use crate::utils::*;

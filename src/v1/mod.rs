@@ -34,24 +34,7 @@ macro_rules! api_response_struct {
             pub data: $response_data_type,
         }
 
-        super::display_from_json!($struct_name);
+        crate::utils::display_from_json!($struct_name);
     }
 }
 pub(crate) use api_response_struct;
-
-/// This macro generates a simple [std::fmt::Display] implementation using Serde's json! on self.
-macro_rules! display_from_json {
-    (
-        $target_data_type:ty
-    ) => {
-        impl std::fmt::Display for $target_data_type {
-            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                match *self {
-                    _ => write!(f, "{}", serde_json::json!(self)),
-                }
-            }
-        }
-    };
-}
-// TODO: Should this be a derive proc macro?
-pub(crate) use display_from_json;
