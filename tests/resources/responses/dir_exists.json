@@ -1,0 +1,8 @@
+{
+    "status": true,
+    "message": "Folder does not exist.",
+    "data": {
+        "exists": false,
+        "uuid": ""
+    }
+}

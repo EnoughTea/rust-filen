@@ -17,7 +17,7 @@ pub struct GetDirRequestPayload {
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 
-    /// Sync folder ID, UUID V4 in hyphenated lower-case format.
+    /// Sync folder ID, UUID V4 in hyphenated lowercase format.
     #[serde(rename = "uuid")]
     pub sync_folder_uuid: String,
 
@@ -41,7 +41,7 @@ utils::display_from_json!(GetDirResponseData);
 /// Folder data for one of the folder in Filen sync folder.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct SyncedDirData {
-    /// Folder ID, UUID V4 in hyphenated lower-case format.
+    /// Folder ID, UUID V4 in hyphenated lowercase format.
     pub uuid: String,
 
     /// Metadata containing folder name.
@@ -63,7 +63,7 @@ impl SyncedDirData {
 /// Folder data for one of the folder in Filen sync folder.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct SyncedFileData {
-    /// File ID, UUID V4 in hyphenated lower-case format.
+    /// File ID, UUID V4 in hyphenated lowercase format.
     pub uuid: String,
 
     /// Name of the Filen bucket where file data is stored.

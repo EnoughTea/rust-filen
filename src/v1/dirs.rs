@@ -16,7 +16,7 @@ pub const FILEN_SYNC_FOLDER_TYPE: &str = "sync";
 
 const USER_DIRS_PATH: &str = "/v1/user/dirs";
 const DIR_CREATE_PATH: &str = "/v1/dir/create";
-const GET_DIR_PATH: &str = "/v1/get/dir";
+const DIR_EXISTS_PATH: &str = "/v1/dir/exists";
 
 /// Typed folder name metadata.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -99,14 +99,14 @@ pub struct DirCreateRequestPayload {
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 
-    /// Folder ID, UUID V4 in hyphenated lower-case format.
+    /// Folder ID, UUID V4 in hyphenated lowercase format.
     pub uuid: String,
 
     /// Metadata containing json with format: { "name": <name value> }
     #[serde(rename = "name")]
     pub name_metadata: String,
 
-    /// Currently hash_fn of lower-case folder name.
+    /// Currently hash_fn of lowercase folder name.
     #[serde(rename = "nameHashed")]
     pub name_hashed: String,
 
@@ -146,6 +146,49 @@ api_response_struct!(
     DirCreateResponsePayload<Option<()>>
 );
 
+// Used for requests to [DIR_EXISTS_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DirExistsRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+
+    /// Parent folder ID, UUID V4 in hyphenated lowercase format.
+    pub parent: String,
+
+    /// Currently hash_fn of lowercase target folder name.
+    #[serde(rename = "nameHashed")]
+    pub name_hashed: String,
+}
+utils::display_from_json!(DirExistsRequestPayload);
+
+impl DirExistsRequestPayload {
+    fn new(api_key: SecUtf8, target_parent: String, target_name: &str) -> DirExistsRequestPayload {
+        let name_hashed = crypto::hash_fn(&target_name.to_lowercase());
+        DirExistsRequestPayload {
+            api_key,
+            parent: target_parent,
+            name_hashed,
+        }
+    }
+}
+
+/// Response data for [DIR_EXISTS_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DirExistsResponseData {
+    /// True if folder with given name already exists in the parent folder; false otherwise.
+    pub exists: bool,
+
+    /// Existing folder ID, UUID V4 in hyphenated lowercase format. Empty string if folder does not exist.
+    pub uuid: String,
+}
+utils::display_from_json!(DirExistsResponseData);
+
+api_response_struct!(
+    /// Response for [DIR_EXISTS_PATH] endpoint.
+    DirExistsResponsePayload<Option<DirExistsResponseData>>
+);
+
 /// Calls [USER_DIRS_PATH] endpoint. Used to get a list of user's folders.
 /// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder, created by Filen's client.
 pub fn user_dirs_request(
@@ -178,6 +221,22 @@ pub async fn dir_create_request_async(
     settings: &FilenSettings,
 ) -> Result<DirCreateResponsePayload> {
     utils::query_filen_api_async(DIR_CREATE_PATH, payload, settings).await
+}
+
+/// Calls [DIR_CREATE_PATH] endpoint.
+pub fn dir_exists_request(
+    payload: &DirExistsRequestPayload,
+    settings: &FilenSettings,
+) -> Result<DirExistsResponsePayload> {
+    utils::query_filen_api(DIR_EXISTS_PATH, payload, settings)
+}
+
+/// Calls [DIR_CREATE_PATH] endpoint asynchronously.
+pub async fn dir_exists_request_async(
+    payload: &DirExistsRequestPayload,
+    settings: &FilenSettings,
+) -> Result<DirExistsResponsePayload> {
+    utils::query_filen_api_async(DIR_EXISTS_PATH, payload, settings).await
 }
 
 #[cfg(test)]
@@ -254,6 +313,30 @@ mod tests {
         assert_eq!(response, expected_response);
 
         let async_response = dir_create_request_async(&request_payload, &filen_settings).await?;
+        mock.assert_hits(2);
+        assert_eq!(async_response, expected_response);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn dir_exists_request_and_async_should_work() -> Result<()> {
+        let (server, filen_settings) = init_server();
+        let request_payload = DirExistsRequestPayload {
+            api_key: API_KEY.clone(),
+            parent: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
+            name_hashed: NAME_HASHED.to_owned(),
+        };
+        let expected_response: DirExistsResponsePayload =
+            deserialize_from_file("tests/resources/responses/dir_exists.json");
+        let mock = setup_json_mock(DIR_EXISTS_PATH, &request_payload, &expected_response, &server);
+
+        let response = spawn_blocking(
+            closure!(clone request_payload, clone filen_settings, || { dir_exists_request(&request_payload, &filen_settings) }),
+        ).await??;
+        mock.assert_hits(1);
+        assert_eq!(response, expected_response);
+
+        let async_response = dir_exists_request_async(&request_payload, &filen_settings).await?;
         mock.assert_hits(2);
         assert_eq!(async_response, expected_response);
         Ok(())
