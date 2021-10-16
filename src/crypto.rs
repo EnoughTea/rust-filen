@@ -68,6 +68,11 @@ impl FilenPasswordWithMasterKey {
     }
 }
 
+/// Calculates poor man's alternative to pbkdf2 hash from the given string. Deprecated since August 2021.
+pub(crate) fn hash_fn(value: &str) -> String {
+    sha1(&sha512(&value.to_owned()).to_hex_string()).to_hex_string()
+}
+
 /// Calculates OpenSSL-compatible AES 256 CBC (Pkcs7 padding) hash with 'Salted__' prefix, then 8 bytes of salt, rest is ciphered.
 fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -> Vec<u8> {
     let mut salt = [0u8; OPENSSL_SALT_LENGTH];
@@ -163,7 +168,7 @@ fn decrypt_rsa(data: &[u8], private_key: &[u8]) -> Result<Vec<u8>> {
 /// Encrypts file metadata with given key. Depending on metadata version, different encryption algos will be used.
 pub fn encrypt_metadata(data: &[u8], key: &[u8], metadata_version: u32) -> Result<Vec<u8>> {
     let encrypted_metadata = match metadata_version {
-        1 => encrypt_aes_openssl(data, key, None), // Deprecated since August 2021
+        1 => base64::encode(encrypt_aes_openssl(data, key, None)).as_bytes().to_vec(), // Deprecated since August 2021
         2 => {
             let mut version_mark = format!("{:0>3}", metadata_version).into_bytes();
             version_mark.extend(encrypt_aes_gcm(data, key));
@@ -179,10 +184,10 @@ pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     fn read_metadata_version(data: &[u8]) -> Result<i32> {
         let possible_salted_mark = &data[..OPENSSL_SALT_PREFIX.len()];
         let possible_version_mark = &data[..FILEN_VERSION_LENGTH];
-        let metadata_version = if possible_salted_mark == OPENSSL_SALT_PREFIX {
+        let metadata_version = if possible_salted_mark == OPENSSL_SALT_PREFIX_BASE64 {
             1
-        } else if possible_salted_mark == OPENSSL_SALT_PREFIX_BASE64 {
-            -1 // Means data is base_64 encoded, so we will have to decode later.
+        } else if possible_salted_mark == OPENSSL_SALT_PREFIX {
+            -1 // Means data is base_64 decoded already, so we won't have to decode later.
         } else {
             let possible_version_string = String::from_utf8_lossy(&possible_version_mark);
             possible_version_string.parse::<i32>().map_err(|_| {
@@ -195,8 +200,8 @@ pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
 
     let metadata_version = read_metadata_version(data)?;
     let decrypted_metadata = match metadata_version {
-        -1 => decrypt_aes_openssl(&base64::decode(data)?, key)?, // Deprecated since August 2021
-        1 => decrypt_aes_openssl(data, key)?,                    // Deprecated since August 2021
+        -1 => decrypt_aes_openssl(data, key)?, // Deprecated since August 2021
+        1 => decrypt_aes_openssl(&base64::decode(data)?, key)?, // Deprecated since August 2021
         2 => decrypt_aes_gcm(&data[FILEN_VERSION_LENGTH..], key)?,
         version => bail!(unsupported(&format!("Unsupported metadata version: {}", version))),
     };
@@ -212,7 +217,10 @@ pub fn encrypt_metadata_str(data: &str, m_key: &str, metadata_version: u32) -> R
 
 /// Restores file metadata prefiously encrypted with [encrypt_metadata]. Convenience overload for [String] params.
 pub fn decrypt_metadata_str(data: &str, m_key: &str) -> Result<String> {
-    decrypt_metadata(&data.as_bytes(), m_key.as_bytes()).map(|bytes| String::from_utf8_lossy(&bytes).to_string())
+    decrypt_metadata(&data.as_bytes(), m_key.as_bytes()).and_then(|bytes| {
+        String::from_utf8(bytes)
+            .with_context(|| "Decrypted metadata was not a valid UTF-8 string. Use decrypt_metadata() instead?")
+    })
 }
 
 /// Helper which decrypts master keys stored in a metadata into a list of key strings, using specified master key.
@@ -295,35 +303,29 @@ fn hash_password(password: &str) -> String {
     sha512_part_1
 }
 
-/// Calculates poor man's alternative to pbkdf2 hash from the given string. Deprecated since August 2021.
-fn hash_fn(value: &str) -> String {
-    sha1(&sha512(&value.to_owned()).to_hex_string()).to_hex_string()
-}
-
 #[cfg(test)]
 mod tests {
     use crate::{crypto::*, test_utils};
     use pretty_assertions::{assert_eq, assert_ne};
 
     #[test]
-    fn encrypt_metadata_v1_should_use_simple_aes() {
+    fn encrypt_metadata_v1_should_use_simple_aes_with_base64() {
         let m_key = hash_fn("test");
         let metadata = "{\"name\":\"perform.js\",\"size\":156,\"mime\":\"application/javascript\",\"key\":\"tqNrczqVdTCgFzB1b1gyiQBIYmwDBwa9\",\"lastModified\":499162500}";
 
         let encrypted_metadata = encrypt_metadata(metadata.as_bytes(), m_key.as_bytes(), 1).unwrap();
 
-        assert_eq!(encrypted_metadata.len(), 160);
-        assert_eq!(&encrypted_metadata[..8], OPENSSL_SALT_PREFIX);
+        assert_eq!(encrypted_metadata.len(), 216);
+        assert_eq!(&encrypted_metadata[..8], OPENSSL_SALT_PREFIX_BASE64);
     }
 
     #[test]
     fn decrypt_metadata_v1_should_use_simple_aes() {
         let m_key = hash_fn("test");
         let metadata_base64 = "U2FsdGVkX1//gOpv81xPNI3PuT1CryNCVXpcfmISGNR+1g2OPT8SBP2/My7G6o5lSvVtkn2smbYrAo1Mgaq9RIJlCEjcYpMsr+A9RSpkX7zLyXtMPV6q+PRbQj1WkP8ymuh0lmmnFRa+oRy0EvJnw97m3aLTHN4DD5XmJ36tecA2cwSrFskYn9E8+0y+Wj/LcXh1l5n4Q1l5j8TSjS5mIQ==";
-        let metadata = base64::decode(&metadata_base64).unwrap();
         let expected_metadata = "{\"name\":\"perform.js\",\"size\":156,\"mime\":\"application/javascript\",\"key\":\"tqNrczqVdTCgFzB1b1gyiQBIYmwDBwa9\",\"lastModified\":499162500}";
 
-        let decrypted_metadata = decrypt_metadata(&metadata, m_key.as_bytes()).unwrap();
+        let decrypted_metadata = decrypt_metadata(&metadata_base64.as_bytes(), m_key.as_bytes()).unwrap();
 
         assert_eq!(String::from_utf8_lossy(&decrypted_metadata), expected_metadata);
     }
