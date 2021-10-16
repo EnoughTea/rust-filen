@@ -125,7 +125,8 @@ impl DirCreateRequestPayload {
     /// Payload to create a new folder with the specified name.
     pub fn new(name: &str, api_key: &SecUtf8, last_master_key: &SecUtf8) -> DirCreateRequestPayload {
         let name_json = json!(DirNameMetadata { name: name.to_owned() }).to_string();
-        let name_metadata = crypto::encrypt_metadata_str(&name_json, last_master_key.unsecure(), 1).unwrap();
+        let name_metadata =
+            crypto::encrypt_metadata_str(&name_json, last_master_key.unsecure(), super::METADATA_VERSION).unwrap();
         let name_hash = crypto::hash_fn(&name.to_lowercase());
         DirCreateRequestPayload {
             api_key: api_key.clone(),

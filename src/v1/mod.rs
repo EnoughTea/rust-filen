@@ -2,6 +2,8 @@ pub mod auth;
 pub mod dirs;
 pub mod keys;
 
+const METADATA_VERSION: u32 = 1;
+
 /// This macro generates a struct to parse Filen API response into.
 ///
 /// Filen API uses same format for all its responses, successfull or not.
