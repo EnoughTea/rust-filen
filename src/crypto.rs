@@ -73,98 +73,6 @@ pub(crate) fn hash_fn(value: &str) -> String {
     sha1(&sha512(&value.to_owned()).to_hex_string()).to_hex_string()
 }
 
-/// Calculates OpenSSL-compatible AES 256 CBC (Pkcs7 padding) hash with 'Salted__' prefix, then 8 bytes of salt, rest is ciphered.
-fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -> Vec<u8> {
-    let mut salt = [0u8; OPENSSL_SALT_LENGTH];
-    match maybe_salt {
-        Some(user_salt) if user_salt.len() == OPENSSL_SALT_LENGTH => salt.copy_from_slice(user_salt),
-        _ => rand::thread_rng().fill(&mut salt),
-    };
-
-    let (key, iv) = generate_aes_key_and_iv(32, 16, 1, Some(&salt), key);
-    let cipher = Aes256Cbc::new_from_slices(&key, &iv).unwrap();
-
-    let mut encrypted = cipher.encrypt_vec(data);
-    let mut result = OPENSSL_SALT_PREFIX.to_vec();
-    result.extend_from_slice(&salt);
-    result.append(&mut encrypted);
-    result
-}
-
-/// Decrypts data prefiously encrypted with [encrypt_aes_001].
-fn decrypt_aes_openssl(aes_encrypted_data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
-    let message_index = OPENSSL_SALT_PREFIX.len() + OPENSSL_SALT_LENGTH;
-    if aes_encrypted_data.len() < message_index {
-        bail!(bad_argument(
-            "Encrypted data is too small to contain OpenSSL-compatible salt"
-        ))
-    }
-
-    let (salt_with_prefix, message) = aes_encrypted_data.split_at(message_index);
-    let (_, salt) = salt_with_prefix.split_at(OPENSSL_SALT_PREFIX.len());
-
-    let (key, iv) = generate_aes_key_and_iv(32, 16, 1, Some(&salt), key);
-    let cipher = Aes256Cbc::new_from_slices(&key, &iv).unwrap();
-    let decrypted_data = cipher
-        .decrypt_vec(message)
-        .map_err(|_| anyhow!(decryption_fail("Prefixed AES cannot decipher data")))?;
-    Ok(decrypted_data)
-}
-
-/// Calculates AES-GCM hash. Returns IV within [0, [AES_GCM_IV_LENGTH]) range,
-/// and encrypted message in base64-encoded part starting at [AES_GCM_IV_LENGTH] string index.
-fn encrypt_aes_gcm(data: &[u8], key: &[u8]) -> Vec<u8> {
-    let key = derive_key_from_password_256(key, key, 1);
-    let iv = utils::random_alpha_string(AES_GCM_IV_LENGTH);
-    let cipher = Aes256Gcm::new(Key::from_slice(&key));
-    let nonce = Nonce::from_slice(iv.as_bytes());
-    let encrypted = cipher.encrypt(nonce, data).unwrap(); // Will only panic when data.len() > 1 << 36
-    let combined = iv + &base64::encode(encrypted);
-    combined.into_bytes()
-}
-
-/// Decrypts data prefiously encrypted with [encrypt_aes_002].
-fn decrypt_aes_gcm(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
-    fn extract_iv_and_message<'a>(data: &'a [u8]) -> Result<(&'a [u8], &'a [u8])> {
-        if data.len() <= AES_GCM_IV_LENGTH {
-            bail!(bad_argument("Encrypted data is too small to contain AES GCM IV"))
-        }
-
-        let (iv, message) = data.split_at(AES_GCM_IV_LENGTH);
-        Ok((iv, message))
-    }
-
-    let (iv, encrypted_base64) = extract_iv_and_message(data)?;
-    let decrypted_data = base64::decode(encrypted_base64)
-        .map_err(|_| anyhow!(bad_argument("Given data to decrypt did not contain message in base64")))
-        .and_then(|encrypted| {
-            let key = derive_key_from_password_256(key, key, 1);
-            let cipher = Aes256Gcm::new(Key::from_slice(&key));
-            let nonce = Nonce::from_slice(iv);
-            cipher
-                .decrypt(nonce, encrypted.as_ref())
-                .map_err(|_| anyhow!(decryption_fail("Prefixed AES GCM cannot decipher data")))
-        })?;
-    Ok(decrypted_data)
-}
-
-fn encrypt_rsa(data: &[u8], public_key: &[u8]) -> Result<Vec<u8>> {
-    let mut rng = thread_rng();
-    let padding = rsa::PaddingScheme::new_oaep::<sha2::Sha512>();
-    let key = rsa::RsaPublicKey::from_public_key_der(public_key)?;
-    key.encrypt(&mut rng, padding, data).with_context(|| {
-        "Cannot encrypt data with given public key, assuming RSA-OAEP with SHA512 hash and PKCS8 format"
-    })
-}
-
-fn decrypt_rsa(data: &[u8], private_key: &[u8]) -> Result<Vec<u8>> {
-    let padding = rsa::PaddingScheme::new_oaep::<sha2::Sha512>();
-    let private_key = rsa::RsaPrivateKey::from_pkcs8_der(private_key)?;
-    private_key.decrypt(padding, data).with_context(|| {
-        "Cannot decrypt data with given private key, assuming non-base64 data encrypted by RSA-OAEP with SHA512 hash and PKCS8 format"
-    })
-}
-
 /// Encrypts file metadata with given key. Depending on metadata version, different encryption algos will be used.
 pub fn encrypt_metadata(data: &[u8], key: &[u8], metadata_version: u32) -> Result<Vec<u8>> {
     let encrypted_metadata = match metadata_version {
@@ -265,6 +173,98 @@ pub(crate) fn decrypt_private_key_metadata(
         }
         None => bail!(decryption_fail("Cannot decrypt private key metadata, it is empty")),
     }
+}
+
+/// Calculates OpenSSL-compatible AES 256 CBC (Pkcs7 padding) hash with 'Salted__' prefix, then 8 bytes of salt, rest is ciphered.
+fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -> Vec<u8> {
+    let mut salt = [0u8; OPENSSL_SALT_LENGTH];
+    match maybe_salt {
+        Some(user_salt) if user_salt.len() == OPENSSL_SALT_LENGTH => salt.copy_from_slice(user_salt),
+        _ => rand::thread_rng().fill(&mut salt),
+    };
+
+    let (key, iv) = generate_aes_key_and_iv(32, 16, 1, Some(&salt), key);
+    let cipher = Aes256Cbc::new_from_slices(&key, &iv).unwrap();
+
+    let mut encrypted = cipher.encrypt_vec(data);
+    let mut result = OPENSSL_SALT_PREFIX.to_vec();
+    result.extend_from_slice(&salt);
+    result.append(&mut encrypted);
+    result
+}
+
+/// Decrypts data prefiously encrypted with [encrypt_aes_001].
+fn decrypt_aes_openssl(aes_encrypted_data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
+    let message_index = OPENSSL_SALT_PREFIX.len() + OPENSSL_SALT_LENGTH;
+    if aes_encrypted_data.len() < message_index {
+        bail!(bad_argument(
+            "Encrypted data is too small to contain OpenSSL-compatible salt"
+        ))
+    }
+
+    let (salt_with_prefix, message) = aes_encrypted_data.split_at(message_index);
+    let (_, salt) = salt_with_prefix.split_at(OPENSSL_SALT_PREFIX.len());
+
+    let (key, iv) = generate_aes_key_and_iv(32, 16, 1, Some(&salt), key);
+    let cipher = Aes256Cbc::new_from_slices(&key, &iv).unwrap();
+    let decrypted_data = cipher
+        .decrypt_vec(message)
+        .map_err(|_| anyhow!(decryption_fail("Prefixed AES cannot decipher data")))?;
+    Ok(decrypted_data)
+}
+
+/// Calculates AES-GCM hash. Returns IV within [0, [AES_GCM_IV_LENGTH]) range,
+/// and encrypted message in base64-encoded part starting at [AES_GCM_IV_LENGTH] string index.
+fn encrypt_aes_gcm(data: &[u8], key: &[u8]) -> Vec<u8> {
+    let key = derive_key_from_password_256(key, key, 1);
+    let iv = utils::random_alpha_string(AES_GCM_IV_LENGTH);
+    let cipher = Aes256Gcm::new(Key::from_slice(&key));
+    let nonce = Nonce::from_slice(iv.as_bytes());
+    let encrypted = cipher.encrypt(nonce, data).unwrap(); // Will only panic when data.len() > 1 << 36
+    let combined = iv + &base64::encode(encrypted);
+    combined.into_bytes()
+}
+
+/// Decrypts data prefiously encrypted with [encrypt_aes_002].
+fn decrypt_aes_gcm(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
+    fn extract_iv_and_message<'a>(data: &'a [u8]) -> Result<(&'a [u8], &'a [u8])> {
+        if data.len() <= AES_GCM_IV_LENGTH {
+            bail!(bad_argument("Encrypted data is too small to contain AES GCM IV"))
+        }
+
+        let (iv, message) = data.split_at(AES_GCM_IV_LENGTH);
+        Ok((iv, message))
+    }
+
+    let (iv, encrypted_base64) = extract_iv_and_message(data)?;
+    let decrypted_data = base64::decode(encrypted_base64)
+        .map_err(|_| anyhow!(bad_argument("Given data to decrypt did not contain message in base64")))
+        .and_then(|encrypted| {
+            let key = derive_key_from_password_256(key, key, 1);
+            let cipher = Aes256Gcm::new(Key::from_slice(&key));
+            let nonce = Nonce::from_slice(iv);
+            cipher
+                .decrypt(nonce, encrypted.as_ref())
+                .map_err(|_| anyhow!(decryption_fail("Prefixed AES GCM cannot decipher data")))
+        })?;
+    Ok(decrypted_data)
+}
+
+fn encrypt_rsa(data: &[u8], public_key: &[u8]) -> Result<Vec<u8>> {
+    let mut rng = thread_rng();
+    let padding = rsa::PaddingScheme::new_oaep::<sha2::Sha512>();
+    let key = rsa::RsaPublicKey::from_public_key_der(public_key)?;
+    key.encrypt(&mut rng, padding, data).with_context(|| {
+        "Cannot encrypt data with given public key, assuming RSA-OAEP with SHA512 hash and PKCS8 format"
+    })
+}
+
+fn decrypt_rsa(data: &[u8], private_key: &[u8]) -> Result<Vec<u8>> {
+    let padding = rsa::PaddingScheme::new_oaep::<sha2::Sha512>();
+    let private_key = rsa::RsaPrivateKey::from_pkcs8_der(private_key)?;
+    private_key.decrypt(padding, data).with_context(|| {
+        "Cannot decrypt data with given private key, assuming non-base64 data encrypted by RSA-OAEP with SHA512 hash and PKCS8 format"
+    })
 }
 
 /// Calculates login key from the given user password and service-provided salt.
