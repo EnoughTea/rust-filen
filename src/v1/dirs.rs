@@ -1,4 +1,9 @@
-use crate::{crypto, settings::FilenSettings, utils};
+use crate::{
+    crypto,
+    settings::FilenSettings,
+    utils,
+    v1::{fs::*, *},
+};
 use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
@@ -6,13 +11,8 @@ use serde_json::json;
 use serde_with::*;
 use uuid::Uuid;
 
-use super::{api_response_struct, PlainApiResponse};
-
-pub use super::sync_dir::*;
-
 pub const FILEN_FOLDER_TYPE: &str = "folder";
 pub const FILEN_SYNC_FOLDER_NAME: &str = "Filen Sync";
-pub const FILEN_SYNC_FOLDER_TYPE: &str = "sync";
 
 const USER_DIRS_PATH: &str = "/v1/user/dirs";
 const DIR_CREATE_PATH: &str = "/v1/dir/create";
@@ -147,49 +147,6 @@ impl DirCreateRequestPayload {
     }
 }
 
-// Used for requests to [DIR_EXISTS_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DirExistsRequestPayload {
-    /// User-associated Filen API key.
-    #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
-
-    /// Parent folder ID, hyphenated lowercased UUID V4.
-    pub parent: String,
-
-    /// Currently hash_fn of lowercased target folder name.
-    #[serde(rename = "nameHashed")]
-    pub name_hashed: String,
-}
-utils::display_from_json!(DirExistsRequestPayload);
-
-impl DirExistsRequestPayload {
-    pub fn new(api_key: SecUtf8, target_parent: String, target_name: &str) -> DirExistsRequestPayload {
-        let name_hashed = crypto::hash_fn(&target_name.to_lowercase());
-        DirExistsRequestPayload {
-            api_key,
-            parent: target_parent,
-            name_hashed,
-        }
-    }
-}
-
-/// Response data for [DIR_EXISTS_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DirExistsResponseData {
-    /// True if folder with given name already exists in the parent folder; false otherwise.
-    pub exists: bool,
-
-    /// Existing folder ID, hyphenated lowercased UUID V4. Empty string if folder does not exist.
-    pub uuid: String,
-}
-utils::display_from_json!(DirExistsResponseData);
-
-api_response_struct!(
-    /// Response for [DIR_EXISTS_PATH] endpoint.
-    DirExistsResponsePayload<Option<DirExistsResponseData>>
-);
-
 // Used for requests to [DIR_MOVE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirMoveRequestPayload {
@@ -224,6 +181,7 @@ pub struct DirRenameRequestPayload {
     #[serde(rename = "nameHashed")]
     pub name_hashed: String,
 }
+utils::display_from_json!(DirRenameRequestPayload);
 
 impl DirRenameRequestPayload {
     pub fn new(
@@ -241,17 +199,6 @@ impl DirRenameRequestPayload {
             name_hashed,
         }
     }
-}
-
-// Used for requests to [DIR_TRASH_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DirTrashRequestPayload {
-    /// User-associated Filen API key.
-    #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
-
-    /// ID of the folder to move to trash, hyphenated lowercased UUID V4.
-    pub uuid: String,
 }
 
 /// Calls [USER_DIRS_PATH] endpoint. Used to get a list of user's folders.
@@ -288,18 +235,18 @@ pub async fn dir_create_request_async(
 /// Calls [DIR_EXISTS_PATH] endpoint.
 /// Checks if folder with the given name exists within the specified parent folder.
 pub fn dir_exists_request(
-    payload: &DirExistsRequestPayload,
+    payload: &LocationExistsRequestPayload,
     settings: &FilenSettings,
-) -> Result<DirExistsResponsePayload> {
+) -> Result<LocationExistsResponsePayload> {
     utils::query_filen_api(DIR_EXISTS_PATH, payload, settings)
 }
 
 /// Calls [DIR_EXISTS_PATH] endpoint asynchronously.
 /// Checks if folder with the given name exists within the specified parent folder.
 pub async fn dir_exists_request_async(
-    payload: &DirExistsRequestPayload,
+    payload: &LocationExistsRequestPayload,
     settings: &FilenSettings,
-) -> Result<DirExistsResponsePayload> {
+) -> Result<LocationExistsResponsePayload> {
     utils::query_filen_api_async(DIR_EXISTS_PATH, payload, settings).await
 }
 
@@ -336,7 +283,7 @@ pub async fn dir_rename_request_async(
 /// Calls [DIR_TRASH_PATH] endpoint.
 /// Moves folder with given UUID to trash. Note that folder's UUID will still be considired existing,
 /// so you cannot create a new folder with it.
-pub fn dir_trash_request(payload: &DirTrashRequestPayload, settings: &FilenSettings) -> Result<PlainApiResponse> {
+pub fn dir_trash_request(payload: &LocationTrashRequestPayload, settings: &FilenSettings) -> Result<PlainApiResponse> {
     utils::query_filen_api(DIR_TRASH_PATH, payload, settings)
 }
 
@@ -344,7 +291,7 @@ pub fn dir_trash_request(payload: &DirTrashRequestPayload, settings: &FilenSetti
 /// Moves folder with given UUID to trash. Note that folder's UUID will still be considired existing,
 /// so you cannot create a new folder with it.
 pub async fn dir_trash_request_async(
-    payload: &DirTrashRequestPayload,
+    payload: &LocationTrashRequestPayload,
     settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
     utils::query_filen_api_async(DIR_TRASH_PATH, payload, settings).await
@@ -431,12 +378,12 @@ mod tests {
     #[tokio::test]
     async fn dir_exists_request_and_async_should_work() -> Result<()> {
         let (server, filen_settings) = init_server();
-        let request_payload = DirExistsRequestPayload {
+        let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
             parent: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
             name_hashed: NAME_HASHED.to_owned(),
         };
-        let expected_response: DirExistsResponsePayload =
+        let expected_response: LocationExistsResponsePayload =
             deserialize_from_file("tests/resources/responses/dir_exists.json");
         let mock = setup_json_mock(DIR_EXISTS_PATH, &request_payload, &expected_response, &server);
 

@@ -1,22 +1,11 @@
-use crate::utils;
-use serde::*;
-
 pub mod auth;
-pub mod dirs;
+mod dirs;
+mod files;
+pub mod fs;
 pub mod keys;
 mod sync_dir;
 
 const METADATA_VERSION: u32 = 1;
-
-#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
-pub struct PlainApiResponse {
-    /// True when API call was successful; false otherwise.
-    pub status: bool,
-
-    /// Filen reason for success or failure.
-    pub message: String,
-}
-utils::display_from_json!(PlainApiResponse);
 
 /// This macro generates a struct to parse Filen API response into.
 ///

@@ -1,10 +1,13 @@
-use crate::{crypto, settings::FilenSettings, utils};
+use crate::{
+    crypto,
+    settings::FilenSettings,
+    utils,
+    v1::{fs::*, *},
+};
 use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_with::*;
-
-use super::{api_response_struct, dirs::DirNameMetadata};
 
 pub const FILEN_SYNC_FOLDER_TYPE: &str = "sync";
 
@@ -92,12 +95,15 @@ pub struct SyncedFileMetadata {
     /// File size in bytes.
     pub size: u64,
 
-    /// File mime type.
+    /// File mime type. Can be an empty string.
     pub mime: String,
 
     /// Key used to decrypt file data.
+    ///
+    /// This is not a copy of master key, but a file-associated random alphanumeric string.
     pub key: SecUtf8,
 
+    /// Timestamp in seconds.
     #[serde(rename = "lastModified")]
     pub last_modified: u64,
 }
