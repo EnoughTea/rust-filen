@@ -19,6 +19,7 @@ const DIR_CREATE_PATH: &str = "/v1/dir/create";
 const DIR_EXISTS_PATH: &str = "/v1/dir/exists";
 const DIR_MOVE_PATH: &str = "/v1/dir/move";
 const DIR_RENAME_PATH: &str = "/v1/dir/rename";
+const DIR_TRASH_PATH: &str = "/v1/dir/trash";
 
 /// Typed folder name metadata.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -62,7 +63,7 @@ pub struct UserDirData {
     #[serde(rename = "name")]
     pub name_metadata: String,
 
-    /// Parent folder; None means this folder has no parents and is located at root.
+    /// Parent folder; None means this folder is a root, also known as 'cloud drive'.
     pub parent: Option<String>,
 
     /// True if this is a default Filen folder; false otherwise.
@@ -242,6 +243,17 @@ impl DirRenameRequestPayload {
     }
 }
 
+// Used for requests to [DIR_TRASH_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DirTrashRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+
+    /// ID of the folder to move to trash, hyphenated lowercased UUID V4.
+    pub uuid: String,
+}
+
 /// Calls [USER_DIRS_PATH] endpoint. Used to get a list of user's folders.
 /// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder, created by Filen's client.
 pub fn user_dirs_request(
@@ -260,12 +272,12 @@ pub async fn user_dirs_request_async(
     utils::query_filen_api_async(USER_DIRS_PATH, payload, settings).await
 }
 
-/// Calls [DIR_CREATE_PATH] endpoint.
+/// Calls [DIR_CREATE_PATH] endpoint. Creates parentless folder that you need to move yourself later.
 pub fn dir_create_request(payload: &DirCreateRequestPayload, settings: &FilenSettings) -> Result<PlainApiResponse> {
     utils::query_filen_api(DIR_CREATE_PATH, payload, settings)
 }
 
-/// Calls [DIR_CREATE_PATH] endpoint asynchronously.
+/// Calls [DIR_CREATE_PATH] endpoint asynchronously. Creates parentless folder that you need to move yourself later.
 pub async fn dir_create_request_async(
     payload: &DirCreateRequestPayload,
     settings: &FilenSettings,
@@ -319,6 +331,23 @@ pub async fn dir_rename_request_async(
     settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
     utils::query_filen_api_async(DIR_RENAME_PATH, payload, settings).await
+}
+
+/// Calls [DIR_TRASH_PATH] endpoint.
+/// Moves folder with given UUID to trash. Note that folder's UUID will still be considired existing,
+/// so you cannot create a new folder with it.
+pub fn dir_trash_request(payload: &DirTrashRequestPayload, settings: &FilenSettings) -> Result<PlainApiResponse> {
+    utils::query_filen_api(DIR_TRASH_PATH, payload, settings)
+}
+
+/// Calls [DIR_TRASH_PATH] endpoint asynchronously.
+/// Moves folder with given UUID to trash. Note that folder's UUID will still be considired existing,
+/// so you cannot create a new folder with it.
+pub async fn dir_trash_request_async(
+    payload: &DirTrashRequestPayload,
+    settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    utils::query_filen_api_async(DIR_TRASH_PATH, payload, settings).await
 }
 
 #[cfg(test)]
