@@ -1,4 +1,9 @@
-use crate::{crypto, settings::FilenSettings, utils};
+use crate::{
+    crypto::{self, FilenPasswordWithMasterKey},
+    errors::*,
+    settings::FilenSettings,
+    utils,
+};
 use anyhow::*;
 use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
@@ -38,6 +43,25 @@ pub struct AuthInfoResponseData {
     pub salt: Option<String>,
 }
 utils::display_from_json!(AuthInfoResponseData);
+
+impl AuthInfoResponseData {
+    fn filen_password_with_master_key(&self, user_password: &SecUtf8) -> Result<FilenPasswordWithMasterKey> {
+        match self.auth_version {
+            1 => Ok(FilenPasswordWithMasterKey::from_user_password(user_password)),
+            2 => {
+                let filen_salt = SecUtf8::from(self.salt.clone().unwrap_or_else(|| String::new()));
+                Ok(FilenPasswordWithMasterKey::from_user_password_and_auth_info_salt(
+                    user_password,
+                    &filen_salt,
+                ))
+            }
+            _ => {
+                let message = &format!("Unsupported auth version: {}", self.auth_version);
+                Err(anyhow!(unsupported(message)))
+            }
+        }
+    }
+}
 
 api_response_struct!(
     /// Response for [AUTH_INFO_PATH] endpoint.
