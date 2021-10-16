@@ -1,7 +1,7 @@
 {
-   "status":true,
-   "message":"Master keys fetched.",
-   "data":{
-      "keys":"testMaster/testMasterHash"
+   "status": true,
+   "message": "Master keys fetched.",
+   "data": {
+      "keys": "U2FsdGVkX1/P4QDMaiaanx8kpL7fY+v/f3dSzC9Ajl58gQg5bffqGUbOIzROwGQn8m5NAZa0tRnVya84aJnf1w=="
    }
 }
