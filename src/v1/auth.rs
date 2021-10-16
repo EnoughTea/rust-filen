@@ -4,7 +4,7 @@ use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
 use serde_with::*;
 
-use super::api_response_struct;
+use super::{api_response_struct, display_from_json};
 
 const AUTH_INFO_PATH: &str = "/v1/auth/info";
 const LOGIN_PATH: &str = "/v1/login";
@@ -19,6 +19,7 @@ pub struct AuthInfoRequestPayload {
     #[serde(rename = "twoFactorKey")]
     pub two_factor_key: SecUtf8,
 }
+display_from_json!(AuthInfoRequestPayload);
 
 /// Response data for [AUTH_INFO_PATH] endpoint.
 #[skip_serializing_none]
@@ -36,6 +37,7 @@ pub struct AuthInfoResponseData {
     /// 256 alphanumeric characters or empty.
     pub salt: Option<String>,
 }
+display_from_json!(AuthInfoResponseData);
 
 api_response_struct!(
     /// Response for [AUTH_INFO_PATH] endpoint.
@@ -60,6 +62,7 @@ pub struct LoginRequestPayload {
     #[serde(rename = "authVersion")]
     pub auth_version: u32,
 }
+display_from_json!(LoginRequestPayload);
 
 /// Response data for [LOGIN_PATH] endpoint.
 #[skip_serializing_none]
@@ -82,6 +85,7 @@ pub struct LoginResponseData {
     #[serde(rename = "privateKey")]
     pub private_key_metadata: Option<String>,
 }
+display_from_json!(LoginResponseData);
 
 impl LoginResponseData {
     /// Decrypts [LoginResponseData].master_keys_metadata field into a list of key strings,

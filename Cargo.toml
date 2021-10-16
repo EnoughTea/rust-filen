@@ -29,6 +29,7 @@ serde_with = "1.10"
 sha2 = "0.9.8"
 thiserror = "1.0"
 tokio = { version = "1.12", features = ["full"] }
+uuid = { version = "0.8", features = ["serde", "v4"] }
 
 [dev-dependencies]
 camino = "1.0"
