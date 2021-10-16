@@ -137,13 +137,9 @@ impl DirCreateRequestPayload {
     }
 }
 
-/// Response data for [DIR_CREATE_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DirCreateResponseData {}
-
 api_response_struct!(
     /// Response for [DIR_CREATE_PATH] endpoint.
-    DirCreateResponsePayload<Option<DirCreateResponseData>>
+    DirCreateResponsePayload<Option<()>>
 );
 
 /// Calls [USER_DIRS_PATH] endpoint. Used to get a list of user's folders.
@@ -164,25 +160,98 @@ pub async fn user_dirs_request_async(
     utils::query_filen_api_async(USER_DIRS_PATH, payload, settings).await
 }
 
+/// Calls [DIR_CREATE_PATH] endpoint.
+pub fn dir_create_request(
+    payload: &DirCreateRequestPayload,
+    settings: &FilenSettings,
+) -> Result<DirCreateResponsePayload> {
+    utils::query_filen_api(DIR_CREATE_PATH, payload, settings)
+}
+
+/// Calls [DIR_CREATE_PATH] endpoint asynchronously.
+pub async fn dir_create_request_async(
+    payload: &DirCreateRequestPayload,
+    settings: &FilenSettings,
+) -> Result<DirCreateResponsePayload> {
+    utils::query_filen_api_async(DIR_CREATE_PATH, payload, settings).await
+}
+
 #[cfg(test)]
 mod tests {
+    use closure::closure;
+    use once_cell::sync::Lazy;
     use secstr::SecUtf8;
+    use tokio::task::spawn_blocking;
+
+    use crate::test_utils::*;
 
     use super::*;
+
+    static API_KEY: Lazy<SecUtf8> =
+        Lazy::new(|| SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"));
+    const NAME: &str = "test_folder";
+    const NAME_METADATA: &str = "U2FsdGVkX19d09wR+Ti+qMO7o8habxXkS501US7uv96+zbHHZwDDPbnq1di1z0/S";
+    const NAME_HASHED: &str = "19d24c63b1170a0b1b40520a636a25235735f39f";
 
     #[test]
     fn dir_create_request_payload_should_be_created_correctly_from_name() {
         let m_key = SecUtf8::from("b49cadfb92e1d7d54e9dd9d33ba9feb2af1f10ae");
-        let api_key = SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6");
-        let folder_name = "test_folder";
-        let payload = DirCreateRequestPayload::new(folder_name, &api_key, &m_key);
+        let payload = DirCreateRequestPayload::new(NAME, &API_KEY.clone(), &m_key);
         let decrypted_name = DirNameMetadata::decrypt_name_metadata_to_name(&payload.name_metadata, &m_key).unwrap();
         let parsed_uuid = Uuid::parse_str(&payload.uuid);
 
-        assert_eq!(payload.api_key, api_key);
+        assert_eq!(payload.api_key, *API_KEY);
         assert!(parsed_uuid.is_ok());
-        assert_eq!(decrypted_name, folder_name);
-        assert_eq!(payload.name_hashed, "19d24c63b1170a0b1b40520a636a25235735f39f");
+        assert_eq!(decrypted_name, NAME);
+        assert_eq!(payload.name_hashed, NAME_HASHED);
         assert_eq!(payload.dir_type, "folder");
+    }
+
+    #[tokio::test]
+    async fn user_dirs_request_and_async_should_work() -> Result<()> {
+        let (server, filen_settings) = init_server();
+        let request_payload = UserDirsRequestPayload {
+            api_key: API_KEY.clone(),
+        };
+        let expected_response: UserDirsResponsePayload =
+            deserialize_from_file("tests/resources/responses/user_dirs_default.json");
+        let mock = setup_json_mock(USER_DIRS_PATH, &request_payload, &expected_response, &server);
+
+        let response = spawn_blocking(
+            closure!(clone request_payload, clone filen_settings, || { user_dirs_request(&request_payload, &filen_settings) }),
+        ).await??;
+        mock.assert_hits(1);
+        assert_eq!(response, expected_response);
+
+        let async_response = user_dirs_request_async(&request_payload, &filen_settings).await?;
+        mock.assert_hits(2);
+        assert_eq!(async_response, expected_response);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn dir_create_request_and_async_should_work() -> Result<()> {
+        let (server, filen_settings) = init_server();
+        let request_payload = DirCreateRequestPayload {
+            api_key: API_KEY.clone(),
+            uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
+            name_metadata: NAME_METADATA.to_owned(),
+            name_hashed: NAME_HASHED.to_owned(),
+            dir_type: "folder".to_owned(),
+        };
+        let expected_response: DirCreateResponsePayload =
+            deserialize_from_file("tests/resources/responses/dir_create.json");
+        let mock = setup_json_mock(DIR_CREATE_PATH, &request_payload, &expected_response, &server);
+
+        let response = spawn_blocking(
+            closure!(clone request_payload, clone filen_settings, || { dir_create_request(&request_payload, &filen_settings) }),
+        ).await??;
+        mock.assert_hits(1);
+        assert_eq!(response, expected_response);
+
+        let async_response = dir_create_request_async(&request_payload, &filen_settings).await?;
+        mock.assert_hits(2);
+        assert_eq!(async_response, expected_response);
+        Ok(())
     }
 }
