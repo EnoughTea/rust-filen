@@ -1,4 +1,10 @@
-use crate::{crypto, settings::FilenSettings, utils, v1::fs::*, v1::METADATA_VERSION};
+use std::{
+    fs,
+    path::PathBuf,
+    time::{SystemTime, UNIX_EPOCH},
+};
+
+use crate::{crypto, errors::*, settings::FilenSettings, utils, v1::fs::*, v1::METADATA_VERSION};
 use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
@@ -33,6 +39,27 @@ pub struct FileMetadata {
 }
 
 impl FileMetadata {
+    pub fn from_name_and_local_path(name: &str, local_file_path: &PathBuf) -> Result<FileMetadata> {
+        let fs_metadata = fs::metadata(local_file_path)?;
+        let size = fs_metadata.len();
+        if size <= 0 {
+            bail!(bad_argument("File size is 0"));
+        }
+
+        let key = SecUtf8::from(utils::random_alphanumeric_string(32));
+        let mime_guess = mime_guess::from_path(name).first_raw();
+        let mime = mime_guess.unwrap_or("");
+        let last_modified_time = fs_metadata.modified().unwrap_or(SystemTime::now());
+        let last_modified = last_modified_time.duration_since(UNIX_EPOCH)?.as_secs();
+        Ok(FileMetadata {
+            name: name.to_owned(),
+            size,
+            mime: mime.to_owned(),
+            key,
+            last_modified,
+        })
+    }
+
     /// Decrypts file metadata string.
     pub fn decrypt_file_metadata(metadata: &str, last_master_key: &SecUtf8) -> Result<FileMetadata> {
         crypto::decrypt_metadata_str(metadata, last_master_key.unsecure()).and_then(|metadata| {
