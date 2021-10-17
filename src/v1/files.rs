@@ -1,13 +1,55 @@
-use crate::{settings::FilenSettings, utils, v1::fs::*};
+use crate::{crypto, settings::FilenSettings, utils, v1::fs::*, v1::METADATA_VERSION};
 use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 const FILE_ARCHIVE_PATH: &str = "/v1/file/archive";
 const FILE_EXISTS_PATH: &str = "/v1/file/exists";
 const FILE_MOVE_PATH: &str = "/v1/file/move";
 const FILE_RENAME_PATH: &str = "/v1/file/rename";
 const FILE_TRASH_PATH: &str = "/v1/file/trash";
+
+/// File properties and a key used to decrypt file data.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct FileMetadata {
+    /// Plain file name.
+    pub name: String,
+
+    /// File size in bytes.
+    pub size: u64,
+
+    /// File mime type. Can be an empty string.
+    pub mime: String,
+
+    /// Key used to decrypt file data.
+    ///
+    /// This is not a copy of master key, but a file-associated random alphanumeric string.
+    pub key: SecUtf8,
+
+    /// Timestamp in seconds.
+    #[serde(rename = "lastModified")]
+    pub last_modified: u64,
+}
+
+impl FileMetadata {
+    /// Decrypts file metadata string.
+    pub fn decrypt_file_metadata(metadata: &str, last_master_key: &SecUtf8) -> Result<FileMetadata> {
+        crypto::decrypt_metadata_str(metadata, last_master_key.unsecure()).and_then(|metadata| {
+            serde_json::from_str::<FileMetadata>(&metadata).with_context(|| "Cannot deserialize synced file metadata")
+        })
+    }
+
+    /// Decrypts file metadata string.
+    pub fn encrypt_file_metadata(metadata: &FileMetadata, last_master_key: &SecUtf8) -> Result<String> {
+        let metadata_json = json!(metadata).to_string();
+        crypto::encrypt_metadata_str(&metadata_json, last_master_key.unsecure(), METADATA_VERSION)
+    }
+
+    pub fn to_metadata_string(&self, last_master_key: &SecUtf8) -> Result<String> {
+        FileMetadata::encrypt_file_metadata(self, last_master_key)
+    }
+}
 
 // Used for requests to [FILE_ARCHIVE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -37,7 +79,8 @@ pub struct FileMoveRequestPayload {
     pub folder_uuid: String,
 
     /// ID of the file to move, hyphenated lowercased UUID V4.
-    pub uuid: String,
+    #[serde(rename = "fileUUID")]
+    pub file_uuid: String,
 }
 utils::display_from_json!(FileMoveRequestPayload);
 
@@ -64,6 +107,27 @@ pub struct FileRenameRequestPayload {
     pub metadata: String,
 }
 utils::display_from_json!(FileRenameRequestPayload);
+
+impl FileRenameRequestPayload {
+    pub fn new(
+        api_key: SecUtf8,
+        uuid: String,
+        new_file_name: &str,
+        file_metadata: &FileMetadata,
+        last_master_key: &SecUtf8,
+    ) -> FileRenameRequestPayload {
+        let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(new_file_name, last_master_key);
+        let name_hashed = crypto::hash_fn(&new_file_name.to_lowercase());
+        let metadata = file_metadata.to_metadata_string(last_master_key).unwrap(); // Should never panic... I think
+        FileRenameRequestPayload {
+            api_key,
+            uuid,
+            name_metadata,
+            name_hashed,
+            metadata,
+        }
+    }
+}
 
 /// Calls [FILE_ARCHIVE_PATH] endpoint.
 /// Replaces one version of a file with another version of the same file.

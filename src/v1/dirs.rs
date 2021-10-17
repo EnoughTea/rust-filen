@@ -7,7 +7,6 @@ use crate::{
 use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use serde_with::*;
 use uuid::Uuid;
 
@@ -20,28 +19,6 @@ const DIR_EXISTS_PATH: &str = "/v1/dir/exists";
 const DIR_MOVE_PATH: &str = "/v1/dir/move";
 const DIR_RENAME_PATH: &str = "/v1/dir/rename";
 const DIR_TRASH_PATH: &str = "/v1/dir/trash";
-
-/// Typed folder name metadata.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub(crate) struct DirNameMetadata {
-    pub name: String,
-}
-
-impl DirNameMetadata {
-    pub fn encrypt_name_to_metadata(name: &str, last_master_key: &SecUtf8) -> String {
-        let name_json = json!(DirNameMetadata { name: name.to_owned() }).to_string();
-        crypto::encrypt_metadata_str(&name_json, last_master_key.unsecure(), super::METADATA_VERSION).unwrap()
-    }
-
-    /// Decrypt name metadata into actual folder name.
-    pub fn decrypt_name_metadata_to_name(name_metadata: &str, last_master_key: &SecUtf8) -> Result<String> {
-        crypto::decrypt_metadata_str(name_metadata, last_master_key.unsecure()).and_then(|metadata| {
-            serde_json::from_str::<DirNameMetadata>(&metadata)
-                .with_context(|| "Cannot deserialize user dir name metadata")
-                .map(|typed| typed.name)
-        })
-    }
-}
 
 // Used for requests to [USER_DIRS_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -90,8 +67,8 @@ utils::display_from_json!(UserDirData);
 
 impl UserDirData {
     /// Decrypt name metadata into actual folder name.
-    pub fn decrypt_name_metadata_to_name(&self, last_master_key: &SecUtf8) -> Result<String> {
-        DirNameMetadata::decrypt_name_metadata_to_name(&self.name_metadata, last_master_key)
+    pub fn decrypt_name_metadata(&self, last_master_key: &SecUtf8) -> Result<String> {
+        LocationNameMetadata::decrypt_name_from_metadata(&self.name_metadata, last_master_key)
     }
 }
 
@@ -135,7 +112,7 @@ impl DirCreateRequestPayload {
 
     /// Payload to create a new folder with the specified name.
     pub fn new(name: &str, api_key: &SecUtf8, last_master_key: &SecUtf8) -> DirCreateRequestPayload {
-        let name_metadata = DirNameMetadata::encrypt_name_to_metadata(name, last_master_key);
+        let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(name, last_master_key);
         let name_hash = crypto::hash_fn(&name.to_lowercase());
         DirCreateRequestPayload {
             api_key: api_key.clone(),
@@ -190,7 +167,7 @@ impl DirRenameRequestPayload {
         new_folder_name: &str,
         last_master_key: &SecUtf8,
     ) -> DirRenameRequestPayload {
-        let name_metadata = DirNameMetadata::encrypt_name_to_metadata(new_folder_name, last_master_key);
+        let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(new_folder_name, last_master_key);
         let name_hashed = crypto::hash_fn(&new_folder_name.to_lowercase());
         DirRenameRequestPayload {
             api_key,
@@ -322,7 +299,7 @@ mod tests {
     fn dir_create_request_payload_should_be_created_correctly_from_name() {
         let m_key = SecUtf8::from("b49cadfb92e1d7d54e9dd9d33ba9feb2af1f10ae");
         let payload = DirCreateRequestPayload::new(NAME, &API_KEY.clone(), &m_key);
-        let decrypted_name = DirNameMetadata::decrypt_name_metadata_to_name(&payload.name_metadata, &m_key).unwrap();
+        let decrypted_name = LocationNameMetadata::decrypt_name_from_metadata(&payload.name_metadata, &m_key).unwrap();
         let parsed_uuid = Uuid::parse_str(&payload.uuid);
 
         assert_eq!(payload.api_key, *API_KEY);

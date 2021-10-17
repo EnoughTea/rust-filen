@@ -1,5 +1,4 @@
 use crate::{
-    crypto,
     settings::FilenSettings,
     utils,
     v1::{fs::*, *},
@@ -58,8 +57,8 @@ utils::display_from_json!(SyncedDirData);
 
 impl SyncedDirData {
     /// Decrypt name metadata into actual folder name.
-    pub fn decrypt_name_metadata_to_name(&self, last_master_key: &SecUtf8) -> Result<String> {
-        DirNameMetadata::decrypt_name_metadata_to_name(&self.name_metadata, last_master_key)
+    pub fn decrypt_name_metadata(&self, last_master_key: &SecUtf8) -> Result<String> {
+        LocationNameMetadata::decrypt_name_from_metadata(&self.name_metadata, last_master_key)
     }
 }
 
@@ -87,34 +86,10 @@ pub struct SyncedFileData {
 }
 utils::display_from_json!(SyncedFileData);
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct SyncedFileMetadata {
-    /// Plain file name.
-    pub name: String,
-
-    /// File size in bytes.
-    pub size: u64,
-
-    /// File mime type. Can be an empty string.
-    pub mime: String,
-
-    /// Key used to decrypt file data.
-    ///
-    /// This is not a copy of master key, but a file-associated random alphanumeric string.
-    pub key: SecUtf8,
-
-    /// Timestamp in seconds.
-    #[serde(rename = "lastModified")]
-    pub last_modified: u64,
-}
-
 impl SyncedFileData {
     /// Decrypt name metadata into actual folder name.
-    pub fn decrypt_file_metadata(&self, last_master_key: &SecUtf8) -> Result<SyncedFileMetadata> {
-        crypto::decrypt_metadata_str(&self.metadata, last_master_key.unsecure()).and_then(|metadata| {
-            serde_json::from_str::<SyncedFileMetadata>(&metadata)
-                .with_context(|| "Cannot deserialize synced file metadata")
-        })
+    pub fn decrypt_file_metadata(&self, last_master_key: &SecUtf8) -> Result<FileMetadata> {
+        FileMetadata::decrypt_file_metadata(&self.metadata, last_master_key)
     }
 }
 

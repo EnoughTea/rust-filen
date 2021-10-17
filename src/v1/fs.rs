@@ -1,7 +1,9 @@
 pub use super::{dirs::*, files::*, sync_dir::*};
 use crate::{crypto, utils, v1::*};
+use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use serde_with::*;
 
 /// Contains just the response status and corresponding message.
@@ -14,6 +16,28 @@ pub struct PlainApiResponse {
     pub message: String,
 }
 utils::display_from_json!(PlainApiResponse);
+
+/// Typed folder or file name metadata.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub(crate) struct LocationNameMetadata {
+    pub name: String,
+}
+
+impl LocationNameMetadata {
+    pub fn encrypt_name_to_metadata(name: &str, last_master_key: &SecUtf8) -> String {
+        let name_json = json!(LocationNameMetadata { name: name.to_owned() }).to_string();
+        crypto::encrypt_metadata_str(&name_json, last_master_key.unsecure(), super::METADATA_VERSION).unwrap()
+    }
+
+    /// Decrypt name metadata into actual folder name.
+    pub fn decrypt_name_from_metadata(name_metadata: &str, last_master_key: &SecUtf8) -> Result<String> {
+        crypto::decrypt_metadata_str(name_metadata, last_master_key.unsecure()).and_then(|metadata| {
+            serde_json::from_str::<LocationNameMetadata>(&metadata)
+                .with_context(|| "Cannot deserialize user dir name metadata")
+                .map(|typed| typed.name)
+        })
+    }
+}
 
 // Used for requests to [DIR_TRASH_PATH] or [FILE_TRASH_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
