@@ -1,0 +1,37 @@
+{
+    "status": true,
+    "message": "Folder and files fetched.",
+    "data": {
+        "folders": [
+            {
+                "uuid": "cf2af9a0-6f4e-485d-862c-0459f4662cf1",
+                "name": "U2FsdGVkX1/dLc/dk880TcB6zFjAc+8HhqRSoLl9cCjrW54US/9UzLNWm8TVc/BX",
+                "parent": "base"
+            },
+            {
+                "uuid": "353fa773-64e7-4989-8b5b-b829b2c7dcc7",
+                "name": "U2FsdGVkX18SN5QsT/LF8bNWo1Nz432ylhwsun8NJ0YX+FNf+EGJwjMSs3IFijkg",
+                "parent": "cf2af9a0-6f4e-485d-862c-0459f4662cf1"
+            },
+            {
+                "uuid": "51845ac9-47ce-4820-aedb-876f591aef84",
+                "name": "U2FsdGVkX18pozKFuiUz2btbyd7cERlTEhrfGzjABH3wghtLJwV3cKPwCe53/4oq",
+                "parent": "cf2af9a0-6f4e-485d-862c-0459f4662cf1"
+            }
+        ],
+        "files": [
+            {
+                "uuid": "b5ec90d2-957c-4481-b211-08a68accd1b2",
+                "bucket": "filen-1",
+                "region": "de-1",
+                "name": "U2FsdGVkX18M8PbyGN10RaOeZ9RTgLWUUPZSjFJZ2B4=",
+                "size": "U2FsdGVkX19AsZGBCVT6A//+WVQqj6K06qP0Ok9h4eo=",
+                "mime": "U2FsdGVkX1+cfGOMzdk9o7t4okcjV5YWBwlVGf2OaMM=",
+                "chunks": 1,
+                "parent": "cf2af9a0-6f4e-485d-862c-0459f4662cf1",
+                "metadata": "U2FsdGVkX1+iriJ3USxvhqU/FOOh5MYt4K1IP5pJkZNRHI1jKIZr4boioF0deXonnA4oAyV+IW7/oogWMND9OWaUxov1M+/0zCI6nXo7cKf/OQ97A9RXdxLBLVr7bI3nulE/LyI1nOepxc690x0rgpB8qvkDRWRl9oqWV2k7LkSgAfArkRvnLzP9NYIov6Tt",
+                "version": 1
+            }
+        ]
+    }
+}

@@ -1,9 +1,11 @@
 pub mod auth;
 mod dirs;
+mod download;
 mod files;
 pub mod fs;
 pub mod keys;
 mod sync_dir;
+mod upload;
 
 const METADATA_VERSION: u32 = 1;
 

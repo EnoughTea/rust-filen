@@ -81,7 +81,7 @@ pub struct SyncedFileData {
     pub metadata: String,
 
     /// Determines how file data (actual data, not file metadata in this struct) is to be decrypted.
-    /// File data is encrypted using the same algorithm as metadata encryption.
+    /// File data is encrypted using roughly the same algorithm as metadata encryptio
     pub version: u32,
 }
 utils::display_from_json!(SyncedFileData);

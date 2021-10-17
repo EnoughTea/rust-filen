@@ -1,4 +1,4 @@
-pub use super::{dirs::*, files::*, sync_dir::*};
+pub use super::{dirs::*, download::*, files::*, sync_dir::*, upload::*};
 use crate::{crypto, utils, v1::*};
 use anyhow::*;
 use secstr::SecUtf8;
