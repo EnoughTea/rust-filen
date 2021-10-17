@@ -1,4 +1,6 @@
 //! This module contains crypto functions used by Filen to generate and process its keys and metadata.
+use std::convert::TryInto;
+
 use aes::Aes256;
 use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
@@ -24,8 +26,10 @@ type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 const OPENSSL_SALT_PREFIX: &[u8] = b"Salted__";
 const OPENSSL_SALT_PREFIX_BASE64: &[u8] = b"U2FsdGVk";
 const OPENSSL_SALT_LENGTH: usize = 8;
-const FILEN_VERSION_LENGTH: usize = 3;
+const AES_CBC_IV_LENGTH: usize = 16;
+const AES_CBC_KEY_LENGTH: usize = 32;
 const AES_GCM_IV_LENGTH: usize = 12;
+const FILEN_VERSION_LENGTH: usize = 3;
 
 /// Contains a Filen master key and a password hash used for a login API call.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -131,6 +135,49 @@ pub fn decrypt_metadata_str(data: &str, m_key: &str) -> Result<String> {
     })
 }
 
+pub fn encrypt_file_data(data: &[u8], key: &[u8; AES_CBC_KEY_LENGTH], version: u32) -> Result<Vec<u8>> {
+    if data.is_empty() {
+        Ok(vec![0; 0])
+    } else {
+        match version {
+            1 => {
+                let iv: &[u8; 16] = &key[..16].try_into().unwrap();
+                Ok(encrypt_aes_cbc_with_key_and_iv(data, key, iv))
+            }
+            2 => Ok(encrypt_aes_gcm(data, key)),
+            _ => {
+                let message = format!("Unsupported file data encryption version: {}", version);
+                bail!(unsupported(&message))
+            }
+        }
+    }
+}
+
+pub fn decrypt_file_data(encrypted_data: &[u8], key: &[u8; AES_CBC_KEY_LENGTH], version: u32) -> Result<Vec<u8>> {
+    match version {
+        1 => {
+            if encrypted_data.len() < OPENSSL_SALT_PREFIX.len() {
+                bail!(anyhow!(bad_argument("Encrypted data is too short, < 8 bytes")))
+            } else {
+                let possible_prefix = &encrypted_data[..OPENSSL_SALT_PREFIX.len()];
+                if possible_prefix == OPENSSL_SALT_PREFIX {
+                    decrypt_aes_openssl(encrypted_data, key)
+                } else if possible_prefix == OPENSSL_SALT_PREFIX_BASE64 {
+                    decrypt_aes_openssl(&base64::decode(encrypted_data)?, key)
+                } else {
+                    let iv: &[u8; 16] = &key[..16].try_into().unwrap();
+                    decrypt_aes_cbc_with_key_and_iv(&encrypted_data, key, iv)
+                }
+            }
+        }
+        2 => decrypt_aes_gcm(encrypted_data, key),
+        _ => {
+            let message = format!("Unsupported file data encryption version: {}", version);
+            bail!(unsupported(&message))
+        }
+    }
+}
+
 /// Helper which decrypts master keys stored in a metadata into a list of key strings, using specified master key.
 pub(crate) fn encrypt_master_keys_metadata(
     master_keys: &Vec<SecUtf8>,
@@ -183,10 +230,8 @@ fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -> Ve
         _ => rand::thread_rng().fill(&mut salt),
     };
 
-    let (key, iv) = generate_aes_key_and_iv(32, 16, 1, Some(&salt), key);
-    let cipher = Aes256Cbc::new_from_slices(&key, &iv).unwrap();
-
-    let mut encrypted = cipher.encrypt_vec(data);
+    let (key, iv) = generate_aes_key_and_iv(AES_CBC_KEY_LENGTH, AES_CBC_IV_LENGTH, 1, Some(&salt), key);
+    let mut encrypted = encrypt_aes_cbc_with_key_and_iv(data, &key.try_into().unwrap(), &iv.try_into().unwrap());
     let mut result = OPENSSL_SALT_PREFIX.to_vec();
     result.extend_from_slice(&salt);
     result.append(&mut encrypted);
@@ -196,11 +241,28 @@ fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -> Ve
 /// Decrypts data prefiously encrypted with [encrypt_aes_001].
 fn decrypt_aes_openssl(aes_encrypted_data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     let (salt, message) = salt_and_message_from_aes_openssl_encrypted_data(aes_encrypted_data, OPENSSL_SALT_LENGTH)?;
-    let (key, iv) = generate_aes_key_and_iv(32, 16, 1, Some(&salt), key);
-    let cipher = Aes256Cbc::new_from_slices(&key, &iv).unwrap();
+    let (key, iv) = generate_aes_key_and_iv(AES_CBC_KEY_LENGTH, AES_CBC_IV_LENGTH, 1, Some(&salt), key);
+    decrypt_aes_cbc_with_key_and_iv(message, &key.try_into().unwrap(), &iv.try_into().unwrap())
+}
+
+fn encrypt_aes_cbc_with_key_and_iv(
+    data: &[u8],
+    key: &[u8; AES_CBC_KEY_LENGTH],
+    iv: &[u8; AES_CBC_IV_LENGTH],
+) -> Vec<u8> {
+    let cipher = Aes256Cbc::new_from_slices(key, iv).unwrap();
+    cipher.encrypt_vec(data)
+}
+
+fn decrypt_aes_cbc_with_key_and_iv(
+    aes_encrypted_data: &[u8],
+    key: &[u8; AES_CBC_KEY_LENGTH],
+    iv: &[u8; AES_CBC_IV_LENGTH],
+) -> Result<Vec<u8>> {
+    let cipher = Aes256Cbc::new_from_slices(key, iv).unwrap();
     let decrypted_data = cipher
-        .decrypt_vec(message)
-        .map_err(|_| anyhow!(decryption_fail("Prefixed AES cannot decipher data")))?;
+        .decrypt_vec(aes_encrypted_data)
+        .map_err(|_| anyhow!(decryption_fail("AES CBC cannot decipher data")))?;
     Ok(decrypted_data)
 }
 
@@ -330,7 +392,9 @@ fn hash_password(password: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::{crypto::*, test_utils};
+    use std::convert::TryInto;
+
+    use crate::{crypto::*, test_utils::*};
     use pretty_assertions::{assert_eq, assert_ne};
 
     #[test]
@@ -445,12 +509,12 @@ mod tests {
     fn encrypt_rsa_and_decrypt_rsa_should_work_and_have_same_algorithm() {
         let expected_data = "This is Jimmy.";
         let m_key = "ed8d39b6c2d00ece398199a3e83988f1c4942b24";
-        let private_key_file_contents = test_utils::read_project_file("tests/resources/filen_private_key.txt");
+        let private_key_file_contents = read_project_file("tests/resources/filen_private_key.txt");
         let private_key_metadata_encrypted = String::from_utf8_lossy(&private_key_file_contents);
         let private_key_decrypted = decrypt_metadata_str(&private_key_metadata_encrypted, &m_key)
             .and_then(|str| Ok(SecVec::from(base64::decode(str).unwrap())))
             .unwrap();
-        let public_key_file_contents = test_utils::read_project_file("tests/resources/filen_public_key.txt");
+        let public_key_file_contents = read_project_file("tests/resources/filen_public_key.txt");
         let public_key_file = base64::decode(public_key_file_contents).unwrap();
 
         let encrypted_data = encrypt_rsa(expected_data.as_bytes(), &public_key_file).unwrap();
@@ -517,5 +581,34 @@ mod tests {
         let actual_hash = hash_password(&password);
 
         assert_eq!(actual_hash, expected_hash);
+    }
+
+    #[test]
+    fn decrypt_file_data_should_decrypt_raw_aes_cbc() {
+        let file_key: &[u8; 32] = "sh1YRHfx22Ij40tQBbt6BgpBlqkzch8Y".as_bytes().try_into().unwrap();
+        let file_encrypted_bytes = read_project_file("tests/resources/responses/download_file_aes_cbc_as_is.bin");
+
+        let file_decrypted_bytes_result = decrypt_file_data(&file_encrypted_bytes, file_key, 1);
+        assert!(file_decrypted_bytes_result.is_ok());
+        let file_decrypted_bytes = file_decrypted_bytes_result.unwrap();
+        let image_load_result = image::load_from_memory_with_format(&file_decrypted_bytes, image::ImageFormat::PNG);
+        assert!(image_load_result.is_ok())
+    }
+
+    #[test]
+    fn decrypt_file_data_should_decrypt_currently_encrypted() {
+        let version = 1;
+        let file_key: &[u8; 32] = "sh1YRHfx22Ij40tQBbt6BgpBlqkzch8Y".as_bytes().try_into().unwrap();
+        let file_bytes = read_project_file("tests/resources/lina.png");
+
+        let file_encrypted_bytes_result = encrypt_file_data(&file_bytes, file_key, version);
+        assert!(file_encrypted_bytes_result.is_ok());
+        let file_encrypted_bytes = file_encrypted_bytes_result.unwrap();
+
+        let file_decrypted_bytes_result = decrypt_file_data(&file_encrypted_bytes, file_key, version);
+        assert!(file_decrypted_bytes_result.is_ok());
+        let file_decrypted_bytes = file_decrypted_bytes_result.unwrap();
+        let image_load_result = image::load_from_memory_with_format(&file_decrypted_bytes, image::ImageFormat::PNG);
+        assert!(image_load_result.is_ok())
     }
 }
