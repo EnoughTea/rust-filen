@@ -154,7 +154,7 @@ pub struct DirMoveRequestPayload {
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 
-    /// ID of the parent where target folder will be moved; hyphenated lowercased UUID V4.
+    /// ID of the parent folder where target folder will be moved; hyphenated lowercased UUID V4.
     #[serde(rename = "folderUUID")]
     pub folder_uuid: String,
 
@@ -251,13 +251,15 @@ pub async fn dir_exists_request_async(
 }
 
 /// Calls [DIR_MOVE_PATH] endpoint.
-/// Checks if folder with the given name exists within the specified parent folder.
+/// Moves folder with the given uuid to the specified parent folder. It is a good idea to check first if folder
+/// with the same name already exists within the parent folder.
 pub fn dir_move_request(payload: &DirMoveRequestPayload, settings: &FilenSettings) -> Result<PlainApiResponse> {
     utils::query_filen_api(DIR_MOVE_PATH, payload, settings)
 }
 
 /// Calls [DIR_MOVE_PATH] endpoint asynchronously.
-/// Checks if folder with the given name exists within the specified parent folder.
+/// Moves folder with the given uuid to the specified parent folder. It is a good idea to check first if folder
+/// with the same name already exists within the parent folder.
 pub async fn dir_move_request_async(
     payload: &DirMoveRequestPayload,
     settings: &FilenSettings,
@@ -266,13 +268,15 @@ pub async fn dir_move_request_async(
 }
 
 /// Calls [DIR_RENAME_PATH] endpoint.
-/// Changes name of the folder with given UUID to the specified name.
+/// Changes name of the folder with given UUID to the specified name. It is a good idea to check first if folder
+/// with the new name already exists within the parent folder.
 pub fn dir_rename_request(payload: &DirRenameRequestPayload, settings: &FilenSettings) -> Result<PlainApiResponse> {
     utils::query_filen_api(DIR_RENAME_PATH, payload, settings)
 }
 
 /// Calls [DIR_RENAME_PATH] endpoint asynchronously.
-/// Changes name of the folder with given UUID to the specified name.
+/// Changes name of the folder with given UUID to the specified name. It is a good idea to check first if folder
+/// with the new name already exists within the parent folder.
 pub async fn dir_rename_request_async(
     payload: &DirRenameRequestPayload,
     settings: &FilenSettings,
