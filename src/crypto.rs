@@ -135,16 +135,17 @@ pub fn decrypt_metadata_str(data: &str, m_key: &str) -> Result<String> {
     })
 }
 
-pub fn encrypt_file_data(data: &[u8], key: &[u8; AES_CBC_KEY_LENGTH], version: u32) -> Result<Vec<u8>> {
-    if data.is_empty() {
-        Ok(vec![0; 0])
+/// Encrypts file chunk for uploading to Filen. File key can be fetched from file metadata.
+pub fn encrypt_file_data(chunk_data: &[u8], file_key: &[u8; AES_CBC_KEY_LENGTH], version: u32) -> Result<Vec<u8>> {
+    if chunk_data.is_empty() {
+        Ok(vec![0u8; 0])
     } else {
         match version {
             1 => {
-                let iv: &[u8; 16] = &key[..16].try_into().unwrap();
-                Ok(encrypt_aes_cbc_with_key_and_iv(data, key, iv))
+                let iv: &[u8; 16] = &file_key[..16].try_into().unwrap();
+                Ok(encrypt_aes_cbc_with_key_and_iv(chunk_data, file_key, iv))
             }
-            2 => Ok(encrypt_aes_gcm(data, key)),
+            2 => Ok(encrypt_aes_gcm(chunk_data, file_key)),
             _ => {
                 let message = format!("Unsupported file data encryption version: {}", version);
                 bail!(unsupported(&message))
@@ -153,24 +154,29 @@ pub fn encrypt_file_data(data: &[u8], key: &[u8; AES_CBC_KEY_LENGTH], version: u
     }
 }
 
-pub fn decrypt_file_data(encrypted_data: &[u8], key: &[u8; AES_CBC_KEY_LENGTH], version: u32) -> Result<Vec<u8>> {
+/// Decrypts file chunk downloaded from Filen. File key can be fetched from file metadata.
+pub fn decrypt_file_data(
+    encrypted_chunk_data: &[u8],
+    file_key: &[u8; AES_CBC_KEY_LENGTH],
+    version: u32,
+) -> Result<Vec<u8>> {
     match version {
         1 => {
-            if encrypted_data.len() < OPENSSL_SALT_PREFIX.len() {
+            if encrypted_chunk_data.len() < OPENSSL_SALT_PREFIX.len() {
                 bail!(anyhow!(bad_argument("Encrypted data is too short, < 8 bytes")))
             } else {
-                let possible_prefix = &encrypted_data[..OPENSSL_SALT_PREFIX.len()];
+                let possible_prefix = &encrypted_chunk_data[..OPENSSL_SALT_PREFIX.len()];
                 if possible_prefix == OPENSSL_SALT_PREFIX {
-                    decrypt_aes_openssl(encrypted_data, key)
+                    decrypt_aes_openssl(encrypted_chunk_data, file_key)
                 } else if possible_prefix == OPENSSL_SALT_PREFIX_BASE64 {
-                    decrypt_aes_openssl(&base64::decode(encrypted_data)?, key)
+                    decrypt_aes_openssl(&base64::decode(encrypted_chunk_data)?, file_key)
                 } else {
-                    let iv: &[u8; 16] = &key[..16].try_into().unwrap();
-                    decrypt_aes_cbc_with_key_and_iv(&encrypted_data, key, iv)
+                    let iv: &[u8; 16] = &file_key[..16].try_into().unwrap();
+                    decrypt_aes_cbc_with_key_and_iv(&encrypted_chunk_data, file_key, iv)
                 }
             }
         }
-        2 => decrypt_aes_gcm(encrypted_data, key),
+        2 => decrypt_aes_gcm(encrypted_chunk_data, file_key),
         _ => {
             let message = format!("Unsupported file data encryption version: {}", version);
             bail!(unsupported(&message))
