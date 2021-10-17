@@ -195,16 +195,7 @@ fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -> Ve
 
 /// Decrypts data prefiously encrypted with [encrypt_aes_001].
 fn decrypt_aes_openssl(aes_encrypted_data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
-    let message_index = OPENSSL_SALT_PREFIX.len() + OPENSSL_SALT_LENGTH;
-    if aes_encrypted_data.len() < message_index {
-        bail!(bad_argument(
-            "Encrypted data is too small to contain OpenSSL-compatible salt"
-        ))
-    }
-
-    let (salt_with_prefix, message) = aes_encrypted_data.split_at(message_index);
-    let (_, salt) = salt_with_prefix.split_at(OPENSSL_SALT_PREFIX.len());
-
+    let (salt, message) = salt_and_message_from_aes_openssl_encrypted_data(aes_encrypted_data, OPENSSL_SALT_LENGTH)?;
     let (key, iv) = generate_aes_key_and_iv(32, 16, 1, Some(&salt), key);
     let cipher = Aes256Cbc::new_from_slices(&key, &iv).unwrap();
     let decrypted_data = cipher
@@ -265,6 +256,25 @@ fn decrypt_rsa(data: &[u8], private_key: &[u8]) -> Result<Vec<u8>> {
     private_key.decrypt(padding, data).with_context(|| {
         "Cannot decrypt data with given private key, assuming non-base64 data encrypted by RSA-OAEP with SHA512 hash and PKCS8 format"
     })
+}
+
+fn salt_and_message_from_aes_openssl_encrypted_data(
+    aes_encrypted_data: &[u8],
+    salt_length: usize,
+) -> Result<(&[u8], &[u8])> {
+    let message_index = OPENSSL_SALT_PREFIX.len() + salt_length;
+    if aes_encrypted_data.len() < message_index {
+        bail!(bad_argument(
+            "Encrypted data is too small to contain OpenSSL-compatible salt"
+        ))
+    }
+
+    let (salt_with_prefix, message) = aes_encrypted_data.split_at(message_index);
+    if &salt_with_prefix[..8] != OPENSSL_SALT_PREFIX {
+        bail!(bad_argument("Encrypted data does not contain OpenSSL salt prefix"))
+    }
+    let (_, salt) = salt_with_prefix.split_at(OPENSSL_SALT_PREFIX.len());
+    Ok((salt, message))
 }
 
 /// Calculates login key from the given user password and service-provided salt.
