@@ -21,7 +21,7 @@ static BLOCKING_CLIENT: Lazy<reqwest::blocking::Client> = Lazy::new(|| reqwest::
 static CRATE_USER_AGENT: &str = "Rust-Filen API (+https://github.com/EnoughTea/rust-filen)";
 
 /// Generate random alphanumeric string of the specified length.
-pub(crate) fn random_alpha_string(size: usize) -> String {
+pub(crate) fn random_alphanumeric_string(size: usize) -> String {
     thread_rng()
         .sample_iter(&Alphanumeric)
         .take(size)
@@ -54,7 +54,7 @@ pub(crate) fn query_filen_api<T: Serialize + ?Sized, U: DeserializeOwned>(
     filen_settings: &FilenSettings,
 ) -> Result<U> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.api_servers)?;
-    let filen_response = post(filen_endpoint.as_str(), payload, filen_settings.timeout_secs)?;
+    let filen_response = post_json(filen_endpoint.as_str(), payload, filen_settings.request_timeout_secs)?;
     Ok(filen_response.json::<U>()?)
 }
 
@@ -65,7 +65,29 @@ pub(crate) async fn query_filen_api_async<T: Serialize + ?Sized, U: DeserializeO
     filen_settings: &FilenSettings,
 ) -> Result<U> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.api_servers)?;
-    let filen_response = post_async(filen_endpoint.as_str(), payload, filen_settings.timeout_secs).await?;
+    let filen_response = post_json_async(filen_endpoint.as_str(), payload, filen_settings.request_timeout_secs).await?;
+    Ok(filen_response.json::<U>().await?)
+}
+
+/// Sends POST with given data blob to one of Filen upload servers.
+pub(crate) fn upload_to_filen<U: DeserializeOwned>(
+    api_endpoint: &str,
+    blob: Vec<u8>,
+    filen_settings: &FilenSettings,
+) -> Result<U> {
+    let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.upload_servers)?;
+    let filen_response = post_blob(filen_endpoint.as_str(), blob, filen_settings.request_timeout_secs)?;
+    Ok(filen_response.json::<U>()?)
+}
+
+/// Asynchronously sends POST with given data blob to one of Filen upload servers.
+pub(crate) async fn upload_to_filen_async<U: DeserializeOwned>(
+    api_endpoint: &str,
+    blob: Vec<u8>,
+    filen_settings: &FilenSettings,
+) -> Result<U> {
+    let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.upload_servers)?;
+    let filen_response = post_blob_async(filen_endpoint.as_str(), blob, filen_settings.request_timeout_secs).await?;
     Ok(filen_response.json::<U>().await?)
 }
 
@@ -83,19 +105,46 @@ fn choose_filen_server(servers: &[Url]) -> &Url {
     &servers[chosen_server_index]
 }
 
+/// Sends POST with given blob and timeout to the specified URL.
+fn post_blob(url: &str, blob: Vec<u8>, timeout_secs: u64) -> Result<reqwest::blocking::Response> {
+    BLOCKING_CLIENT
+        .post(url)
+        .body(blob)
+        .header(header::USER_AGENT, CRATE_USER_AGENT)
+        .timeout(Duration::from_secs(timeout_secs))
+        .send()
+        .map_err(|err| anyhow!(web_request_fail(&format!("Failed to POST blob to: {}", url), err)))
+}
+
+/// Sends POST with given blob and timeout to the specified URL.
+async fn post_blob_async(url: &str, blob: Vec<u8>, timeout_secs: u64) -> Result<reqwest::Response> {
+    ASYNC_CLIENT
+        .post(url)
+        .body(blob)
+        .header(header::USER_AGENT, CRATE_USER_AGENT)
+        .timeout(Duration::from_secs(timeout_secs))
+        .send()
+        .await
+        .map_err(|err| anyhow!(web_request_fail(&format!("Failed to POST blob to: {}", url), err)))
+}
+
 /// Sends POST with given payload and timeout to the specified URL.
-fn post<T: Serialize + ?Sized>(url: &str, payload: &T, timeout_secs: u64) -> Result<reqwest::blocking::Response> {
+fn post_json<T: Serialize + ?Sized>(url: &str, payload: &T, timeout_secs: u64) -> Result<reqwest::blocking::Response> {
     BLOCKING_CLIENT
         .post(url)
         .json(&payload)
         .header(header::USER_AGENT, CRATE_USER_AGENT)
         .timeout(Duration::from_secs(timeout_secs))
         .send()
-        .map_err(|err| anyhow!(web_request_fail(&format!("Failed to send POST to: {}", url), err)))
+        .map_err(|err| anyhow!(web_request_fail(&format!("Failed to POST json to: {}", url), err)))
 }
 
 /// Asynchronously sends POST with given payload and timeout to the specified URL.
-async fn post_async<T: Serialize + ?Sized>(url: &str, payload: &T, timeout_secs: u64) -> Result<reqwest::Response> {
+async fn post_json_async<T: Serialize + ?Sized>(
+    url: &str,
+    payload: &T,
+    timeout_secs: u64,
+) -> Result<reqwest::Response> {
     ASYNC_CLIENT
         .post(url)
         .json(&payload)
@@ -104,7 +153,7 @@ async fn post_async<T: Serialize + ?Sized>(url: &str, payload: &T, timeout_secs:
         .send()
         .await
         .map_err(|err| {
-            let message = &format!("Failed to send POST (async) to: {}", url);
+            let message = &format!("Failed to POST json (async) to: {}", url);
             anyhow!(web_request_fail(message, err))
         })
 }

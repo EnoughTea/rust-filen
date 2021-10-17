@@ -217,7 +217,7 @@ fn decrypt_aes_openssl(aes_encrypted_data: &[u8], key: &[u8]) -> Result<Vec<u8>>
 /// and encrypted message in base64-encoded part starting at [AES_GCM_IV_LENGTH] string index.
 fn encrypt_aes_gcm(data: &[u8], key: &[u8]) -> Vec<u8> {
     let key = derive_key_from_password_256(key, key, 1);
-    let iv = utils::random_alpha_string(AES_GCM_IV_LENGTH);
+    let iv = utils::random_alphanumeric_string(AES_GCM_IV_LENGTH);
     let cipher = Aes256Gcm::new(Key::from_slice(&key));
     let nonce = Nonce::from_slice(iv.as_bytes());
     let encrypted = cipher.encrypt(nonce, data).unwrap(); // Will only panic when data.len() > 1 << 36
