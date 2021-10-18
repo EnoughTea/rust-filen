@@ -597,7 +597,7 @@ mod tests {
         let file_decrypted_bytes_result = decrypt_file_data(&file_encrypted_bytes, file_key, 1);
         assert!(file_decrypted_bytes_result.is_ok());
         let file_decrypted_bytes = file_decrypted_bytes_result.unwrap();
-        let image_load_result = image::load_from_memory_with_format(&file_decrypted_bytes, image::ImageFormat::PNG);
+        let image_load_result = image::load_from_memory_with_format(&file_decrypted_bytes, image::ImageFormat::Png);
         assert!(image_load_result.is_ok())
     }
 
@@ -614,7 +614,7 @@ mod tests {
         let file_decrypted_bytes_result = decrypt_file_data(&file_encrypted_bytes, file_key, version);
         assert!(file_decrypted_bytes_result.is_ok());
         let file_decrypted_bytes = file_decrypted_bytes_result.unwrap();
-        let image_load_result = image::load_from_memory_with_format(&file_decrypted_bytes, image::ImageFormat::PNG);
+        let image_load_result = image::load_from_memory_with_format(&file_decrypted_bytes, image::ImageFormat::Png);
         assert!(image_load_result.is_ok())
     }
 }
