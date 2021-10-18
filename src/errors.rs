@@ -16,6 +16,9 @@ pub enum RFError {
     },
 
     #[error("{message:?}")]
+    Unknown { message: String },
+
+    #[error("{message:?}")]
     Unsupported { message: String },
 }
 
@@ -35,6 +38,12 @@ pub(crate) fn web_request_fail(message: &str, reqwest_error: reqwest::Error) -> 
     RFError::WebRequestFail {
         message: message.to_owned(),
         reqwest_error: reqwest_error,
+    }
+}
+
+pub(crate) fn unknown(message: &str) -> RFError {
+    RFError::Unknown {
+        message: message.to_owned(),
     }
 }
 
