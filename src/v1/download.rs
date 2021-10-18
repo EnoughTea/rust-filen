@@ -1,5 +1,6 @@
 use crate::{
     crypto,
+    retry_settings::RetrySettings,
     settings::FilenSettings,
     utils,
     v1::{fs::*, *},
@@ -114,6 +115,33 @@ pub async fn download_dir_request_async(
     settings: &FilenSettings,
 ) -> Result<DownloadDirResponsePayload> {
     utils::query_filen_api_async(DOWNLOAD_DIR, payload, settings).await
+}
+
+/// Fetches the specified file's chunk with given index from Filen download server defined by a region and a bucket.
+/// On failure retries [FilenSettings::download_chunk_max_tries] with an exponential backoff starting with
+/// [RETRY_INITIAL_DELAY] millis and a delay limit of [RETRY_MAX_DELAY] millis.
+pub(crate) fn download_from_filen(
+    region: &str,
+    bucket: &str,
+    file_uuid: &str,
+    chunk_index: u32,
+    retry_settings: &RetrySettings,
+    filen_settings: &FilenSettings,
+) -> Result<Vec<u8>> {
+    let api_endpoint = utils::filen_file_address_to_api_endpoint(region, bucket, file_uuid, chunk_index);
+    utils::download_from_filen(&api_endpoint, retry_settings, filen_settings)
+}
+
+pub(crate) async fn download_from_filen_async(
+    region: &str,
+    bucket: &str,
+    file_uuid: &str,
+    chunk_index: u32,
+    retry_settings: &RetrySettings,
+    filen_settings: &FilenSettings,
+) -> Result<Vec<u8>> {
+    let api_endpoint = utils::filen_file_address_to_api_endpoint(region, bucket, file_uuid, chunk_index);
+    utils::download_from_filen_async(&api_endpoint, retry_settings, filen_settings).await
 }
 
 #[cfg(test)]
