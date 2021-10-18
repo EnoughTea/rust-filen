@@ -1,5 +1,5 @@
 use crate::{
-    crypto,
+    crypto, queries,
     retry_settings::RetrySettings,
     settings::FilenSettings,
     utils,
@@ -105,7 +105,7 @@ pub fn download_dir_request(
     payload: &DownloadDirRequestPayload,
     settings: &FilenSettings,
 ) -> Result<DownloadDirResponsePayload> {
-    utils::query_filen_api(DOWNLOAD_DIR, payload, settings)
+    queries::query_filen_api(DOWNLOAD_DIR, payload, settings)
 }
 
 /// Calls [USER_DIRS_PATH] endpoint asynchronously. Used to get a list of user's folders.
@@ -114,7 +114,7 @@ pub async fn download_dir_request_async(
     payload: &DownloadDirRequestPayload,
     settings: &FilenSettings,
 ) -> Result<DownloadDirResponsePayload> {
-    utils::query_filen_api_async(DOWNLOAD_DIR, payload, settings).await
+    queries::query_filen_api_async(DOWNLOAD_DIR, payload, settings).await
 }
 
 /// Fetches the specified file's chunk with given index from Filen download server defined by a region and a bucket.
@@ -129,7 +129,7 @@ pub(crate) fn download_from_filen(
     filen_settings: &FilenSettings,
 ) -> Result<Vec<u8>> {
     let api_endpoint = utils::filen_file_address_to_api_endpoint(region, bucket, file_uuid, chunk_index);
-    utils::download_from_filen(&api_endpoint, retry_settings, filen_settings)
+    queries::download_from_filen(&api_endpoint, retry_settings, filen_settings)
 }
 
 pub(crate) async fn download_from_filen_async(
@@ -141,7 +141,7 @@ pub(crate) async fn download_from_filen_async(
     filen_settings: &FilenSettings,
 ) -> Result<Vec<u8>> {
     let api_endpoint = utils::filen_file_address_to_api_endpoint(region, bucket, file_uuid, chunk_index);
-    utils::download_from_filen_async(&api_endpoint, retry_settings, filen_settings).await
+    queries::download_from_filen_async(&api_endpoint, retry_settings, filen_settings).await
 }
 
 #[cfg(test)]

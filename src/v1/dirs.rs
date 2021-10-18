@@ -1,5 +1,5 @@
 use crate::{
-    crypto,
+    crypto, queries,
     settings::FilenSettings,
     utils,
     v1::{fs::*, *},
@@ -184,7 +184,7 @@ pub fn user_dirs_request(
     payload: &UserDirsRequestPayload,
     settings: &FilenSettings,
 ) -> Result<UserDirsResponsePayload> {
-    utils::query_filen_api(USER_DIRS_PATH, payload, settings)
+    queries::query_filen_api(USER_DIRS_PATH, payload, settings)
 }
 
 /// Calls [USER_DIRS_PATH] endpoint asynchronously. Used to get a list of user's folders.
@@ -193,12 +193,12 @@ pub async fn user_dirs_request_async(
     payload: &UserDirsRequestPayload,
     settings: &FilenSettings,
 ) -> Result<UserDirsResponsePayload> {
-    utils::query_filen_api_async(USER_DIRS_PATH, payload, settings).await
+    queries::query_filen_api_async(USER_DIRS_PATH, payload, settings).await
 }
 
 /// Calls [DIR_CREATE_PATH] endpoint. Creates parentless folder that you need to move yourself later.
 pub fn dir_create_request(payload: &DirCreateRequestPayload, settings: &FilenSettings) -> Result<PlainApiResponse> {
-    utils::query_filen_api(DIR_CREATE_PATH, payload, settings)
+    queries::query_filen_api(DIR_CREATE_PATH, payload, settings)
 }
 
 /// Calls [DIR_CREATE_PATH] endpoint asynchronously. Creates parentless folder that you need to move yourself later.
@@ -206,7 +206,7 @@ pub async fn dir_create_request_async(
     payload: &DirCreateRequestPayload,
     settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    utils::query_filen_api_async(DIR_CREATE_PATH, payload, settings).await
+    queries::query_filen_api_async(DIR_CREATE_PATH, payload, settings).await
 }
 
 /// Calls [DIR_EXISTS_PATH] endpoint.
@@ -215,7 +215,7 @@ pub fn dir_exists_request(
     payload: &LocationExistsRequestPayload,
     settings: &FilenSettings,
 ) -> Result<LocationExistsResponsePayload> {
-    utils::query_filen_api(DIR_EXISTS_PATH, payload, settings)
+    queries::query_filen_api(DIR_EXISTS_PATH, payload, settings)
 }
 
 /// Calls [DIR_EXISTS_PATH] endpoint asynchronously.
@@ -224,14 +224,14 @@ pub async fn dir_exists_request_async(
     payload: &LocationExistsRequestPayload,
     settings: &FilenSettings,
 ) -> Result<LocationExistsResponsePayload> {
-    utils::query_filen_api_async(DIR_EXISTS_PATH, payload, settings).await
+    queries::query_filen_api_async(DIR_EXISTS_PATH, payload, settings).await
 }
 
 /// Calls [DIR_MOVE_PATH] endpoint.
 /// Moves folder with the given uuid to the specified parent folder. It is a good idea to check first if folder
 /// with the same name already exists within the parent folder.
 pub fn dir_move_request(payload: &DirMoveRequestPayload, settings: &FilenSettings) -> Result<PlainApiResponse> {
-    utils::query_filen_api(DIR_MOVE_PATH, payload, settings)
+    queries::query_filen_api(DIR_MOVE_PATH, payload, settings)
 }
 
 /// Calls [DIR_MOVE_PATH] endpoint asynchronously.
@@ -241,14 +241,14 @@ pub async fn dir_move_request_async(
     payload: &DirMoveRequestPayload,
     settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    utils::query_filen_api_async(DIR_MOVE_PATH, payload, settings).await
+    queries::query_filen_api_async(DIR_MOVE_PATH, payload, settings).await
 }
 
 /// Calls [DIR_RENAME_PATH] endpoint.
 /// Changes name of the folder with given UUID to the specified name. It is a good idea to check first if folder
 /// with the new name already exists within the parent folder.
 pub fn dir_rename_request(payload: &DirRenameRequestPayload, settings: &FilenSettings) -> Result<PlainApiResponse> {
-    utils::query_filen_api(DIR_RENAME_PATH, payload, settings)
+    queries::query_filen_api(DIR_RENAME_PATH, payload, settings)
 }
 
 /// Calls [DIR_RENAME_PATH] endpoint asynchronously.
@@ -258,14 +258,14 @@ pub async fn dir_rename_request_async(
     payload: &DirRenameRequestPayload,
     settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    utils::query_filen_api_async(DIR_RENAME_PATH, payload, settings).await
+    queries::query_filen_api_async(DIR_RENAME_PATH, payload, settings).await
 }
 
 /// Calls [DIR_TRASH_PATH] endpoint.
 /// Moves folder with given UUID to trash. Note that folder's UUID will still be considired existing,
 /// so you cannot create a new folder with it.
 pub fn dir_trash_request(payload: &LocationTrashRequestPayload, settings: &FilenSettings) -> Result<PlainApiResponse> {
-    utils::query_filen_api(DIR_TRASH_PATH, payload, settings)
+    queries::query_filen_api(DIR_TRASH_PATH, payload, settings)
 }
 
 /// Calls [DIR_TRASH_PATH] endpoint asynchronously.
@@ -275,7 +275,7 @@ pub async fn dir_trash_request_async(
     payload: &LocationTrashRequestPayload,
     settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    utils::query_filen_api_async(DIR_TRASH_PATH, payload, settings).await
+    queries::query_filen_api_async(DIR_TRASH_PATH, payload, settings).await
 }
 
 #[cfg(test)]

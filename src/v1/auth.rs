@@ -1,6 +1,7 @@
 use crate::{
     crypto::{self, FilenPasswordWithMasterKey},
     errors::*,
+    queries,
     settings::FilenSettings,
     utils,
 };
@@ -135,7 +136,7 @@ pub fn auth_info_request(
     payload: &AuthInfoRequestPayload,
     settings: &FilenSettings,
 ) -> Result<AuthInfoResponsePayload> {
-    utils::query_filen_api(AUTH_INFO_PATH, payload, settings)
+    queries::query_filen_api(AUTH_INFO_PATH, payload, settings)
 }
 
 /// Calls [AUTH_INFO_PATH] endpoint asynchronously. Used to get used auth version and Filen salt.
@@ -143,12 +144,12 @@ pub async fn auth_info_request_async(
     payload: &AuthInfoRequestPayload,
     settings: &FilenSettings,
 ) -> Result<AuthInfoResponsePayload> {
-    utils::query_filen_api_async(AUTH_INFO_PATH, payload, settings).await
+    queries::query_filen_api_async(AUTH_INFO_PATH, payload, settings).await
 }
 
 /// Calls [LOGIN_PATH] endpoint. Used to get API key, master keys and private key.
 pub fn login_request(payload: &LoginRequestPayload, settings: &FilenSettings) -> Result<LoginResponsePayload> {
-    utils::query_filen_api(LOGIN_PATH, payload, settings)
+    queries::query_filen_api(LOGIN_PATH, payload, settings)
 }
 
 /// Calls [LOGIN_PATH] endpoint asynchronously. Used to get API key, master keys and private key.
@@ -156,7 +157,7 @@ pub async fn login_request_async(
     payload: &LoginRequestPayload,
     settings: &FilenSettings,
 ) -> Result<LoginResponsePayload> {
-    utils::query_filen_api_async(LOGIN_PATH, payload, settings).await
+    queries::query_filen_api_async(LOGIN_PATH, payload, settings).await
 }
 
 #[cfg(test)]

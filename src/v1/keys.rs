@@ -1,4 +1,4 @@
-use crate::{crypto, errors::bad_argument, settings::FilenSettings, utils};
+use crate::{crypto, errors::bad_argument, queries, settings::FilenSettings};
 use anyhow::*;
 use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
@@ -115,7 +115,7 @@ pub fn key_pair_info_request(
     payload: &UserKeyPairInfoRequestPayload,
     settings: &FilenSettings,
 ) -> Result<UserKeyPairInfoResponsePayload> {
-    utils::query_filen_api(KEY_PAIR_INFO_PATH, payload, settings)
+    queries::query_filen_api(KEY_PAIR_INFO_PATH, payload, settings)
 }
 
 /// Calls [KEY_PAIR_INFO_PATH] endpoint asynchronously. Used to get RSA public/private key pair.
@@ -123,7 +123,7 @@ pub async fn key_pair_info_request_async(
     payload: &UserKeyPairInfoRequestPayload,
     settings: &FilenSettings,
 ) -> Result<UserKeyPairInfoResponsePayload> {
-    utils::query_filen_api_async(KEY_PAIR_INFO_PATH, payload, settings).await
+    queries::query_filen_api_async(KEY_PAIR_INFO_PATH, payload, settings).await
 }
 
 /// Calls [MASTER_KEYS_PATH] endpoint. Used to get/update user's master keys.
@@ -133,7 +133,7 @@ pub fn master_keys_fetch_request(
     payload: &MasterKeysFetchRequestPayload,
     settings: &FilenSettings,
 ) -> Result<MasterKeysFetchResponsePayload> {
-    utils::query_filen_api(MASTER_KEYS_PATH, payload, settings)
+    queries::query_filen_api(MASTER_KEYS_PATH, payload, settings)
 }
 
 /// Calls [MASTER_KEYS_PATH] endpoint asynchronously. Used to get/update user's master keys.
@@ -143,7 +143,7 @@ pub async fn master_keys_fetch_request_async(
     payload: &MasterKeysFetchRequestPayload,
     settings: &FilenSettings,
 ) -> Result<MasterKeysFetchResponsePayload> {
-    utils::query_filen_api_async(MASTER_KEYS_PATH, payload, settings).await
+    queries::query_filen_api_async(MASTER_KEYS_PATH, payload, settings).await
 }
 
 #[cfg(test)]

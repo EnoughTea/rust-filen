@@ -4,7 +4,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::{crypto, errors::*, settings::FilenSettings, utils, v1::fs::*, v1::METADATA_VERSION};
+use crate::{crypto, errors::*, queries, settings::FilenSettings, utils, v1::fs::*, v1::METADATA_VERSION};
 use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
@@ -160,7 +160,7 @@ impl FileRenameRequestPayload {
 /// Replaces one version of a file with another version of the same file.
 /// Used when the file you want to upload already exists, so existing file needs to be archived first.
 pub fn file_archive_request(payload: &FileArchiveRequestPayload, settings: &FilenSettings) -> Result<PlainApiResponse> {
-    utils::query_filen_api(FILE_ARCHIVE_PATH, payload, settings)
+    queries::query_filen_api(FILE_ARCHIVE_PATH, payload, settings)
 }
 
 /// Calls [FILE_ARCHIVE_PATH] endpoint asynchronously.
@@ -170,7 +170,7 @@ pub async fn file_archive_request_async(
     payload: &FileArchiveRequestPayload,
     settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    utils::query_filen_api_async(FILE_ARCHIVE_PATH, payload, settings).await
+    queries::query_filen_api_async(FILE_ARCHIVE_PATH, payload, settings).await
 }
 
 /// Calls [FILE_EXISTS_PATH] endpoint.
@@ -179,7 +179,7 @@ pub fn file_exists_request(
     payload: &LocationExistsRequestPayload,
     settings: &FilenSettings,
 ) -> Result<LocationExistsResponsePayload> {
-    utils::query_filen_api(FILE_EXISTS_PATH, payload, settings)
+    queries::query_filen_api(FILE_EXISTS_PATH, payload, settings)
 }
 
 /// Calls [FILE_EXISTS_PATH] endpoint asynchronously.
@@ -188,14 +188,14 @@ pub async fn file_exists_request_async(
     payload: &LocationExistsRequestPayload,
     settings: &FilenSettings,
 ) -> Result<LocationExistsResponsePayload> {
-    utils::query_filen_api_async(FILE_EXISTS_PATH, payload, settings).await
+    queries::query_filen_api_async(FILE_EXISTS_PATH, payload, settings).await
 }
 
 /// Calls [FILE_MOVE_PATH] endpoint.
 /// Moves file with the given uuid to the specified parent folder. It is a good idea to check first if file
 /// with the same name already exists within the parent folder.
 pub fn dir_move_request(payload: &FileMoveRequestPayload, settings: &FilenSettings) -> Result<PlainApiResponse> {
-    utils::query_filen_api(FILE_MOVE_PATH, payload, settings)
+    queries::query_filen_api(FILE_MOVE_PATH, payload, settings)
 }
 
 /// Calls [FILE_MOVE_PATH] endpoint asynchronously.
@@ -205,14 +205,14 @@ pub async fn file_move_request_async(
     payload: &FileMoveRequestPayload,
     settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    utils::query_filen_api_async(FILE_MOVE_PATH, payload, settings).await
+    queries::query_filen_api_async(FILE_MOVE_PATH, payload, settings).await
 }
 
 /// Calls [FILE_RENAME_PATH] endpoint.
 /// Changes name of the file with given UUID to the specified name. It is a good idea to check first if file
 /// with the new name already exists within the parent folder.
 pub fn file_rename_request(payload: &FileRenameRequestPayload, settings: &FilenSettings) -> Result<PlainApiResponse> {
-    utils::query_filen_api(FILE_RENAME_PATH, payload, settings)
+    queries::query_filen_api(FILE_RENAME_PATH, payload, settings)
 }
 
 /// Calls [FILE_RENAME_PATH] endpoint asynchronously.
@@ -222,14 +222,14 @@ pub async fn file_rename_request_async(
     payload: &FileRenameRequestPayload,
     settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    utils::query_filen_api_async(FILE_RENAME_PATH, payload, settings).await
+    queries::query_filen_api_async(FILE_RENAME_PATH, payload, settings).await
 }
 
 /// Calls [FILE_TRASH_PATH] endpoint.
 /// Moves file with given UUID to trash. Note that file's UUID will still be considired existing,
 /// so you cannot create a new file with it.
 pub fn file_trash_request(payload: &LocationTrashRequestPayload, settings: &FilenSettings) -> Result<PlainApiResponse> {
-    utils::query_filen_api(FILE_TRASH_PATH, payload, settings)
+    queries::query_filen_api(FILE_TRASH_PATH, payload, settings)
 }
 
 /// Calls [FILE_TRASH_PATH] endpoint asynchronously.
@@ -239,7 +239,7 @@ pub async fn file_trash_request_async(
     payload: &LocationTrashRequestPayload,
     settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    utils::query_filen_api_async(FILE_TRASH_PATH, payload, settings).await
+    queries::query_filen_api_async(FILE_TRASH_PATH, payload, settings).await
 }
 
 #[cfg(test)]
