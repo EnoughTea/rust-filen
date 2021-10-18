@@ -8,6 +8,7 @@ use serde::Serialize;
 use serde_json::json;
 use std::env;
 use std::path::Path;
+use std::time::Duration;
 
 use camino::Utf8PathBuf;
 
@@ -20,8 +21,9 @@ pub(crate) fn init_server() -> (MockServer, FilenSettings) {
         api_servers: vec![Url::parse(&server.base_url()).unwrap()],
         download_servers: vec![Url::parse(&server.base_url()).unwrap()],
         upload_servers: vec![Url::parse(&server.base_url()).unwrap()],
-        request_timeout_secs: 10,
-        upload_timeout_secs: 10,
+        request_timeout: Duration::from_secs(10),
+        upload_chunk_timeout: Duration::from_secs(10),
+        download_chunk_timeout: Duration::from_secs(10),
     };
     (server, filen_settings)
 }

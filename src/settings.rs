@@ -1,4 +1,6 @@
 //! Contains [FilenSettings] used to provide Filen-specific information to API calls.
+use std::time::Duration;
+
 use once_cell::sync::Lazy;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -37,6 +39,7 @@ static DEFAULT_UPLOAD_SERVERS: Lazy<Vec<Url>> = Lazy::new(|| {
     ]
 });
 
+const DOWNLOAD_TIMEOUT_SECS: u64 = 3600;
 const REQUEST_TIMEOUT_SECS: u64 = 120;
 const UPLOAD_TIMEOUT_SECS: u64 = 3600;
 
@@ -57,11 +60,14 @@ pub struct FilenSettings {
     #[serde_as(as = "Vec<DisplayFromStr>")]
     pub upload_servers: Vec<Url>,
 
-    /// API requests timeout in seconds.
-    pub request_timeout_secs: u64,
+    /// File chunk download timeout.
+    pub download_chunk_timeout: Duration,
 
-    /// File upload timeout in seconds.
-    pub upload_timeout_secs: u64,
+    /// API requests timeout.
+    pub request_timeout: Duration,
+
+    /// File chunk upload timeout.
+    pub upload_chunk_timeout: Duration,
 }
 
 impl Default for FilenSettings {
@@ -70,8 +76,9 @@ impl Default for FilenSettings {
             api_servers: DEFAULT_API_SERVERS.clone(),
             download_servers: DEFAULT_DOWNLOAD_SERVERS.clone(),
             upload_servers: DEFAULT_UPLOAD_SERVERS.clone(),
-            request_timeout_secs: REQUEST_TIMEOUT_SECS,
-            upload_timeout_secs: UPLOAD_TIMEOUT_SECS,
+            download_chunk_timeout: Duration::from_secs(DOWNLOAD_TIMEOUT_SECS),
+            request_timeout: Duration::from_secs(REQUEST_TIMEOUT_SECS),
+            upload_chunk_timeout: Duration::from_secs(UPLOAD_TIMEOUT_SECS),
         }
     }
 }

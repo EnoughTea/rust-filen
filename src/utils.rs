@@ -54,7 +54,11 @@ pub(crate) fn query_filen_api<T: Serialize + ?Sized, U: DeserializeOwned>(
     filen_settings: &FilenSettings,
 ) -> Result<U> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.api_servers)?;
-    let filen_response = post_json(filen_endpoint.as_str(), payload, filen_settings.request_timeout_secs)?;
+    let filen_response = post_json(
+        filen_endpoint.as_str(),
+        payload,
+        filen_settings.request_timeout.as_secs(),
+    )?;
     Ok(filen_response.json::<U>()?)
 }
 
@@ -65,7 +69,12 @@ pub(crate) async fn query_filen_api_async<T: Serialize + ?Sized, U: DeserializeO
     filen_settings: &FilenSettings,
 ) -> Result<U> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.api_servers)?;
-    let filen_response = post_json_async(filen_endpoint.as_str(), payload, filen_settings.request_timeout_secs).await?;
+    let filen_response = post_json_async(
+        filen_endpoint.as_str(),
+        payload,
+        filen_settings.request_timeout.as_secs(),
+    )
+    .await?;
     Ok(filen_response.json::<U>().await?)
 }
 
@@ -76,7 +85,7 @@ pub(crate) fn upload_to_filen<U: DeserializeOwned>(
     filen_settings: &FilenSettings,
 ) -> Result<U> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.upload_servers)?;
-    let filen_response = post_blob(filen_endpoint.as_str(), blob, filen_settings.request_timeout_secs)?;
+    let filen_response = post_blob(filen_endpoint.as_str(), blob, filen_settings.request_timeout.as_secs())?;
     Ok(filen_response.json::<U>()?)
 }
 
@@ -87,7 +96,8 @@ pub(crate) async fn upload_to_filen_async<U: DeserializeOwned>(
     filen_settings: &FilenSettings,
 ) -> Result<U> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.upload_servers)?;
-    let filen_response = post_blob_async(filen_endpoint.as_str(), blob, filen_settings.request_timeout_secs).await?;
+    let filen_response =
+        post_blob_async(filen_endpoint.as_str(), blob, filen_settings.request_timeout.as_secs()).await?;
     Ok(filen_response.json::<U>().await?)
 }
 
