@@ -129,7 +129,7 @@ fn get(url: &str, timeout_secs: u64) -> Result<reqwest::blocking::Response, reqw
 /// Asynchronously sends GET with the given timeout to the specified URL.
 async fn get_async(url: &str, timeout_secs: u64) -> Result<reqwest::Response, reqwest::Error> {
     ASYNC_CLIENT
-        .post(url)
+        .get(url)
         .header(header::USER_AGENT, CRATE_USER_AGENT)
         .timeout(Duration::from_secs(timeout_secs))
         .send()
@@ -205,9 +205,4 @@ fn produce_filen_endpoint(api_endpoint: &str, servers: &[Url]) -> Result<Url> {
             chosen_server, api_endpoint
         )))
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::queries::*;
 }
