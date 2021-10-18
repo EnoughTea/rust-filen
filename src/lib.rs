@@ -6,6 +6,8 @@ pub use secstr;
 
 mod crypto;
 pub mod errors;
+mod limited_exponential;
+pub mod retry_settings;
 pub mod settings;
 mod utils;
 pub mod v1;
