@@ -11,6 +11,7 @@ use serde_with::*;
 pub const FILEN_SYNC_FOLDER_TYPE: &str = "sync";
 
 const GET_DIR_PATH: &str = "/v1/get/dir";
+const USER_SYNC_GET_DATA: &str = "/v1/user/sync/get/data";
 
 // Used for requests to [GET_DIR_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -99,6 +100,68 @@ api_response_struct!(
     GetDirResponsePayload<Option<GetDirResponseData>>
 );
 
+// Used for requests to [USER_SYNC_GET_DATA] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct UserSyncGetDataRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+}
+utils::display_from_json!(UserSyncGetDataRequestPayload);
+
+/// Response data for [DIR_CREATE_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct UserSyncGetDataResponseData {
+    /// User's email.
+    pub email: String,
+
+    /// Storage bytes available to user.
+    #[serde(rename = "maxStorage")]
+    pub max_storage: u64,
+
+    /// Storage bytes used by user.
+    #[serde(rename = "storageUsed")]
+    pub storage_used: u64,
+
+    /// Boolean field, 0 if user is not premium.
+    #[serde(rename = "isPremium")]
+    pub is_premium: u32,
+}
+utils::display_from_json!(UserSyncGetDataResponseData);
+
+api_response_struct!(UserSyncGetDataResponsePayload<Option<UserSyncGetDataResponseData>>);
+
+/// Calls [GET_DIR_PATH] endpoint. It fetches the entire Filen sync folder contents, with option
+/// to return empty data if nothing has been changed since the last call.
+pub fn get_dir_request(payload: &GetDirRequestPayload, settings: &FilenSettings) -> Result<GetDirResponsePayload> {
+    queries::query_filen_api(GET_DIR_PATH, payload, settings)
+}
+
+/// Calls [GET_DIR_PATH] endpoint asynchronously. It fetches the entire Filen sync folder contents, with option
+/// to return empty data if nothing has been changed since the last call.
+pub async fn get_dir_request_async(
+    payload: &GetDirRequestPayload,
+    settings: &FilenSettings,
+) -> Result<GetDirResponsePayload> {
+    queries::query_filen_api_async(GET_DIR_PATH, payload, settings).await
+}
+
+/// Calls [USER_SYNC_GET_DATA] endpoint. Used to fetch user storage stats.
+pub fn user_sync_get_data_request(
+    payload: &UserSyncGetDataRequestPayload,
+    settings: &FilenSettings,
+) -> Result<UserSyncGetDataResponsePayload> {
+    queries::query_filen_api(USER_SYNC_GET_DATA, payload, settings)
+}
+
+/// Calls [USER_SYNC_GET_DATA] endpoint asynchronously. Used to fetch user storage stats.
+pub async fn user_sync_get_data_request_async(
+    payload: &UserSyncGetDataRequestPayload,
+    settings: &FilenSettings,
+) -> Result<UserSyncGetDataResponsePayload> {
+    queries::query_filen_api_async(USER_SYNC_GET_DATA, payload, settings).await
+}
+
 #[cfg(test)]
 mod tests {
     use closure::closure;
@@ -136,19 +199,4 @@ mod tests {
         assert_eq!(async_response, expected_response);
         Ok(())
     }
-}
-
-/// Calls [DIR_CREATE_PATH] endpoint. It fetches the entire Filen sync folder contents, with option
-/// to return empty data if nothing has been changed since the last call.
-pub fn get_dir_request(payload: &GetDirRequestPayload, settings: &FilenSettings) -> Result<GetDirResponsePayload> {
-    queries::query_filen_api(GET_DIR_PATH, payload, settings)
-}
-
-/// Calls [DIR_CREATE_PATH] endpoint asynchronously. It fetches the entire Filen sync folder contents, with option
-/// to return empty data if nothing has been changed since the last call.
-pub async fn get_dir_request_async(
-    payload: &GetDirRequestPayload,
-    settings: &FilenSettings,
-) -> Result<GetDirResponsePayload> {
-    queries::query_filen_api_async(GET_DIR_PATH, payload, settings).await
 }
