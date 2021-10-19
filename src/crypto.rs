@@ -79,6 +79,10 @@ pub(crate) fn hash_fn(value: &str) -> String {
 
 /// Encrypts file metadata with given key. Depending on metadata version, different encryption algos will be used.
 pub fn encrypt_metadata(data: &[u8], key: &[u8], metadata_version: u32) -> Result<Vec<u8>> {
+    if data.is_empty() {
+        return Ok(vec![0u8; 0]);
+    }
+
     let encrypted_metadata = match metadata_version {
         1 => base64::encode(encrypt_aes_openssl(data, key, None)).as_bytes().to_vec(), // Deprecated since August 2021
         2 => {
@@ -108,6 +112,10 @@ pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
             })?
         };
         Ok(metadata_version)
+    }
+
+    if data.is_empty() {
+        return Ok(vec![0u8; 0]);
     }
 
     let metadata_version = read_metadata_version(data)?;
