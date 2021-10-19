@@ -7,6 +7,7 @@ pub mod fs;
 pub mod keys;
 mod sync_dir;
 mod upload_file;
+pub mod usage;
 
 const METADATA_VERSION: u32 = 1;
 
