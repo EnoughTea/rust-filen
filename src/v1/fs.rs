@@ -1,21 +1,10 @@
-pub use super::{dirs::*, download::*, files::*, sync_dir::*, upload::*};
+pub use super::{dirs::*, download_dir::*, download_file::*, files::*, sync_dir::*, upload_file::*};
 use crate::{crypto, utils, v1::*};
 use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_with::*;
-
-/// Contains just the response status and corresponding message.
-#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
-pub struct PlainApiResponse {
-    /// True when API call was successful; false otherwise.
-    pub status: bool,
-
-    /// Filen reason for success or failure.
-    pub message: String,
-}
-utils::display_from_json!(PlainApiResponse);
 
 /// Typed folder or file name metadata.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

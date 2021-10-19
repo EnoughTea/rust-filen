@@ -10,6 +10,17 @@ mod upload_file;
 
 const METADATA_VERSION: u32 = 1;
 
+/// Contains just the response status and corresponding message.
+#[derive(Debug, Clone, serde::Deserialize, Eq, PartialEq, serde::Serialize)]
+pub struct PlainApiResponse {
+    /// True when API call was successful; false otherwise.
+    pub status: bool,
+
+    /// Filen reason for success or failure.
+    pub message: Option<String>,
+}
+crate::utils::display_from_json!(PlainApiResponse);
+
 /// This macro generates a struct to parse Filen API response into.
 ///
 /// Filen API uses mostly the same format for all its responses, successfull or not.
@@ -36,7 +47,7 @@ macro_rules! api_response_struct {
             pub status: bool,
 
             /// Filen reason for success or failure.
-            pub message: String,
+            pub message: Option<String>,
 
             /// Resulting data.
             pub data: $response_data_type,
