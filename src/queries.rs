@@ -27,8 +27,10 @@ pub(crate) fn query_filen_api<T: Serialize + ?Sized, U: DeserializeOwned>(
         filen_endpoint.as_str(),
         payload,
         filen_settings.request_timeout.as_secs(),
-    )?;
-    Ok(filen_response.json::<U>()?)
+    );
+    deserialize_response(filen_response, || {
+        format!("Failed to query Filen API: {}", filen_endpoint)
+    })
 }
 
 /// Asynchronously sends POST with given payload to one of Filen API servers.
@@ -43,8 +45,11 @@ pub(crate) async fn query_filen_api_async<T: Serialize + ?Sized, U: DeserializeO
         payload,
         filen_settings.request_timeout.as_secs(),
     )
-    .await?;
-    Ok(filen_response.json::<U>().await?)
+    .await;
+    deserialize_response_async(filen_response, || {
+        format!("Failed to query Filen API (async): {}", filen_endpoint)
+    })
+    .await
 }
 
 pub(crate) fn download_from_filen(
@@ -60,12 +65,7 @@ pub(crate) fn download_from_filen(
         })
     };
 
-    let policy = retry_settings.to_exp_backoff_iterator();
-    let retry_result = retry::retry(policy, download_action);
-    retry_result.map_err(|retry_err| match retry_err {
-        retry::Error::Operation { error, .. } => error,
-        retry::Error::Internal(description) => anyhow!(unknown(&description)),
-    })
+    retry_operation(retry_settings, download_action)
 }
 
 pub(crate) async fn download_from_filen_async(
@@ -83,32 +83,44 @@ pub(crate) async fn download_from_filen_async(
             })
     };
 
-    let exp_backoff = retry_settings.to_exp_backoff_iterator();
-    let policy = fure::policies::attempts(fure::policies::backoff(exp_backoff), retry_settings.max_tries);
-    fure::retry(download_action, policy).await
+    retry_operation_async(retry_settings, download_action).await
 }
 
 /// Sends POST with given data blob to one of Filen upload servers.
 pub(crate) fn upload_to_filen<U: DeserializeOwned>(
     api_endpoint: &str,
     blob: Vec<u8>,
+    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<U> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.upload_servers)?;
-    let filen_response = post_blob(filen_endpoint.as_str(), blob, filen_settings.request_timeout.as_secs())?;
-    Ok(filen_response.json::<U>()?)
+    let upload_action = || {
+        let upload_result = post_blob(filen_endpoint.as_str(), &blob, filen_settings.request_timeout.as_secs());
+        deserialize_response(upload_result, || {
+            format!("Failed to upload file chunk to: {}", filen_endpoint)
+        })
+    };
+    retry_operation(retry_settings, upload_action)
 }
 
 /// Asynchronously sends POST with given data blob to one of Filen upload servers.
 pub(crate) async fn upload_to_filen_async<U: DeserializeOwned>(
     api_endpoint: &str,
     blob: Vec<u8>,
+    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<U> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.upload_servers)?;
-    let filen_response =
-        post_blob_async(filen_endpoint.as_str(), blob, filen_settings.request_timeout.as_secs()).await?;
-    Ok(filen_response.json::<U>().await?)
+    let upload_action = || async {
+        let upload_result =
+            post_blob_async(filen_endpoint.as_str(), &blob, filen_settings.request_timeout.as_secs()).await;
+        deserialize_response_async(upload_result, || {
+            format!("Failed to upload file chunk (async) to: {}", filen_endpoint)
+        })
+        .await
+    };
+
+    retry_operation_async(retry_settings, upload_action).await
 }
 
 /// Randomly chooses one of the URLs in the given slice.
@@ -147,20 +159,20 @@ async fn get_bytes_async(filen_endpoint: &str, timeout_secs: u64) -> Result<Vec<
 }
 
 /// Sends POST with given blob and timeout to the specified URL.
-fn post_blob(url: &str, blob: Vec<u8>, timeout_secs: u64) -> Result<reqwest::blocking::Response, reqwest::Error> {
+fn post_blob(url: &str, blob: &Vec<u8>, timeout_secs: u64) -> Result<reqwest::blocking::Response, reqwest::Error> {
     BLOCKING_CLIENT
         .post(url)
-        .body(blob)
+        .body(blob.clone())
         .header(header::USER_AGENT, CRATE_USER_AGENT)
         .timeout(Duration::from_secs(timeout_secs))
         .send()
 }
 
 /// Asynchronously sends POST with given blob and timeout to the specified URL.
-async fn post_blob_async(url: &str, blob: Vec<u8>, timeout_secs: u64) -> Result<reqwest::Response, reqwest::Error> {
+async fn post_blob_async(url: &str, blob: &Vec<u8>, timeout_secs: u64) -> Result<reqwest::Response, reqwest::Error> {
     ASYNC_CLIENT
         .post(url)
-        .body(blob)
+        .body(blob.clone())
         .header(header::USER_AGENT, CRATE_USER_AGENT)
         .timeout(Duration::from_secs(timeout_secs))
         .send()
@@ -205,4 +217,67 @@ fn produce_filen_endpoint(api_endpoint: &str, servers: &[Url]) -> Result<Url> {
             chosen_server, api_endpoint
         )))
     })
+}
+
+async fn retry_operation_async<T, CF>(retry_settings: &RetrySettings, operation: CF) -> Result<T>
+where
+    CF: fure::CreateFuture<T, Error>,
+{
+    let exp_backoff = retry_settings.to_exp_backoff_iterator();
+    let policy = fure::policies::attempts(fure::policies::backoff(exp_backoff), retry_settings.max_tries);
+    fure::retry(operation, policy).await
+}
+
+fn retry_operation<O, R, OR>(retry_settings: &RetrySettings, operation: O) -> Result<R>
+where
+    O: FnMut() -> OR,
+    OR: Into<retry::OperationResult<R, Error>>,
+{
+    let policy = retry_settings.to_exp_backoff_iterator();
+    let retry_result = retry::retry(policy, operation);
+    retry_result.map_err(|retry_err| match retry_err {
+        retry::Error::Operation { error, .. } => error,
+        retry::Error::Internal(description) => anyhow!(unknown(&description)),
+    })
+}
+
+fn deserialize_response<U, F>(
+    request_result: Result<reqwest::blocking::Response, reqwest::Error>,
+    error_message: F,
+) -> Result<U>
+where
+    U: DeserializeOwned,
+    F: FnOnce() -> String,
+{
+    match request_result {
+        Ok(filen_response) => raw_deserialize_response_to_json(filen_response),
+        Err(err) => Err(anyhow!(web_request_fail(&error_message(), err))),
+    }
+}
+
+async fn deserialize_response_async<U, F>(
+    request_result: Result<reqwest::Response, reqwest::Error>,
+    error_message: F,
+) -> Result<U>
+where
+    U: DeserializeOwned,
+    F: FnOnce() -> String,
+{
+    match request_result {
+        Ok(filen_response) => raw_deserialize_response_to_json_async(filen_response).await,
+        Err(err) => Err(anyhow!(web_request_fail(&error_message(), err))),
+    }
+}
+
+fn raw_deserialize_response_to_json<U: DeserializeOwned>(response: reqwest::blocking::Response) -> Result<U> {
+    response
+        .json::<U>()
+        .map_err(|err| anyhow!(web_request_fail("Cannot deserialize response body JSON", err)))
+}
+
+async fn raw_deserialize_response_to_json_async<U: DeserializeOwned>(response: reqwest::Response) -> Result<U> {
+    response
+        .json::<U>()
+        .await
+        .map_err(|err| anyhow!(web_request_fail("Cannot deserialize response body JSON", err)))
 }
