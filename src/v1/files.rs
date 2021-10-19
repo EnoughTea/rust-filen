@@ -39,25 +39,28 @@ pub struct FileMetadata {
 }
 
 impl FileMetadata {
-    pub fn from_name_and_local_path(name: &str, local_file_path: &PathBuf) -> Result<FileMetadata> {
-        let fs_metadata = fs::metadata(local_file_path)?;
-        let size = fs_metadata.len();
+    pub fn from_name_size_modified(name: &str, size: u64, last_modified: &SystemTime) -> Result<FileMetadata> {
         if size <= 0 {
-            bail!(bad_argument("File size is 0"));
+            bail!(bad_argument("File size should be > 0"));
         }
 
         let key = SecUtf8::from(utils::random_alphanumeric_string(32));
         let mime_guess = mime_guess::from_path(name).first_raw();
         let mime = mime_guess.unwrap_or("");
-        let last_modified_time = fs_metadata.modified().unwrap_or(SystemTime::now());
-        let last_modified = last_modified_time.duration_since(UNIX_EPOCH)?.as_secs();
+        let last_modified_secs = last_modified.duration_since(UNIX_EPOCH)?.as_secs();
         Ok(FileMetadata {
             name: name.to_owned(),
             size,
             mime: mime.to_owned(),
             key,
-            last_modified,
+            last_modified: last_modified_secs,
         })
+    }
+
+    pub fn from_name_and_local_path(name: &str, local_file_path: &PathBuf) -> Result<FileMetadata> {
+        let fs_metadata = fs::metadata(local_file_path)?;
+        let last_modified_time = fs_metadata.modified().unwrap_or(SystemTime::now());
+        FileMetadata::from_name_size_modified(name, fs_metadata.len(), &last_modified_time)
     }
 
     /// Decrypts file metadata string.
@@ -75,6 +78,18 @@ impl FileMetadata {
 
     pub fn to_metadata_string(&self, last_master_key: &SecUtf8) -> Result<String> {
         FileMetadata::encrypt_file_metadata(self, last_master_key)
+    }
+
+    pub fn name_encrypted(&self, last_master_key: &SecUtf8) -> String {
+        crypto::encrypt_metadata_str(&self.name, last_master_key.unsecure(), METADATA_VERSION).unwrap()
+    }
+
+    pub fn size_encrypted(&self, last_master_key: &SecUtf8) -> String {
+        crypto::encrypt_metadata_str(&self.size.to_string(), last_master_key.unsecure(), METADATA_VERSION).unwrap()
+    }
+
+    pub fn mime_encrypted(&self, last_master_key: &SecUtf8) -> String {
+        crypto::encrypt_metadata_str(&self.mime.to_string(), last_master_key.unsecure(), METADATA_VERSION).unwrap()
     }
 }
 
@@ -144,7 +159,7 @@ impl FileRenameRequestPayload {
         last_master_key: &SecUtf8,
     ) -> FileRenameRequestPayload {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(new_file_name, last_master_key);
-        let name_hashed = crypto::hash_fn(&new_file_name.to_lowercase());
+        let name_hashed = LocationNameMetadata::name_hashed(new_file_name);
         let metadata = file_metadata.to_metadata_string(last_master_key).unwrap(); // Should never panic... I think
         FileRenameRequestPayload {
             api_key,
