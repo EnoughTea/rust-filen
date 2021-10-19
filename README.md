@@ -2,9 +2,8 @@
 
 [Filen.io](https://filen.io) is a cloud storage provider with an open-source [desktop client](https://github.com/FilenCloudDienste/filen-desktop). My goal is to write a library which calls Filen's API in a meaningful way, and to learn Rust in process. Filen's API is currently undocumented and I try to get it right by studying the client's sources, so take it all with a grain of salt.
 
-This library is **not in a usable state**. All of the crypto stuff and a subset of API is implemented, but it is still incomplete.
-
-It is possible to login, receive user's RSA keys and perform CRUD on folders, but that's it for now.
+This library is **not in a usable state**, file uploading and sharing/linking is still missing.
+However, it is possible to login, receive user's RSA keys, perform CRUD on user folders, check Filen Sync folder contents and rename/move/trash files.
 
 ## 
 ```
