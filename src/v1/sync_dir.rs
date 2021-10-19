@@ -100,17 +100,20 @@ api_response_struct!(
 
 /// Calls [GET_DIR_PATH] endpoint. It fetches the entire Filen sync folder contents, with option
 /// to return empty data if nothing has been changed since the last call.
-pub fn get_dir_request(payload: &GetDirRequestPayload, settings: &FilenSettings) -> Result<GetDirResponsePayload> {
-    queries::query_filen_api(GET_DIR_PATH, payload, settings)
+pub fn get_dir_request(
+    payload: &GetDirRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<GetDirResponsePayload> {
+    queries::query_filen_api(GET_DIR_PATH, payload, filen_settings)
 }
 
 /// Calls [GET_DIR_PATH] endpoint asynchronously. It fetches the entire Filen sync folder contents, with option
 /// to return empty data if nothing has been changed since the last call.
 pub async fn get_dir_request_async(
     payload: &GetDirRequestPayload,
-    settings: &FilenSettings,
+    filen_settings: &FilenSettings,
 ) -> Result<GetDirResponsePayload> {
-    queries::query_filen_api_async(GET_DIR_PATH, payload, settings).await
+    queries::query_filen_api_async(GET_DIR_PATH, payload, filen_settings).await
 }
 
 #[cfg(test)]

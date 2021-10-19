@@ -81,31 +81,31 @@ api_response_struct!(UserUsageResponsePayload<Option<UserUsageResponseData>>);
 /// Calls [USER_SYNC_GET_DATA] endpoint. Used to fetch user sync storage stats.
 pub fn user_sync_get_data_request(
     payload: &UserSyncGetDataRequestPayload,
-    settings: &FilenSettings,
+    filen_settings: &FilenSettings,
 ) -> Result<UserSyncGetDataResponsePayload> {
-    queries::query_filen_api(USER_SYNC_GET_DATA_PATH, payload, settings)
+    queries::query_filen_api(USER_SYNC_GET_DATA_PATH, payload, filen_settings)
 }
 
 /// Calls [USER_SYNC_GET_DATA] endpoint asynchronously. Used to fetch user sync storage stats.
 pub async fn user_sync_get_data_request_async(
     payload: &UserSyncGetDataRequestPayload,
-    settings: &FilenSettings,
+    filen_settings: &FilenSettings,
 ) -> Result<UserSyncGetDataResponsePayload> {
-    queries::query_filen_api_async(USER_SYNC_GET_DATA_PATH, payload, settings).await
+    queries::query_filen_api_async(USER_SYNC_GET_DATA_PATH, payload, filen_settings).await
 }
 
 /// Calls [USER_USAGE_PATH] endpoint. Used to fetch user general usage stats.
 pub fn user_usage_request(
     payload: &UserUsageRequestPayload,
-    settings: &FilenSettings,
+    filen_settings: &FilenSettings,
 ) -> Result<UserUsageResponsePayload> {
-    queries::query_filen_api(USER_USAGE_PATH, payload, settings)
+    queries::query_filen_api(USER_USAGE_PATH, payload, filen_settings)
 }
 
 /// Calls [USER_USAGE_PATH] endpoint asynchronously. Used to fetch user general usage stats.
 pub async fn user_usage_request_async(
     payload: &UserUsageRequestPayload,
-    settings: &FilenSettings,
+    filen_settings: &FilenSettings,
 ) -> Result<UserUsageResponsePayload> {
-    queries::query_filen_api_async(USER_USAGE_PATH, payload, settings).await
+    queries::query_filen_api_async(USER_USAGE_PATH, payload, filen_settings).await
 }

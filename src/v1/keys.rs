@@ -113,17 +113,17 @@ api_response_struct!(
 /// Calls [KEY_PAIR_INFO_PATH] endpoint. Used to get RSA public/private key pair.
 pub fn key_pair_info_request(
     payload: &UserKeyPairInfoRequestPayload,
-    settings: &FilenSettings,
+    filen_settings: &FilenSettings,
 ) -> Result<UserKeyPairInfoResponsePayload> {
-    queries::query_filen_api(KEY_PAIR_INFO_PATH, payload, settings)
+    queries::query_filen_api(KEY_PAIR_INFO_PATH, payload, filen_settings)
 }
 
 /// Calls [KEY_PAIR_INFO_PATH] endpoint asynchronously. Used to get RSA public/private key pair.
 pub async fn key_pair_info_request_async(
     payload: &UserKeyPairInfoRequestPayload,
-    settings: &FilenSettings,
+    filen_settings: &FilenSettings,
 ) -> Result<UserKeyPairInfoResponsePayload> {
-    queries::query_filen_api_async(KEY_PAIR_INFO_PATH, payload, settings).await
+    queries::query_filen_api_async(KEY_PAIR_INFO_PATH, payload, filen_settings).await
 }
 
 /// Calls [MASTER_KEYS_PATH] endpoint. Used to get/update user's master keys.
@@ -131,9 +131,9 @@ pub async fn key_pair_info_request_async(
 /// and resulting master keys chain returned in response payload.
 pub fn master_keys_fetch_request(
     payload: &MasterKeysFetchRequestPayload,
-    settings: &FilenSettings,
+    filen_settings: &FilenSettings,
 ) -> Result<MasterKeysFetchResponsePayload> {
-    queries::query_filen_api(MASTER_KEYS_PATH, payload, settings)
+    queries::query_filen_api(MASTER_KEYS_PATH, payload, filen_settings)
 }
 
 /// Calls [MASTER_KEYS_PATH] endpoint asynchronously. Used to get/update user's master keys.
@@ -141,9 +141,9 @@ pub fn master_keys_fetch_request(
 /// and resulting master keys chain returned in response payload.
 pub async fn master_keys_fetch_request_async(
     payload: &MasterKeysFetchRequestPayload,
-    settings: &FilenSettings,
+    filen_settings: &FilenSettings,
 ) -> Result<MasterKeysFetchResponsePayload> {
-    queries::query_filen_api_async(MASTER_KEYS_PATH, payload, settings).await
+    queries::query_filen_api_async(MASTER_KEYS_PATH, payload, filen_settings).await
 }
 
 #[cfg(test)]

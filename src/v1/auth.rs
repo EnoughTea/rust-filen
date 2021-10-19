@@ -133,30 +133,30 @@ api_response_struct!(
 /// Calls [AUTH_INFO_PATH] endpoint. Used to get used auth version and Filen salt.
 pub fn auth_info_request(
     payload: &AuthInfoRequestPayload,
-    settings: &FilenSettings,
+    filen_settings: &FilenSettings,
 ) -> Result<AuthInfoResponsePayload> {
-    queries::query_filen_api(AUTH_INFO_PATH, payload, settings)
+    queries::query_filen_api(AUTH_INFO_PATH, payload, filen_settings)
 }
 
 /// Calls [AUTH_INFO_PATH] endpoint asynchronously. Used to get used auth version and Filen salt.
 pub async fn auth_info_request_async(
     payload: &AuthInfoRequestPayload,
-    settings: &FilenSettings,
+    filen_settings: &FilenSettings,
 ) -> Result<AuthInfoResponsePayload> {
-    queries::query_filen_api_async(AUTH_INFO_PATH, payload, settings).await
+    queries::query_filen_api_async(AUTH_INFO_PATH, payload, filen_settings).await
 }
 
 /// Calls [LOGIN_PATH] endpoint. Used to get API key, master keys and private key.
-pub fn login_request(payload: &LoginRequestPayload, settings: &FilenSettings) -> Result<LoginResponsePayload> {
-    queries::query_filen_api(LOGIN_PATH, payload, settings)
+pub fn login_request(payload: &LoginRequestPayload, filen_settings: &FilenSettings) -> Result<LoginResponsePayload> {
+    queries::query_filen_api(LOGIN_PATH, payload, filen_settings)
 }
 
 /// Calls [LOGIN_PATH] endpoint asynchronously. Used to get API key, master keys and private key.
 pub async fn login_request_async(
     payload: &LoginRequestPayload,
-    settings: &FilenSettings,
+    filen_settings: &FilenSettings,
 ) -> Result<LoginResponsePayload> {
-    queries::query_filen_api_async(LOGIN_PATH, payload, settings).await
+    queries::query_filen_api_async(LOGIN_PATH, payload, filen_settings).await
 }
 
 #[cfg(test)]

@@ -149,18 +149,18 @@ api_response_struct!(
 /// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder, created by Filen's client.
 pub fn download_dir_request(
     payload: &DownloadDirRequestPayload,
-    settings: &FilenSettings,
+    filen_settings: &FilenSettings,
 ) -> Result<DownloadDirResponsePayload> {
-    queries::query_filen_api(DOWNLOAD_DIR, payload, settings)
+    queries::query_filen_api(DOWNLOAD_DIR, payload, filen_settings)
 }
 
 /// Calls [USER_DIRS_PATH] endpoint asynchronously. Used to get a list of user's folders.
 /// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder, created by Filen's client.
 pub async fn download_dir_request_async(
     payload: &DownloadDirRequestPayload,
-    settings: &FilenSettings,
+    filen_settings: &FilenSettings,
 ) -> Result<DownloadDirResponsePayload> {
-    queries::query_filen_api_async(DOWNLOAD_DIR, payload, settings).await
+    queries::query_filen_api_async(DOWNLOAD_DIR, payload, filen_settings).await
 }
 
 #[cfg(test)]
