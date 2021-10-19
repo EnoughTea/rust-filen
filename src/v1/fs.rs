@@ -26,6 +26,10 @@ impl LocationNameMetadata {
                 .map(|typed| typed.name)
         })
     }
+
+    pub fn name_hashed(name: &str) -> String {
+        crypto::hash_fn(&name.to_lowercase())
+    }
 }
 
 // Used for requests to [DIR_TRASH_PATH] or [FILE_TRASH_PATH] endpoint.
@@ -58,7 +62,7 @@ utils::display_from_json!(LocationExistsRequestPayload);
 
 impl LocationExistsRequestPayload {
     pub fn new(api_key: SecUtf8, target_parent: String, target_name: &str) -> LocationExistsRequestPayload {
-        let name_hashed = crypto::hash_fn(&target_name.to_lowercase());
+        let name_hashed = LocationNameMetadata::name_hashed(&target_name);
         LocationExistsRequestPayload {
             api_key,
             parent: target_parent,

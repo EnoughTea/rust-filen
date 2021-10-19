@@ -169,7 +169,7 @@ impl DirRenameRequestPayload {
         last_master_key: &SecUtf8,
     ) -> DirRenameRequestPayload {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(new_folder_name, last_master_key);
-        let name_hashed = crypto::hash_fn(&new_folder_name.to_lowercase());
+        let name_hashed = LocationNameMetadata::name_hashed(new_folder_name);
         DirRenameRequestPayload {
             api_key,
             uuid: folder_uuid,
