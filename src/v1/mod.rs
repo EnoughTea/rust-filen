@@ -1,6 +1,7 @@
 pub mod auth;
 mod dirs;
-mod download;
+mod download_dir;
+mod download_file;
 mod files;
 pub mod fs;
 pub mod keys;
