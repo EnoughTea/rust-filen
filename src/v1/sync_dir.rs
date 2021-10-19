@@ -1,7 +1,6 @@
 use crate::{
-    queries,
-    settings::FilenSettings,
-    utils,
+    filen_settings::FilenSettings,
+    queries, utils,
     v1::{fs::*, *},
 };
 use anyhow::*;

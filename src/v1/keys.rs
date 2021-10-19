@@ -1,4 +1,4 @@
-use crate::{crypto, errors::bad_argument, queries, settings::FilenSettings};
+use crate::{crypto, errors::bad_argument, filen_settings::FilenSettings, queries};
 use anyhow::*;
 use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};

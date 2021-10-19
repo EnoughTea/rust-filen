@@ -1,9 +1,10 @@
 use std::{convert::TryInto, io::Write};
 
 use crate::{
-    crypto, queries,
+    crypto,
+    filen_settings::FilenSettings,
+    queries,
     retry_settings::RetrySettings,
-    settings::FilenSettings,
     utils,
     v1::{fs::*, *},
 };

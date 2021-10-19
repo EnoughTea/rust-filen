@@ -1,9 +1,8 @@
 use crate::{
     crypto::{self, FilenPasswordWithMasterKey},
     errors::*,
-    queries,
-    settings::FilenSettings,
-    utils,
+    filen_settings::FilenSettings,
+    queries, utils,
 };
 use anyhow::*;
 use secstr::{SecUtf8, SecVec};

@@ -9,8 +9,8 @@ use serde::Serialize;
 use std::time::Duration;
 
 use crate::errors::*;
+use crate::filen_settings::FilenSettings;
 use crate::retry_settings::RetrySettings;
-use crate::settings::FilenSettings;
 
 static ASYNC_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| reqwest::Client::new());
 static BLOCKING_CLIENT: Lazy<reqwest::blocking::Client> = Lazy::new(|| reqwest::blocking::Client::new());

@@ -6,10 +6,10 @@ pub use secstr;
 
 mod crypto;
 pub mod errors;
+pub mod filen_settings;
 mod limited_exponential;
 mod queries;
 pub mod retry_settings;
-pub mod settings;
 mod utils;
 pub mod v1;
 

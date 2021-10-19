@@ -8,7 +8,7 @@ It is possible to login, receive user's RSA keys and perform CRUD on folders, bu
 
 ## 
 ```
-use crate::{v1::auth, settings::FilenSettings};
+use crate::{v1::auth, filen_settings::FilenSettings};
 use anyhow::*;
 use secstr::SecUtf8;
 

@@ -12,7 +12,7 @@ use std::time::Duration;
 
 use camino::Utf8PathBuf;
 
-use crate::settings::FilenSettings;
+use crate::filen_settings::FilenSettings;
 use crate::utils;
 
 pub(crate) fn init_server() -> (MockServer, FilenSettings) {

@@ -4,7 +4,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::{crypto, errors::*, queries, settings::FilenSettings, utils, v1::fs::*, v1::METADATA_VERSION};
+use crate::{crypto, errors::*, filen_settings::FilenSettings, queries, utils, v1::fs::*, v1::METADATA_VERSION};
 use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
