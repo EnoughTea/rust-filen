@@ -1,3 +1,5 @@
+use serde_with::*;
+
 pub mod auth;
 mod dirs;
 mod download_dir;

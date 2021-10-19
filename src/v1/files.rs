@@ -18,7 +18,7 @@ const FILE_TRASH_PATH: &str = "/v1/file/trash";
 
 /// File properties and a key used to decrypt file data.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct FileMetadata {
+pub struct FileProperties {
     /// Plain file name.
     pub name: String,
 
@@ -33,13 +33,13 @@ pub struct FileMetadata {
     /// This is not a copy of master key, but a file-associated random alphanumeric string.
     pub key: SecUtf8,
 
-    /// Timestamp in seconds.
+    /// 'Last modified' timestamp in seconds.
     #[serde(rename = "lastModified")]
     pub last_modified: u64,
 }
 
-impl FileMetadata {
-    pub fn from_name_size_modified(name: &str, size: u64, last_modified: &SystemTime) -> Result<FileMetadata> {
+impl FileProperties {
+    pub fn from_name_size_modified(name: &str, size: u64, last_modified: &SystemTime) -> Result<FileProperties> {
         if size <= 0 {
             bail!(bad_argument("File size should be > 0"));
         }
@@ -48,7 +48,7 @@ impl FileMetadata {
         let mime_guess = mime_guess::from_path(name).first_raw();
         let mime = mime_guess.unwrap_or("");
         let last_modified_secs = last_modified.duration_since(UNIX_EPOCH)?.as_secs();
-        Ok(FileMetadata {
+        Ok(FileProperties {
             name: name.to_owned(),
             size,
             mime: mime.to_owned(),
@@ -57,27 +57,27 @@ impl FileMetadata {
         })
     }
 
-    pub fn from_name_and_local_path(name: &str, local_file_path: &PathBuf) -> Result<FileMetadata> {
+    pub fn from_name_and_local_path(name: &str, local_file_path: &PathBuf) -> Result<FileProperties> {
         let fs_metadata = fs::metadata(local_file_path)?;
         let last_modified_time = fs_metadata.modified().unwrap_or(SystemTime::now());
-        FileMetadata::from_name_size_modified(name, fs_metadata.len(), &last_modified_time)
+        FileProperties::from_name_size_modified(name, fs_metadata.len(), &last_modified_time)
     }
 
     /// Decrypts file metadata string.
-    pub fn decrypt_file_metadata(metadata: &str, last_master_key: &SecUtf8) -> Result<FileMetadata> {
+    pub fn decrypt_file_metadata(metadata: &str, last_master_key: &SecUtf8) -> Result<FileProperties> {
         crypto::decrypt_metadata_str(metadata, last_master_key.unsecure()).and_then(|metadata| {
-            serde_json::from_str::<FileMetadata>(&metadata).with_context(|| "Cannot deserialize synced file metadata")
+            serde_json::from_str::<FileProperties>(&metadata).with_context(|| "Cannot deserialize synced file metadata")
         })
     }
 
     /// Decrypts file metadata string.
-    pub fn encrypt_file_metadata(metadata: &FileMetadata, last_master_key: &SecUtf8) -> Result<String> {
+    pub fn encrypt_file_metadata(metadata: &FileProperties, last_master_key: &SecUtf8) -> Result<String> {
         let metadata_json = json!(metadata).to_string();
         crypto::encrypt_metadata_str(&metadata_json, last_master_key.unsecure(), METADATA_VERSION)
     }
 
     pub fn to_metadata_string(&self, last_master_key: &SecUtf8) -> Result<String> {
-        FileMetadata::encrypt_file_metadata(self, last_master_key)
+        FileProperties::encrypt_file_metadata(self, last_master_key)
     }
 
     pub fn name_encrypted(&self, last_master_key: &SecUtf8) -> String {
@@ -155,7 +155,7 @@ impl FileRenameRequestPayload {
         api_key: SecUtf8,
         uuid: String,
         new_file_name: &str,
-        file_metadata: &FileMetadata,
+        file_metadata: &FileProperties,
         last_master_key: &SecUtf8,
     ) -> FileRenameRequestPayload {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(new_file_name, last_master_key);

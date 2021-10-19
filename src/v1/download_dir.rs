@@ -9,7 +9,6 @@ use crate::{
 use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
-use serde_with::*;
 
 const DOWNLOAD_DIR: &str = "/v1/download/dir";
 const DOWNLOAD_DIR_SHARED: &str = "/v1/download/dir/shared";
@@ -77,8 +76,8 @@ utils::display_from_json!(DownloadedFileData);
 
 impl DownloadedFileData {
     /// Decrypts file metadata string.
-    pub fn decrypt_file_metadata(&self, last_master_key: &SecUtf8) -> Result<FileMetadata> {
-        FileMetadata::decrypt_file_metadata(&self.metadata, last_master_key)
+    pub fn decrypt_file_metadata(&self, last_master_key: &SecUtf8) -> Result<FileProperties> {
+        FileProperties::decrypt_file_metadata(&self.metadata, last_master_key)
     }
 
     /// Decrypt name, size and mime metadata. File key is contained within file metadata in [DownloadedFileData::metadata] field,

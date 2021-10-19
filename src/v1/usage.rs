@@ -2,7 +2,6 @@ use crate::{filen_settings::FilenSettings, queries, utils, v1::*};
 use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
-use serde_with::*;
 
 const USER_USAGE_PATH: &str = "/v1/user/usage";
 const USER_SYNC_GET_DATA_PATH: &str = "/v1/user/sync/get/data";

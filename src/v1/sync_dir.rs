@@ -6,7 +6,6 @@ use crate::{
 use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
-use serde_with::*;
 
 pub const FILEN_SYNC_FOLDER_TYPE: &str = "sync";
 
@@ -89,8 +88,8 @@ utils::display_from_json!(SyncedFileData);
 
 impl SyncedFileData {
     /// Decrypt name metadata into actual folder name.
-    pub fn decrypt_file_metadata(&self, last_master_key: &SecUtf8) -> Result<FileMetadata> {
-        FileMetadata::decrypt_file_metadata(&self.metadata, last_master_key)
+    pub fn decrypt_file_metadata(&self, last_master_key: &SecUtf8) -> Result<FileProperties> {
+        FileProperties::decrypt_file_metadata(&self.metadata, last_master_key)
     }
 }
 

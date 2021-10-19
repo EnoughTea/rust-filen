@@ -4,7 +4,6 @@ use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use serde_with::*;
 
 /// Typed folder or file name metadata.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
