@@ -34,6 +34,28 @@ pub struct DownloadDirResponseData {
 }
 utils::display_from_json!(DownloadDirResponseData);
 
+impl DownloadDirResponseData {
+    pub fn decrypt_all_folders(&self, last_master_key: &SecUtf8) -> Result<Vec<(FolderData, String)>> {
+        self.folders
+            .iter()
+            .map(|data| {
+                data.decrypt_name_metadata(last_master_key)
+                    .map(|name| (data.clone(), name))
+            })
+            .collect::<Result<Vec<_>>>()
+    }
+
+    pub fn decrypt_all_files(&self, last_master_key: &SecUtf8) -> Result<Vec<(DownloadedFileData, FileProperties)>> {
+        self.files
+            .iter()
+            .map(|data| {
+                data.decrypt_file_metadata(last_master_key)
+                    .map(|properties| (data.clone(), properties))
+            })
+            .collect::<Result<Vec<_>>>()
+    }
+}
+
 /// Folder data for one of the folder in Filen sync folder.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DownloadedFileData {

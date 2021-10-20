@@ -268,14 +268,13 @@ pub async fn file_trash_request_async(
 
 #[cfg(test)]
 mod tests {
+    use anyhow::*;
     use closure::closure;
     use once_cell::sync::Lazy;
     use secstr::SecUtf8;
     use tokio::task::spawn_blocking;
 
-    use crate::test_utils::*;
-
-    use super::*;
+    use crate::{test_utils::*, v1::fs::*};
 
     static API_KEY: Lazy<SecUtf8> =
         Lazy::new(|| SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"));
@@ -293,7 +292,7 @@ mod tests {
         };
         let expected_response: LocationExistsResponsePayload =
             deserialize_from_file("tests/resources/responses/file_exists.json");
-        let mock = setup_json_mock(FILE_EXISTS_PATH, &request_payload, &expected_response, &server);
+        let mock = setup_json_mock(super::FILE_EXISTS_PATH, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
             closure!(clone request_payload, clone filen_settings, || { file_exists_request(&request_payload, &filen_settings) }),
