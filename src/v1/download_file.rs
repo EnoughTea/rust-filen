@@ -1,6 +1,6 @@
 use std::{convert::TryInto, io::Write};
 
-use crate::{crypto, filen_settings::FilenSettings, queries, retry_settings::RetrySettings, utils};
+use crate::{crypto, filen_settings::FilenSettings, queries, retry_settings::RetrySettings, utils, v1::fs::*};
 use anyhow::*;
 use futures::FutureExt;
 use secstr::SecUtf8;
@@ -38,6 +38,26 @@ pub async fn download_chunk_async(
 ) -> Result<Vec<u8>> {
     let api_endpoint = utils::filen_file_address_to_api_endpoint(region, bucket, file_uuid, chunk_index);
     queries::download_from_filen_async(&api_endpoint, retry_settings, filen_settings).await
+}
+
+pub fn download_and_decrypt_file_from_data_and_key<W: std::io::Write>(
+    file_data: &DownloadedFileData,
+    file_key: &SecUtf8,
+    retry_settings: &RetrySettings,
+    filen_settings: &FilenSettings,
+    writer: &mut std::io::BufWriter<W>,
+) -> Result<u64> {
+    download_and_decrypt_file(
+        &file_data.region,
+        &file_data.bucket,
+        &file_data.uuid,
+        file_data.chunks,
+        file_data.version,
+        file_key,
+        retry_settings,
+        filen_settings,
+        writer,
+    )
 }
 
 /// Synchronously downloads and decryptes the specified file from Filen download server defined by a region and a bucket.
