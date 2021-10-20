@@ -5,6 +5,28 @@ use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
+/// Folder data for one of the user folders or for one of the folders in Filen sync folder.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct FolderData {
+    /// Folder ID, UUID V4 in hyphenated lowercase format.
+    pub uuid: String,
+
+    /// Metadata containing folder name.
+    #[serde(rename = "name")]
+    pub name_metadata: String,
+
+    /// Either parent folder ID, or "base" for rooted folders.
+    pub parent: String,
+}
+utils::display_from_json!(FolderData);
+
+impl FolderData {
+    /// Decrypt name metadata into actual folder name.
+    pub fn decrypt_name_metadata(&self, last_master_key: &SecUtf8) -> Result<String> {
+        LocationNameMetadata::decrypt_name_from_metadata(&self.name_metadata, last_master_key)
+    }
+}
+
 /// Typed folder or file name metadata.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub(crate) struct LocationNameMetadata {

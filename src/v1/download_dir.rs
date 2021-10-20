@@ -28,7 +28,7 @@ pub struct DownloadDirRequestPayload {
 /// Response data for [DOWNLOAD_DIR] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DownloadDirResponseData {
-    pub folders: Vec<SyncedDirData>,
+    pub folders: Vec<FolderData>,
 
     pub files: Vec<DownloadedFileData>,
 }

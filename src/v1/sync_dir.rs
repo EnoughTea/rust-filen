@@ -33,33 +33,11 @@ utils::display_from_json!(GetDirRequestPayload);
 /// Response data for [GET_DIR_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct GetDirResponseData {
-    pub folders: Vec<SyncedDirData>,
+    pub folders: Vec<FolderData>,
 
     pub files: Vec<SyncedFileData>,
 }
 utils::display_from_json!(GetDirResponseData);
-
-/// Folder data for one of the folder in Filen sync folder.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct SyncedDirData {
-    /// Folder ID, UUID V4 in hyphenated lowercase format.
-    pub uuid: String,
-
-    /// Metadata containing folder name.
-    #[serde(rename = "name")]
-    pub name_metadata: String,
-
-    /// Either parent folder ID, or "base" for rooted folders.
-    pub parent: String,
-}
-utils::display_from_json!(SyncedDirData);
-
-impl SyncedDirData {
-    /// Decrypt name metadata into actual folder name.
-    pub fn decrypt_name_metadata(&self, last_master_key: &SecUtf8) -> Result<String> {
-        LocationNameMetadata::decrypt_name_from_metadata(&self.name_metadata, last_master_key)
-    }
-}
 
 /// Folder data for one of the folder in Filen sync folder.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
