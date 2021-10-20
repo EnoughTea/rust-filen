@@ -80,16 +80,16 @@ impl FileProperties {
         FileProperties::encrypt_file_metadata(self, last_master_key)
     }
 
-    pub fn name_encrypted(&self, last_master_key: &SecUtf8) -> String {
-        crypto::encrypt_metadata_str(&self.name, last_master_key.unsecure(), METADATA_VERSION).unwrap()
+    pub fn name_encrypted(&self) -> String {
+        crypto::encrypt_metadata_str(&self.name, &self.key.unsecure(), METADATA_VERSION).unwrap()
     }
 
-    pub fn size_encrypted(&self, last_master_key: &SecUtf8) -> String {
-        crypto::encrypt_metadata_str(&self.size.to_string(), last_master_key.unsecure(), METADATA_VERSION).unwrap()
+    pub fn size_encrypted(&self) -> String {
+        crypto::encrypt_metadata_str(&self.size.to_string(), &self.key.unsecure(), METADATA_VERSION).unwrap()
     }
 
-    pub fn mime_encrypted(&self, last_master_key: &SecUtf8) -> String {
-        crypto::encrypt_metadata_str(&self.mime.to_string(), last_master_key.unsecure(), METADATA_VERSION).unwrap()
+    pub fn mime_encrypted(&self) -> String {
+        crypto::encrypt_metadata_str(&self.mime.to_string(), &self.key.unsecure(), METADATA_VERSION).unwrap()
     }
 }
 
