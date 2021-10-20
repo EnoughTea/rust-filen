@@ -18,16 +18,20 @@ use secstr::SecUtf8;    // or crate::secstr::SecUtf8, it re-exports secstr just 
 There are async versions of every API query, but examples will be blocking, this README is big enough as it is.
 Let's login first.
 
-### Logging in
+### Getting auth info
+
+Actually, before logging in, we have to know how to do so.
 
 ```rust
+// First let's calculate Filen password used for logging in.
+// For that we need to know user's password, of course,
+// and 'version' number which tells us which encryption algorithm to use.
+// To get it all, call `/auth/info` endpoint:
 let user_email = SecUtf8::from("registered.user@email.com");
 let user_password = SecUtf8::from("user.password.in.plaintext");
 let user_two_factor_key = SecUtf8::from("XXXXXX"); // Filen actually uses XXXXXX when 2FA is absent.
-let filen_settings = FilenSettings::default();
+let filen_settings = FilenSettings::default();  // Provides Filen server URLs.
 
-// First let's get Filen password and master key from user password,
-// for that we need to call `/auth/info` endpoint:
 let auth_info_request_payload = auth::AuthInfoRequestPayload {
     email: user_email.clone(),
     two_factor_key: user_two_factor_key.clone(),
@@ -37,10 +41,16 @@ if !auth_info_response.status || auth_info_response.data.is_none() {
     bail!("Filen API failed to return auth info: {:?}", auth_info_response.message);
 }
 let auth_info_response_data = auth_info_response.data.unwrap();
+// filen_password_with_master_key() helper calculates Filen password for us,
+// depending on returned auth_info_response_data.
 let filen_password_and_m_key = auth_info_response_data
     .filen_password_with_master_key(&user_password)
     .unwrap();
+```
 
+### Logging in
+
+```rust
 // Now that we have Filen password, we can login. Master key is not needed for login,
 // but is also very important, since it is used often throughout the API to encrypt/decrypt metadata.
 let login_request_payload = auth::LoginRequestPayload {
@@ -55,12 +65,11 @@ if !login_response.status || login_response.data.is_none() {
 }
 // Login confirmed, now you can take API key and user's master key from the LoginResponseData
 // and go perform some API calls!
-
 let login_response_data = login_response.data.unwrap();
 let api_key = login_response_data.api_key;
-// Just using filen_password_and_m_key.m_key everywhere is not correct,
-// but it will work for the demo purposes
 let last_master_key = filen_password_and_m_key.m_key;
+// Just using filen_password_and_m_key.m_key everywhere is not correct,
+// but it will work for the demo purposes.
 ```
 
 ### Gettings user's default folder
