@@ -78,6 +78,15 @@ api_response_struct!(
     UserDirsResponsePayload<Vec<UserDirData>>
 );
 
+impl UserDirsResponsePayload {
+    pub fn find_default_folder(&self) -> Option<UserDirData> {
+        self.data
+            .iter()
+            .find(|dir_data| dir_data.default)
+            .map(|found_default_dir| found_default_dir.clone())
+    }
+}
+
 // Used for requests to [DIR_CREATE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirCreateRequestPayload {
