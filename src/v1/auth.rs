@@ -45,7 +45,8 @@ pub struct AuthInfoResponseData {
 utils::display_from_json!(AuthInfoResponseData);
 
 impl AuthInfoResponseData {
-    fn filen_password_with_master_key(&self, user_password: &SecUtf8) -> Result<FilenPasswordWithMasterKey> {
+    /// Produces a Filen master key and a password hash used for a login API call.
+    pub fn filen_password_with_master_key(&self, user_password: &SecUtf8) -> Result<FilenPasswordWithMasterKey> {
         match self.auth_version {
             1 => Ok(FilenPasswordWithMasterKey::from_user_password(user_password)),
             2 => {
