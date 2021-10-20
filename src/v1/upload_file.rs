@@ -6,6 +6,7 @@ use std::{
 
 use crate::{
     crypto,
+    errors::unknown,
     file_chunk_pos::FileChunkPositions,
     filen_settings::FilenSettings,
     queries,
@@ -27,7 +28,7 @@ const UPLOAD_DONE_PATH: &str = "/v1/upload/done";
 
 /// Response data for [UPLOAD_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UploadFileResponseData {
+pub struct UploadFileChunkResponseData {
     pub bucket: String,
 
     pub region: String,
@@ -43,7 +44,7 @@ pub struct UploadFileResponseData {
 }
 api_response_struct!(
     /// Response for [UPLOAD_PATH] endpoint.
-    UploadFileResponsePayload<Option<UploadFileResponseData>>
+    UploadFileChunkResponsePayload<Option<UploadFileChunkResponseData>>
 );
 
 /// Used for requests to [UPLOAD_DONE_PATH] endpoint.
@@ -104,7 +105,7 @@ struct UploadedFileProperties {
 
 impl UploadedFileProperties {
     pub fn from_file_properties(
-        file_metadata: &FileProperties,
+        file_properties: &FileProperties,
         parent_uuid: &str,
         chunk_size: u32,
         last_master_key: &SecUtf8,
@@ -113,13 +114,13 @@ impl UploadedFileProperties {
         let rm = SecUtf8::from(utils::random_alphanumeric_string(32));
         let upload_key = SecUtf8::from(utils::random_alphanumeric_string(32));
 
-        let file_metadata_encrypted = file_metadata.to_metadata_string(&last_master_key)?;
-        let name_metadata_encrypted = file_metadata.name_encrypted();
-        let size_metadata_encrypted = file_metadata.size_encrypted();
-        let mime_metadata_encrypted = file_metadata.mime_encrypted();
-        let name_hashed = LocationNameMetadata::name_hashed(&file_metadata.name);
+        let file_metadata_encrypted = file_properties.to_metadata_string(&last_master_key)?;
+        let name_metadata_encrypted = file_properties.name_encrypted();
+        let size_metadata_encrypted = file_properties.size_encrypted();
+        let mime_metadata_encrypted = file_properties.mime_encrypted();
+        let name_hashed = LocationNameMetadata::name_hashed(&file_properties.name);
 
-        let file_chunks = calculate_chunk_count(chunk_size, file_metadata.size);
+        let file_chunks = calculate_chunk_count(chunk_size, file_properties.size);
         Ok(UploadedFileProperties {
             uuid: new_file_uuid,
             name_metadata: name_metadata_encrypted,
@@ -128,7 +129,7 @@ impl UploadedFileProperties {
             chunks: file_chunks,
             mime_metadata: mime_metadata_encrypted,
             file_metadata: file_metadata_encrypted,
-            file_key: file_metadata.key.clone(),
+            file_key: file_properties.key.clone(),
             rm,
             upload_key,
             expire: DEFAULT_EXPIRE.to_owned(),
@@ -192,11 +193,11 @@ fn upload_file<R: std::io::Read + std::io::Seek>(
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
     reader: &mut std::io::BufReader<R>,
-) -> Result<PlainApiResponse> {
+) -> Result<(PlainApiResponse, Vec<UploadFileChunkResponsePayload>)> {
     let upload_properties =
         UploadedFileProperties::from_file_properties(file_properties, parent_uuid, FILE_CHUNK_SIZE, last_master_key)?;
     let file_chunk_positions = FileChunkPositions::new(FILE_CHUNK_SIZE, file_properties.size);
-    let _chunk_upload_responses = file_chunk_positions
+    let chunk_upload_responses = file_chunk_positions
         .map(|chunk_pos| {
             let mut chunk_buf = vec![0u8; chunk_pos.chunk_size as usize];
             let read_result = reader
@@ -213,13 +214,24 @@ fn upload_file<R: std::io::Read + std::io::Seek>(
                 )
             })
         })
-        .collect::<Result<Vec<UploadFileResponsePayload>>>()?;
+        .collect::<Result<Vec<UploadFileChunkResponsePayload>>>()?;
 
+    let maybe_failed_chunk = chunk_upload_responses.iter().find(|r| !r.status);
+    match maybe_failed_chunk {
+        Some(failed_chunk) => {
+            // At least one chunk failed with 'status: false', so fail entire upload, I guess
+            let message = format!("Filen failed at least one uploaded file chunk: {:?}", failed_chunk);
+            Err(anyhow!(unknown(&message)))
+        }
+        None => {
     let upload_done_payload = UploadDoneRequestPayload {
         uuid: upload_properties.uuid,
         upload_key: upload_properties.upload_key,
     };
-    upload_done_request(&upload_done_payload, &filen_settings)
+            let mark_done_response = upload_done_request(&upload_done_payload, &filen_settings)?;
+            Ok((mark_done_response, chunk_upload_responses))
+        }
+    }
 }
 
 fn encrypt_and_upload_chunk(
@@ -229,15 +241,16 @@ fn encrypt_and_upload_chunk(
     upload_properties: &UploadedFileProperties,
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
-) -> Result<UploadFileResponsePayload> {
+) -> Result<UploadFileChunkResponsePayload> {
     let chunk_encrypted = crypto::encrypt_file_data(
         &chunk,
         upload_properties.file_key.unsecure().as_bytes().try_into().unwrap(),
         upload_properties.version,
     )?;
 
-    queries::upload_to_filen::<UploadFileResponsePayload>(
-        &upload_properties.to_api_endpoint(chunk_index, api_key),
+    let api_endpoint = upload_properties.to_api_endpoint(chunk_index, api_key);
+    queries::upload_to_filen::<UploadFileChunkResponsePayload>(
+        &api_endpoint,
         chunk_encrypted,
         retry_settings,
         filen_settings,
@@ -251,14 +264,14 @@ async fn encrypt_and_upload_chunk_async(
     file_properties: &UploadedFileProperties,
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
-) -> Result<UploadFileResponsePayload> {
+) -> Result<UploadFileChunkResponsePayload> {
     let chunk_encrypted = crypto::encrypt_file_data(
         &chunk,
         file_properties.file_key.unsecure().as_bytes().try_into().unwrap(),
         file_properties.version,
     )?;
 
-    queries::upload_to_filen_async::<UploadFileResponsePayload>(
+    queries::upload_to_filen_async::<UploadFileChunkResponsePayload>(
         &file_properties.to_api_endpoint(chunk_index, api_key),
         chunk_encrypted,
         retry_settings,
@@ -293,7 +306,9 @@ mod tests {
                 .unwrap();
 
         let query_params = properties.to_query_params(0, &SecUtf8::from("some api key"));
+        let query_params_2 = properties.to_query_params(0, &SecUtf8::from("some api key"));
 
+        assert_eq!(query_params, query_params_2);
         assert!(query_params.contains("apiKey=some+api+key"));
         assert!(query_params.contains("uuid="));
         assert!(query_params.contains("name="));
