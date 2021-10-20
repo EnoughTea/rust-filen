@@ -12,7 +12,11 @@ const DEFAULT_MAX_TRIES: usize = 0;
 /// Static instance of zero-retries [RetrySettings].
 pub static NO_RETRIES: Lazy<RetrySettings> = Lazy::new(RetrySettings::default);
 
-/// Retry strategy parameters. Default instance performs no retries.
+/// Parameters for exponential backoff retry strategy. Default instance performs no retries.
+///
+/// Instance returned from [RetrySettings::from_max_tries] has [RetrySettings::max_delay] set to [RETRY_MAX_DELAY_MILLIS] by default,
+/// so an API query with RetrySettings::from_max_tries(6) call will take at most ≈half a minute,
+/// with every additional retry adding another [RetrySettings::max_delay].
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct RetrySettings {
     /// Initial delay for exponential backoff.
