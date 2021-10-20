@@ -60,7 +60,7 @@ pub fn download_and_decrypt_file_from_data_and_key<W: std::io::Write>(
     )
 }
 
-/// Synchronously downloads and decryptes the specified file from Filen download server defined by a region and a bucket.
+/// Synchronously downloads and decrypts the specified file from Filen download server defined by a region and a bucket.
 /// Returns total size of downloaded encrypted chunks.
 /// All file chunks are downloaded and decrypted sequentially one by one, with each decrypted chunk immediately written to the provided writer.
 pub fn download_and_decrypt_file<W: std::io::Write>(
