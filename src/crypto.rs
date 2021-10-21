@@ -47,10 +47,7 @@ impl FilenPasswordWithMasterKey {
     pub fn from_user_password(password: &SecUtf8) -> FilenPasswordWithMasterKey {
         let m_key = SecUtf8::from(hash_fn(password.unsecure()));
         let sent_password = SecUtf8::from(hash_password(password.unsecure()));
-        FilenPasswordWithMasterKey {
-            m_key: m_key,
-            sent_password: sent_password,
-        }
+        FilenPasswordWithMasterKey { m_key, sent_password }
     }
 
     /// Derives master key and login hash from user's password and Filen salt (from /auth/info API call). Expects plain text password.
@@ -62,9 +59,9 @@ impl FilenPasswordWithMasterKey {
 
     fn from_derived_key(derived_key: &[u8; 64]) -> FilenPasswordWithMasterKey {
         let (m_key, password_part) = derived_key.split_at(derived_key.len() / 2);
-        let m_key_hex = utils::byte_slice_to_hex_string(m_key);
-        let sent_password = sha512(&utils::byte_slice_to_hex_string(password_part)).to_vec();
-        let sent_password_hex = utils::byte_slice_to_hex_string(&sent_password);
+        let m_key_hex = utils::bytes_to_hex_string(m_key);
+        let sent_password = sha512(&utils::bytes_to_hex_string(password_part)).to_vec();
+        let sent_password_hex = utils::bytes_to_hex_string(&sent_password);
         FilenPasswordWithMasterKey {
             m_key: SecUtf8::from(m_key_hex),
             sent_password: SecUtf8::from(sent_password_hex),
@@ -105,7 +102,7 @@ pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
         } else if possible_salted_mark == OPENSSL_SALT_PREFIX {
             -1 // Means data is base_64 decoded already, so we won't have to decode later.
         } else {
-            let possible_version_string = String::from_utf8_lossy(&possible_version_mark);
+            let possible_version_string = String::from_utf8_lossy(possible_version_mark);
             possible_version_string.parse::<i32>().map_err(|_| {
                 let message = format!("Invalid metadata version: {}", possible_version_string);
                 anyhow!(bad_argument(&message))
@@ -137,7 +134,7 @@ pub fn encrypt_metadata_str(data: &str, m_key: &str, metadata_version: u32) -> R
 
 /// Restores file metadata prefiously encrypted with [encrypt_metadata]. Convenience overload for [String] params.
 pub fn decrypt_metadata_str(data: &str, m_key: &str) -> Result<String> {
-    decrypt_metadata(&data.as_bytes(), m_key.as_bytes()).and_then(|bytes| {
+    decrypt_metadata(data.as_bytes(), m_key.as_bytes()).and_then(|bytes| {
         String::from_utf8(bytes)
             .with_context(|| "Decrypted metadata was not a valid UTF-8 string. Use decrypt_metadata() instead?")
     })
@@ -205,7 +202,7 @@ pub fn decrypt_file_chunk(
 
 /// Helper which decrypts master keys stored in a metadata into a list of key strings, using specified master key.
 pub(crate) fn encrypt_master_keys_metadata(
-    master_keys: &Vec<SecUtf8>,
+    master_keys: &[SecUtf8],
     last_master_key: &SecUtf8,
     metadata_version: u32,
 ) -> Result<String> {
@@ -225,7 +222,7 @@ pub(crate) fn decrypt_master_keys_metadata(
 ) -> Result<Vec<SecUtf8>> {
     match master_keys_metadata {
         Some(metadata) => decrypt_metadata_str(metadata, last_master_key.unsecure())
-            .map(|keys| keys.split('|').map(|str| SecUtf8::from(str)).collect()),
+            .map(|keys| keys.split('|').map(SecUtf8::from).collect()),
         None => bail!(decryption_fail("Cannot decrypt master keys metadata, it is empty")),
     }
 }
@@ -266,7 +263,7 @@ fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -> Ve
 /// Decrypts data prefiously encrypted with [encrypt_aes_openssl].
 fn decrypt_aes_openssl(aes_encrypted_data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     let (salt, message) = salt_and_message_from_aes_openssl_encrypted_data(aes_encrypted_data, OPENSSL_SALT_LENGTH)?;
-    let (key, iv) = generate_aes_key_and_iv(AES_CBC_KEY_LENGTH, AES_CBC_IV_LENGTH, 1, Some(&salt), key);
+    let (key, iv) = generate_aes_key_and_iv(AES_CBC_KEY_LENGTH, AES_CBC_IV_LENGTH, 1, Some(salt), key);
     decrypt_aes_cbc_with_key_and_iv(message, &key.try_into().unwrap(), &iv.try_into().unwrap())
 }
 
@@ -331,8 +328,8 @@ fn decrypt_aes_gcm_base64(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
 
 /// Decrypts data prefiously encrypted with [encrypt_aes_gcm].
 fn decrypt_aes_gcm(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
-    let (iv, encrypted) = extract_aes_gcm_iv_and_message(&data)?;
-    decrypt_aes_gcm_from_iv_and_bytes(key, iv, &encrypted)
+    let (iv, encrypted) = extract_aes_gcm_iv_and_message(data)?;
+    decrypt_aes_gcm_from_iv_and_bytes(key, iv, encrypted)
 }
 
 fn decrypt_aes_gcm_from_iv_and_bytes(key: &[u8], iv: &[u8], encrypted: &[u8]) -> Result<Vec<u8>> {
@@ -344,7 +341,7 @@ fn decrypt_aes_gcm_from_iv_and_bytes(key: &[u8], iv: &[u8], encrypted: &[u8]) ->
         .map_err(|_| anyhow!(decryption_fail("Prefixed AES GCM cannot decipher data")))
 }
 
-fn extract_aes_gcm_iv_and_message<'a>(data: &'a [u8]) -> Result<(&'a [u8], &'a [u8])> {
+fn extract_aes_gcm_iv_and_message(data: &[u8]) -> Result<(&[u8], &[u8])> {
     if data.len() <= AES_GCM_IV_LENGTH {
         bail!(bad_argument("Encrypted data is too small to contain AES GCM IV"))
     }
@@ -393,7 +390,7 @@ fn salt_and_message_from_aes_openssl_encrypted_data(
 
 /// Calculates login key from the given user password and service-provided salt.
 fn derive_key_from_password_generic<M: Mac>(salt: &[u8], iterations: u32, mac: &mut M, pbkdf2_hash: &mut [u8]) {
-    let iterations_or_default = if iterations <= 0 { 200_000 } else { iterations };
+    let iterations_or_default = if iterations == 0 { 200_000 } else { iterations };
     pbkdf2(mac, salt, iterations_or_default, pbkdf2_hash);
 }
 
@@ -422,10 +419,7 @@ fn generate_aes_key_and_iv(
     password: &[u8],
 ) -> (Vec<u8>, Vec<u8>) {
     let mut output = vec![0; key_length + iv_length];
-    let salt = match maybe_salt {
-        Some(salt) => salt,
-        None => &[0; 0],
-    };
+    let salt = maybe_salt.unwrap_or(&[0; 0]);
     evpkdf::<Md5>(password, salt, iterations, &mut output);
     let (key, iv) = output.split_at(key_length);
     (Vec::from(key), Vec::from(iv))

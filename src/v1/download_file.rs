@@ -147,7 +147,7 @@ pub async fn download_and_decrypt_file_async<W: Write>(
     // Batches need to be written sequentially, I guess
     let written_batch_lengths = decrypted_batches
         .iter()
-        .map(|(batch, encrypted_size)| write_batch(batch, encrypted_size.clone(), writer))
+        .map(|(batch, encrypted_size)| write_batch(batch, *encrypted_size, writer))
         .collect::<Result<Vec<u64>>>()?;
 
     writer.flush()?;
@@ -157,7 +157,7 @@ pub async fn download_and_decrypt_file_async<W: Write>(
 /// Writes batch of file chunks to the given writer and returns total size of passed encrypted batch.
 /// If one write in the batch fails, entire batch fails.
 fn write_batch<W: Write>(
-    batch: &Vec<Vec<u8>>,
+    batch: &[Vec<u8>],
     batch_encrypted_size: u64,
     writer: &mut std::io::BufWriter<W>,
 ) -> Result<u64> {
@@ -165,7 +165,7 @@ fn write_batch<W: Write>(
         .iter()
         .map(|bytes| {
             writer
-                .write_all(&bytes)
+                .write_all(bytes)
                 .map(|_| batch_encrypted_size)
                 .with_context(|| "Could not write file batch bytes")
         })
@@ -174,7 +174,7 @@ fn write_batch<W: Write>(
     Ok(written_lengths.iter().sum::<u64>())
 }
 
-fn decrypt_batch(batch: &Vec<Vec<u8>>, version: u32, file_key: &SecUtf8) -> Result<(Vec<Vec<u8>>, u64)> {
+fn decrypt_batch(batch: &[Vec<u8>], version: u32, file_key: &SecUtf8) -> Result<(Vec<Vec<u8>>, u64)> {
     let mut encrypted_total: u64 = 0;
     let encrypted_bytes = batch
         .iter()
@@ -201,12 +201,7 @@ async fn download_batch_async(
 ) -> Result<Vec<Vec<u8>>> {
     let download_action =
         |chunk_index: u32| download_chunk_async(region, bucket, file_uuid, chunk_index, retry_settings, filen_settings);
-    futures::future::try_join_all(
-        batch_indices
-            .iter()
-            .map(|chunk_index| download_action(chunk_index.clone())),
-    )
-    .await
+    futures::future::try_join_all(batch_indices.iter().map(|chunk_index| download_action(*chunk_index))).await
 }
 
 /// Calculates batch indices from the total amount of chunks and the single batch size.

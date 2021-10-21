@@ -12,8 +12,8 @@ use crate::errors::*;
 use crate::filen_settings::FilenSettings;
 use crate::retry_settings::RetrySettings;
 
-static ASYNC_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| reqwest::Client::new());
-static BLOCKING_CLIENT: Lazy<reqwest::blocking::Client> = Lazy::new(|| reqwest::blocking::Client::new());
+static ASYNC_CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
+static BLOCKING_CLIENT: Lazy<reqwest::blocking::Client> = Lazy::new(reqwest::blocking::Client::new);
 static CRATE_USER_AGENT: &str = "Rust-Filen API (+https://github.com/EnoughTea/rust-filen)";
 
 /// Sends POST with given payload to one of Filen API servers.
@@ -57,7 +57,7 @@ pub(crate) fn download_from_filen(
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<Vec<u8>> {
-    let filen_endpoint = produce_filen_endpoint(&api_endpoint, &filen_settings.download_servers)?;
+    let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.download_servers)?;
     let download_action = || {
         get_bytes(filen_endpoint.as_str(), filen_settings.download_chunk_timeout.as_secs()).map_err(|err| {
             let message = &format!("Failed to download file chunk from: {}", filen_endpoint);
@@ -73,7 +73,7 @@ pub(crate) async fn download_from_filen_async(
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<Vec<u8>> {
-    let filen_endpoint = produce_filen_endpoint(&api_endpoint, &filen_settings.download_servers)?;
+    let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.download_servers)?;
     let download_action = || async {
         get_bytes_async(filen_endpoint.as_str(), filen_settings.download_chunk_timeout.as_secs())
             .await
@@ -159,20 +159,20 @@ async fn get_bytes_async(filen_endpoint: &str, timeout_secs: u64) -> Result<Vec<
 }
 
 /// Sends POST with given blob and timeout to the specified URL.
-fn post_blob(url: &str, blob: &Vec<u8>, timeout_secs: u64) -> Result<reqwest::blocking::Response, reqwest::Error> {
+fn post_blob(url: &str, blob: &[u8], timeout_secs: u64) -> Result<reqwest::blocking::Response, reqwest::Error> {
     BLOCKING_CLIENT
         .post(url)
-        .body(blob.clone())
+        .body(blob.to_owned())
         .header(header::USER_AGENT, CRATE_USER_AGENT)
         .timeout(Duration::from_secs(timeout_secs))
         .send()
 }
 
 /// Asynchronously sends POST with given blob and timeout to the specified URL.
-async fn post_blob_async(url: &str, blob: &Vec<u8>, timeout_secs: u64) -> Result<reqwest::Response, reqwest::Error> {
+async fn post_blob_async(url: &str, blob: &[u8], timeout_secs: u64) -> Result<reqwest::Response, reqwest::Error> {
     ASYNC_CLIENT
         .post(url)
-        .body(blob.clone())
+        .body(blob.to_owned())
         .header(header::USER_AGENT, CRATE_USER_AGENT)
         .timeout(Duration::from_secs(timeout_secs))
         .send()
@@ -223,7 +223,7 @@ async fn retry_operation_async<T, CF>(retry_settings: &RetrySettings, operation:
 where
     CF: fure::CreateFuture<T, Error>,
 {
-    let exp_backoff = retry_settings.to_exp_backoff_iterator();
+    let exp_backoff = retry_settings.get_exp_backoff_iterator();
     let policy = fure::policies::attempts(fure::policies::backoff(exp_backoff), retry_settings.max_tries);
     fure::retry(operation, policy).await
 }
@@ -233,7 +233,7 @@ where
     O: FnMut() -> OR,
     OR: Into<retry::OperationResult<R, Error>>,
 {
-    let policy = retry_settings.to_exp_backoff_iterator();
+    let policy = retry_settings.get_exp_backoff_iterator();
     let retry_result = retry::retry(policy, operation);
     retry_result.map_err(|retry_err| match retry_err {
         retry::Error::Operation { error, .. } => error,

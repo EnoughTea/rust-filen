@@ -15,7 +15,7 @@ pub(crate) struct FileChunkPosition {
 }
 
 impl FileChunkPosition {
-    pub fn to_range(&self) -> Range<usize> {
+    pub fn as_range(&self) -> Range<usize> {
         self.start_position as usize..self.next_chunk_start() as usize
     }
 
@@ -35,8 +35,8 @@ pub(crate) struct FileChunkPositions {
 
 impl FileChunkPositions {
     pub fn new(chunk_size: u32, file_size: u64) -> FileChunkPositions {
-        if chunk_size <= 0 {
-            panic!("Invalid chunk size for offset calculation");
+        if chunk_size == 0 {
+            panic!("Chunk size cannot be 0");
         }
 
         FileChunkPositions {
@@ -52,7 +52,7 @@ impl Iterator for FileChunkPositions {
     type Item = FileChunkPosition;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.file_size <= 0 {
+        if self.file_size == 0 {
             return None;
         }
 
@@ -72,7 +72,7 @@ impl Iterator for FileChunkPositions {
             };
 
             self.current_index += 1;
-            self.current_offset = maybe_next_offset.unwrap_or_else(|| self.file_size);
+            self.current_offset = maybe_next_offset.unwrap_or(self.file_size);
             Some(result)
         } else {
             None

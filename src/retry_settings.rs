@@ -44,12 +44,13 @@ impl RetrySettings {
 
     /// Creates exponential backoff retry strategy with given amount of max retries.
     pub fn from_max_tries(max_tries: usize) -> RetrySettings {
-        let mut result = RetrySettings::default();
-        result.max_tries = max_tries;
-        result
+        RetrySettings {
+            max_tries,
+            ..RetrySettings::default()
+        }
     }
 
-    pub(crate) fn to_exp_backoff_iterator(&self) -> impl Iterator<Item = Duration> {
+    pub(crate) fn get_exp_backoff_iterator(&self) -> impl Iterator<Item = Duration> {
         LimitedExponential::from_retry_settings(self)
             //.map(retry::delay::jitter) is kinda meh, I see no reason to jitter for now
             .take(self.max_tries)

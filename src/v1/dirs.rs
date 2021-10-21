@@ -80,10 +80,7 @@ api_response_struct!(
 
 impl UserDirsResponsePayload {
     pub fn find_default_folder(&self) -> Option<UserDirData> {
-        self.data
-            .iter()
-            .find(|dir_data| dir_data.default)
-            .map(|found_default_dir| found_default_dir.clone())
+        self.data.iter().find(|dir_data| dir_data.default).cloned()
     }
 }
 
@@ -123,12 +120,12 @@ impl DirCreateRequestPayload {
     /// Payload to create a new folder with the specified name.
     pub fn new(name: &str, api_key: &SecUtf8, last_master_key: &SecUtf8) -> DirCreateRequestPayload {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(name, last_master_key);
-        let name_hash = crypto::hash_fn(&name.to_lowercase());
+        let name_hashed = crypto::hash_fn(&name.to_lowercase());
         DirCreateRequestPayload {
             api_key: api_key.clone(),
             uuid: Uuid::new_v4().to_hyphenated().to_string(),
-            name_metadata: name_metadata,
-            name_hashed: name_hash,
+            name_metadata,
+            name_hashed,
             dir_type: FILEN_FOLDER_TYPE.to_owned(),
         }
     }

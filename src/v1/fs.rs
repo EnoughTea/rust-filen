@@ -83,7 +83,7 @@ utils::display_from_json!(LocationExistsRequestPayload);
 
 impl LocationExistsRequestPayload {
     pub fn new(api_key: SecUtf8, target_parent: String, target_name: &str) -> LocationExistsRequestPayload {
-        let name_hashed = LocationNameMetadata::name_hashed(&target_name);
+        let name_hashed = LocationNameMetadata::name_hashed(target_name);
         LocationExistsRequestPayload {
             api_key,
             parent: target_parent,

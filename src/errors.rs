@@ -37,7 +37,7 @@ pub(crate) fn decryption_fail(message: &str) -> RFError {
 pub(crate) fn web_request_fail(message: &str, reqwest_error: reqwest::Error) -> RFError {
     RFError::WebRequestFail {
         message: message.to_owned(),
-        reqwest_error: reqwest_error,
+        reqwest_error,
     }
 }
 

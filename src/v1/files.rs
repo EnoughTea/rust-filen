@@ -1,6 +1,6 @@
 use std::{
     fs,
-    path::PathBuf,
+    path::Path,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -40,7 +40,7 @@ pub struct FileProperties {
 
 impl FileProperties {
     pub fn from_name_size_modified(name: &str, size: u64, last_modified: &SystemTime) -> Result<FileProperties> {
-        if size <= 0 {
+        if size == 0 {
             bail!(bad_argument("File size should be > 0"));
         }
 
@@ -57,9 +57,9 @@ impl FileProperties {
         })
     }
 
-    pub fn from_name_and_local_path(name: &str, local_file_path: &PathBuf) -> Result<FileProperties> {
+    pub fn from_name_and_local_path(name: &str, local_file_path: &Path) -> Result<FileProperties> {
         let fs_metadata = fs::metadata(local_file_path)?;
-        let last_modified_time = fs_metadata.modified().unwrap_or(SystemTime::now());
+        let last_modified_time = fs_metadata.modified().unwrap_or_else(|_| SystemTime::now());
         FileProperties::from_name_size_modified(name, fs_metadata.len(), &last_modified_time)
     }
 
@@ -81,15 +81,15 @@ impl FileProperties {
     }
 
     pub fn name_encrypted(&self) -> String {
-        crypto::encrypt_metadata_str(&self.name, &self.key.unsecure(), METADATA_VERSION).unwrap()
+        crypto::encrypt_metadata_str(&self.name, self.key.unsecure(), METADATA_VERSION).unwrap()
     }
 
     pub fn size_encrypted(&self) -> String {
-        crypto::encrypt_metadata_str(&self.size.to_string(), &self.key.unsecure(), METADATA_VERSION).unwrap()
+        crypto::encrypt_metadata_str(&self.size.to_string(), self.key.unsecure(), METADATA_VERSION).unwrap()
     }
 
     pub fn mime_encrypted(&self) -> String {
-        crypto::encrypt_metadata_str(&self.mime.to_string(), &self.key.unsecure(), METADATA_VERSION).unwrap()
+        crypto::encrypt_metadata_str(&self.mime.to_string(), self.key.unsecure(), METADATA_VERSION).unwrap()
     }
 }
 

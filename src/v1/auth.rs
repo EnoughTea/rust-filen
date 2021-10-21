@@ -50,7 +50,7 @@ impl AuthInfoResponseData {
         match self.auth_version {
             1 => Ok(FilenPasswordWithMasterKey::from_user_password(user_password)),
             2 => {
-                let filen_salt = SecUtf8::from(self.salt.clone().unwrap_or_else(|| String::new()));
+                let filen_salt = SecUtf8::from(self.salt.clone().unwrap_or_else(String::new));
                 Ok(FilenPasswordWithMasterKey::from_user_password_and_auth_info_salt(
                     user_password,
                     &filen_salt,

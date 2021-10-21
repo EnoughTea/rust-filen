@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 const DEFAULT_EXPIRE: &str = "never";
-const FILE_CHUNK_SIZE: u32 = 1024 * 1024 * 1; // Hardcoded mostly because Filen also hardcoded chunk size
+const FILE_CHUNK_SIZE: u32 = 1024 * 1024; // Hardcoded mostly because Filen also hardcoded chunk size
 const FILE_VERSION: u32 = 1;
 const UPLOAD_PATH: &str = "/v1/upload";
 const UPLOAD_DONE_PATH: &str = "/v1/upload/done";
@@ -120,7 +120,7 @@ impl FileUploadProperties {
         let rm = SecUtf8::from(utils::random_alphanumeric_string(32));
         let upload_key = SecUtf8::from(utils::random_alphanumeric_string(32));
 
-        let file_metadata_encrypted = file_properties.to_metadata_string(&last_master_key)?;
+        let file_metadata_encrypted = file_properties.to_metadata_string(last_master_key)?;
         let name_metadata_encrypted = file_properties.name_encrypted();
         let size_metadata_encrypted = file_properties.size_encrypted();
         let mime_metadata_encrypted = file_properties.mime_encrypted();
@@ -303,7 +303,7 @@ pub fn encrypt_and_upload_file<R: std::io::Read + std::io::Seek>(
                     uuid: upload_properties.uuid.clone(),
                     upload_key: upload_properties.upload_key.clone(),
                 };
-                let mark_done_response = upload_done_request(&upload_done_payload, &retry_settings, &filen_settings)?;
+                let mark_done_response = upload_done_request(&upload_done_payload, retry_settings, filen_settings)?;
                 Ok(FileUploadInfo::new(
                     upload_properties,
                     mark_done_response,
@@ -357,7 +357,7 @@ pub async fn encrypt_and_upload_file_async<R: std::io::Read + std::io::Seek>(
                 upload_key: upload_properties.upload_key.clone(),
             };
             let mark_done_response =
-                upload_done_request_async(&upload_done_payload, &retry_settings, &filen_settings).await?;
+                upload_done_request_async(&upload_done_payload, retry_settings, filen_settings).await?;
             Ok(FileUploadInfo::new(
                 upload_properties,
                 mark_done_response,
@@ -407,7 +407,7 @@ fn upload_chunks<R: std::io::Read + std::io::Seek>(
             api_key,
             chunk_pos.index,
             chunk,
-            &upload_properties,
+            upload_properties,
             retry_settings,
             filen_settings,
         )
@@ -432,7 +432,7 @@ async fn upload_chunks_async<R: std::io::Read + std::io::Seek>(
             api_key,
             chunk_pos.index,
             chunk,
-            &upload_properties,
+            upload_properties,
             retry_settings,
             filen_settings,
         )
