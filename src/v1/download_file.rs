@@ -17,11 +17,10 @@ pub fn download_chunk(
     bucket: &str,
     file_uuid: &str,
     chunk_index: u32,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<Vec<u8>> {
     let api_endpoint = utils::filen_file_address_to_api_endpoint(region, bucket, file_uuid, chunk_index);
-    queries::download_from_filen(&api_endpoint, retry_settings, filen_settings)
+    queries::download_from_filen(&api_endpoint, filen_settings)
 }
 
 /// Asynchronously gets encrypted file chunk bytes from Filen download server defined by a region and a bucket.
@@ -33,11 +32,10 @@ pub async fn download_chunk_async(
     bucket: &str,
     file_uuid: &str,
     chunk_index: u32,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<Vec<u8>> {
     let api_endpoint = utils::filen_file_address_to_api_endpoint(region, bucket, file_uuid, chunk_index);
-    queries::download_from_filen_async(&api_endpoint, retry_settings, filen_settings).await
+    queries::download_from_filen_async(&api_endpoint, filen_settings).await
 }
 
 /// Synchronously downloads and decrypts the file defined by given [DownloadedFileData] from Filen download server.
@@ -104,7 +102,7 @@ pub fn download_and_decrypt_file<W: Write>(
     let written_chunk_lengths = (0..chunk_count)
         .map(|chunk_index| {
             let encrypted_bytes =
-                download_chunk(region, bucket, file_uuid, chunk_index, retry_settings, filen_settings)?;
+                retry_settings.retry(|| download_chunk(region, bucket, file_uuid, chunk_index, filen_settings))?;
             let file_key_bytes: &[u8; 32] = file_key.unsecure().as_bytes().try_into()?;
             let encrypted_bytes_len = encrypted_bytes.len() as u64;
             let decrypted_bytes = crypto::decrypt_file_chunk(&encrypted_bytes, file_key_bytes, version)?;
@@ -199,8 +197,9 @@ async fn download_batch_async(
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<Vec<Vec<u8>>> {
-    let download_action =
-        |chunk_index: u32| download_chunk_async(region, bucket, file_uuid, chunk_index, retry_settings, filen_settings);
+    let download_action = |chunk_index: u32| {
+        retry_settings.retry_async(move || download_chunk_async(region, bucket, file_uuid, chunk_index, filen_settings))
+    };
     futures::future::try_join_all(batch_indices.iter().map(|chunk_index| download_action(*chunk_index))).await
 }
 

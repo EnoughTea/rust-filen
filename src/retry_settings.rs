@@ -1,8 +1,8 @@
 use std::time::Duration;
 
+use crate::{errors::*, limited_exponential::LimitedExponential};
+use anyhow::*;
 use once_cell::sync::Lazy;
-
-use crate::limited_exponential::LimitedExponential;
 
 const RETRY_EXP_FACTOR: u32 = 2;
 const RETRY_INITIAL_DELAY_MILLIS: u64 = 500;
@@ -54,6 +54,28 @@ impl RetrySettings {
         LimitedExponential::from_retry_settings(self)
             //.map(retry::delay::jitter) is kinda meh, I see no reason to jitter for now
             .take(self.max_tries)
+    }
+
+    pub async fn retry_async<T, CF>(self: &RetrySettings, operation: CF) -> Result<T>
+    where
+        CF: fure::CreateFuture<T, Error>,
+    {
+        let exp_backoff = self.get_exp_backoff_iterator();
+        let policy = fure::policies::attempts(fure::policies::backoff(exp_backoff), self.max_tries);
+        fure::retry(operation, policy).await
+    }
+
+    pub fn retry<O, R, OR>(self: &RetrySettings, operation: O) -> Result<R>
+    where
+        O: FnMut() -> OR,
+        OR: Into<retry::OperationResult<R, Error>>,
+    {
+        let policy = self.get_exp_backoff_iterator();
+        let retry_result = retry::retry(policy, operation);
+        retry_result.map_err(|retry_err| match retry_err {
+            retry::Error::Operation { error, .. } => error,
+            retry::Error::Internal(description) => anyhow!(unknown(&description)),
+        })
     }
 }
 

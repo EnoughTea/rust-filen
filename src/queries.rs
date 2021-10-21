@@ -8,9 +8,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::time::Duration;
 
-use crate::errors::*;
-use crate::filen_settings::FilenSettings;
-use crate::retry_settings::RetrySettings;
+use crate::{errors::*, filen_settings::FilenSettings};
 
 static ASYNC_CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
 static BLOCKING_CLIENT: Lazy<reqwest::blocking::Client> = Lazy::new(reqwest::blocking::Client::new);
@@ -52,75 +50,49 @@ pub(crate) async fn query_filen_api_async<T: Serialize + ?Sized, U: DeserializeO
     .await
 }
 
-pub(crate) fn download_from_filen(
-    api_endpoint: &str,
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
-) -> Result<Vec<u8>> {
+pub(crate) fn download_from_filen(api_endpoint: &str, filen_settings: &FilenSettings) -> Result<Vec<u8>> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.download_servers)?;
-    let download_action = || {
-        get_bytes(filen_endpoint.as_str(), filen_settings.download_chunk_timeout.as_secs()).map_err(|err| {
-            let message = &format!("Failed to download file chunk from: {}", filen_endpoint);
-            anyhow!(web_request_fail(message, err))
-        })
-    };
-
-    retry_operation(retry_settings, download_action)
+    get_bytes(filen_endpoint.as_str(), filen_settings.download_chunk_timeout.as_secs()).map_err(|err| {
+        let message = &format!("Failed to download file chunk from: {}", filen_endpoint);
+        anyhow!(web_request_fail(message, err))
+    })
 }
 
-pub(crate) async fn download_from_filen_async(
-    api_endpoint: &str,
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
-) -> Result<Vec<u8>> {
+pub(crate) async fn download_from_filen_async(api_endpoint: &str, filen_settings: &FilenSettings) -> Result<Vec<u8>> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.download_servers)?;
-    let download_action = || async {
-        get_bytes_async(filen_endpoint.as_str(), filen_settings.download_chunk_timeout.as_secs())
-            .await
-            .map_err(|err| {
-                let message = &format!("Failed to download file chunk (async) from: {}", filen_endpoint);
-                anyhow!(web_request_fail(message, err))
-            })
-    };
-
-    retry_operation_async(retry_settings, download_action).await
+    get_bytes_async(filen_endpoint.as_str(), filen_settings.download_chunk_timeout.as_secs())
+        .await
+        .map_err(|err| {
+            let message = &format!("Failed to download file chunk (async) from: {}", filen_endpoint);
+            anyhow!(web_request_fail(message, err))
+        })
 }
 
 /// Sends POST with given data blob to one of Filen upload servers.
 pub(crate) fn upload_to_filen<U: DeserializeOwned>(
     api_endpoint: &str,
     blob: Vec<u8>,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<U> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.upload_servers)?;
-    let upload_action = || {
-        let upload_result = post_blob(filen_endpoint.as_str(), &blob, filen_settings.request_timeout.as_secs());
-        deserialize_response(upload_result, || {
-            format!("Failed to upload file chunk to: {}", filen_endpoint)
-        })
-    };
-    retry_operation(retry_settings, upload_action)
+    let upload_result = post_blob(filen_endpoint.as_str(), &blob, filen_settings.request_timeout.as_secs());
+    deserialize_response(upload_result, || {
+        format!("Failed to upload file chunk to: {}", filen_endpoint)
+    })
 }
 
 /// Asynchronously sends POST with given data blob to one of Filen upload servers.
 pub(crate) async fn upload_to_filen_async<U: DeserializeOwned>(
     api_endpoint: &str,
     blob: Vec<u8>,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<U> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.upload_servers)?;
-    let upload_action = || async {
-        let upload_result =
-            post_blob_async(filen_endpoint.as_str(), &blob, filen_settings.request_timeout.as_secs()).await;
-        deserialize_response_async(upload_result, || {
-            format!("Failed to upload file chunk (async) to: {}", filen_endpoint)
-        })
-        .await
-    };
-
-    retry_operation_async(retry_settings, upload_action).await
+    let upload_result = post_blob_async(filen_endpoint.as_str(), &blob, filen_settings.request_timeout.as_secs()).await;
+    deserialize_response_async(upload_result, || {
+        format!("Failed to upload file chunk (async) to: {}", filen_endpoint)
+    })
+    .await
 }
 
 /// Randomly chooses one of the URLs in the given slice.
@@ -216,28 +188,6 @@ fn produce_filen_endpoint(api_endpoint: &str, servers: &[Url]) -> Result<Url> {
             "Cannot join chosen server URL '{}' with API endpoint '{}'",
             chosen_server, api_endpoint
         )))
-    })
-}
-
-async fn retry_operation_async<T, CF>(retry_settings: &RetrySettings, operation: CF) -> Result<T>
-where
-    CF: fure::CreateFuture<T, Error>,
-{
-    let exp_backoff = retry_settings.get_exp_backoff_iterator();
-    let policy = fure::policies::attempts(fure::policies::backoff(exp_backoff), retry_settings.max_tries);
-    fure::retry(operation, policy).await
-}
-
-fn retry_operation<O, R, OR>(retry_settings: &RetrySettings, operation: O) -> Result<R>
-where
-    O: FnMut() -> OR,
-    OR: Into<retry::OperationResult<R, Error>>,
-{
-    let policy = retry_settings.get_exp_backoff_iterator();
-    let retry_result = retry::retry(policy, operation);
-    retry_result.map_err(|retry_err| match retry_err {
-        retry::Error::Operation { error, .. } => error,
-        retry::Error::Internal(description) => anyhow!(unknown(&description)),
     })
 }
 
