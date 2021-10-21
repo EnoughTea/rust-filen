@@ -34,6 +34,15 @@ pub(crate) fn hex_string_to_bytes(s: &str) -> Result<Vec<u8>, ParseIntError> {
         .collect()
 }
 
+/// Treats given bytes as unicode scalar values and builds a string out of them.
+pub(crate) fn bytes_to_binary_string(bytes: &[u8]) -> String {
+    let mut buffer: String = String::with_capacity(bytes.len());
+    for byte in bytes.iter() {
+        buffer.push(*byte as char);
+    }
+    buffer
+}
+
 pub(crate) fn filen_file_address_to_api_endpoint(
     region: &str,
     bucket: &str,
