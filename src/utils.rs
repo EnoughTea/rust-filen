@@ -43,6 +43,23 @@ pub(crate) fn bytes_to_binary_string(bytes: &[u8]) -> String {
     buffer
 }
 
+/// TODO: Remove when Result::flatten comes into stable compiler.
+pub(crate) fn flatten_result<V, E, F>(result: Result<Result<V, F>, E>) -> Result<V, E>
+where
+    F: Into<E>,
+{
+    flatten_result_with(result, |e| e.into())
+}
+
+/// TODO: Remove when Result::flatten comes into stable compiler.
+pub(crate) fn flatten_result_with<V, F, E, O: FnOnce(F) -> E>(result: Result<Result<V, F>, E>, op: O) -> Result<V, E> {
+    match result {
+        Ok(Ok(v)) => Ok(v),
+        Ok(Err(f)) => Err(op(f)),
+        Err(e) => Err(e),
+    }
+}
+
 pub(crate) fn filen_file_address_to_api_endpoint(
     region: &str,
     bucket: &str,
