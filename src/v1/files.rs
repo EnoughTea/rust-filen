@@ -4,7 +4,9 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::{crypto, errors::*, filen_settings::FilenSettings, queries, utils, v1::fs::*, v1::*};
+use crate::{
+    crypto, errors::*, filen_settings::FilenSettings, queries, retry_settings::RetrySettings, utils, v1::fs::*, v1::*,
+};
 use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
@@ -176,9 +178,10 @@ impl FileRenameRequestPayload {
 /// Used when the file you want to upload already exists, so existing file needs to be archived first.
 pub fn file_archive_request(
     payload: &FileArchiveRequestPayload,
+    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(FILE_ARCHIVE_PATH, payload, filen_settings)
+    queries::query_filen_api(FILE_ARCHIVE_PATH, payload, retry_settings, filen_settings)
 }
 
 /// Calls [FILE_ARCHIVE_PATH] endpoint asynchronously.
@@ -186,34 +189,41 @@ pub fn file_archive_request(
 /// Used when the file you want to upload already exists, so existing file needs to be archived first.
 pub async fn file_archive_request_async(
     payload: &FileArchiveRequestPayload,
+    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(FILE_ARCHIVE_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(FILE_ARCHIVE_PATH, payload, retry_settings, filen_settings).await
 }
 
 /// Calls [FILE_EXISTS_PATH] endpoint.
 /// Checks if file with the given name exists within the specified parent folder.
 pub fn file_exists_request(
     payload: &LocationExistsRequestPayload,
+    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<LocationExistsResponsePayload> {
-    queries::query_filen_api(FILE_EXISTS_PATH, payload, filen_settings)
+    queries::query_filen_api(FILE_EXISTS_PATH, payload, retry_settings, filen_settings)
 }
 
 /// Calls [FILE_EXISTS_PATH] endpoint asynchronously.
 /// Checks if file with the given name exists within the specified parent folder.
 pub async fn file_exists_request_async(
     payload: &LocationExistsRequestPayload,
+    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<LocationExistsResponsePayload> {
-    queries::query_filen_api_async(FILE_EXISTS_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(FILE_EXISTS_PATH, payload, retry_settings, filen_settings).await
 }
 
 /// Calls [FILE_MOVE_PATH] endpoint.
 /// Moves file with the given uuid to the specified parent folder. It is a good idea to check first if file
 /// with the same name already exists within the parent folder.
-pub fn dir_move_request(payload: &FileMoveRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
-    queries::query_filen_api(FILE_MOVE_PATH, payload, filen_settings)
+pub fn dir_move_request(
+    payload: &FileMoveRequestPayload,
+    retry_settings: &RetrySettings,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api(FILE_MOVE_PATH, payload, retry_settings, filen_settings)
 }
 
 /// Calls [FILE_MOVE_PATH] endpoint asynchronously.
@@ -221,9 +231,10 @@ pub fn dir_move_request(payload: &FileMoveRequestPayload, filen_settings: &Filen
 /// with the same name already exists within the parent folder.
 pub async fn file_move_request_async(
     payload: &FileMoveRequestPayload,
+    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(FILE_MOVE_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(FILE_MOVE_PATH, payload, retry_settings, filen_settings).await
 }
 
 /// Calls [FILE_RENAME_PATH] endpoint.
@@ -231,9 +242,10 @@ pub async fn file_move_request_async(
 /// with the new name already exists within the parent folder.
 pub fn file_rename_request(
     payload: &FileRenameRequestPayload,
+    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(FILE_RENAME_PATH, payload, filen_settings)
+    queries::query_filen_api(FILE_RENAME_PATH, payload, retry_settings, filen_settings)
 }
 
 /// Calls [FILE_RENAME_PATH] endpoint asynchronously.
@@ -241,9 +253,10 @@ pub fn file_rename_request(
 /// with the new name already exists within the parent folder.
 pub async fn file_rename_request_async(
     payload: &FileRenameRequestPayload,
+    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(FILE_RENAME_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(FILE_RENAME_PATH, payload, retry_settings, filen_settings).await
 }
 
 /// Calls [FILE_TRASH_PATH] endpoint.
@@ -251,9 +264,10 @@ pub async fn file_rename_request_async(
 /// so you cannot create a new file with it.
 pub fn file_trash_request(
     payload: &LocationTrashRequestPayload,
+    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(FILE_TRASH_PATH, payload, filen_settings)
+    queries::query_filen_api(FILE_TRASH_PATH, payload, retry_settings, filen_settings)
 }
 
 /// Calls [FILE_TRASH_PATH] endpoint asynchronously.
@@ -261,9 +275,10 @@ pub fn file_trash_request(
 /// so you cannot create a new file with it.
 pub async fn file_trash_request_async(
     payload: &LocationTrashRequestPayload,
+    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(FILE_TRASH_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(FILE_TRASH_PATH, payload, retry_settings, filen_settings).await
 }
 
 #[cfg(test)]
@@ -274,7 +289,7 @@ mod tests {
     use secstr::SecUtf8;
     use tokio::task::spawn_blocking;
 
-    use crate::{test_utils::*, v1::fs::*};
+    use crate::{retry_settings::RetrySettings, test_utils::*, v1::fs::*};
 
     static API_KEY: Lazy<SecUtf8> =
         Lazy::new(|| SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"));
@@ -285,6 +300,7 @@ mod tests {
     #[tokio::test]
     async fn file_exists_request_and_async_should_work() -> Result<()> {
         let (server, filen_settings) = init_server();
+        let retry_settings = RetrySettings::default();
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
             parent: "b640414e-367e-4df6-b31a-030fd639bcff".to_owned(),
@@ -295,12 +311,12 @@ mod tests {
         let mock = setup_json_mock(super::FILE_EXISTS_PATH, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { file_exists_request(&request_payload, &filen_settings) }),
+            closure!(clone request_payload, clone filen_settings, || { file_exists_request(&request_payload, &retry_settings, &filen_settings) }),
         ).await??;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
-        let async_response = file_exists_request_async(&request_payload, &filen_settings).await?;
+        let async_response = file_exists_request_async(&request_payload, &retry_settings, &filen_settings).await?;
         mock.assert_hits(2);
         assert_eq!(async_response, expected_response);
         Ok(())

@@ -20,36 +20,46 @@ static CRATE_USER_AGENT: &str = "Rust-Filen API (+https://github.com/EnoughTea/r
 pub(crate) fn query_filen_api<T: Serialize + ?Sized, U: DeserializeOwned>(
     api_endpoint: &str,
     payload: &T,
+    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<U> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.api_servers)?;
-    let filen_response = post_json(
-        filen_endpoint.as_str(),
-        payload,
-        filen_settings.request_timeout.as_secs(),
-    );
-    deserialize_response(filen_response, || {
-        format!("Failed to query Filen API: {}", filen_endpoint)
-    })
+    let query_action = || {
+        let filen_response = post_json(
+            filen_endpoint.as_str(),
+            payload,
+            filen_settings.request_timeout.as_secs(),
+        );
+        deserialize_response(filen_response, || {
+            format!("Failed to query Filen API: {}", filen_endpoint)
+        })
+    };
+
+    retry_operation(retry_settings, query_action)
 }
 
 /// Asynchronously sends POST with given payload to one of Filen API servers.
 pub(crate) async fn query_filen_api_async<T: Serialize + ?Sized, U: DeserializeOwned>(
     api_endpoint: &str,
     payload: &T,
+    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<U> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.api_servers)?;
-    let filen_response = post_json_async(
-        filen_endpoint.as_str(),
-        payload,
-        filen_settings.request_timeout.as_secs(),
-    )
-    .await;
-    deserialize_response_async(filen_response, || {
-        format!("Failed to query Filen API (async): {}", filen_endpoint)
-    })
-    .await
+    let query_action = || async {
+        let filen_response = post_json_async(
+            filen_endpoint.as_str(),
+            payload,
+            filen_settings.request_timeout.as_secs(),
+        )
+        .await;
+        deserialize_response_async(filen_response, || {
+            format!("Failed to query Filen API (async): {}", filen_endpoint)
+        })
+        .await
+    };
+
+    retry_operation_async(retry_settings, query_action).await
 }
 
 pub(crate) fn download_from_filen(
