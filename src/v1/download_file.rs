@@ -79,10 +79,11 @@ pub fn download_and_decrypt_file<W: std::io::Write>(
             let encrypted_bytes =
                 download_chunk(region, bucket, file_uuid, chunk_index, retry_settings, filen_settings)?;
             let file_key_bytes: &[u8; 32] = file_key.unsecure().as_bytes().try_into()?;
-            let decrypted_bytes = crypto::decrypt_file_data(&encrypted_bytes, file_key_bytes, version)?;
+            let encrypted_bytes_len = encrypted_bytes.len() as u64;
+            let decrypted_bytes = crypto::decrypt_file_chunk(&encrypted_bytes, file_key_bytes, version)?;
             writer
                 .write_all(&decrypted_bytes)
-                .map(|_| encrypted_bytes.len() as u64)
+                .map(|_| encrypted_bytes_len)
                 .with_context(|| "Could not write file batch bytes")
         })
         .collect::<Result<Vec<u64>>>()?;
@@ -150,7 +151,7 @@ fn decrypt_batch(batch: &Vec<Vec<u8>>, version: u32, file_key: &SecUtf8) -> Resu
         .iter()
         .map(|encrypted_bytes| {
             let file_key_bytes: &[u8; 32] = file_key.unsecure().as_bytes().try_into()?;
-            crypto::decrypt_file_data(&encrypted_bytes, file_key_bytes, version).map(|decrypted_bytes| {
+            crypto::decrypt_file_chunk(encrypted_bytes, file_key_bytes, version).map(|decrypted_bytes| {
                 encrypted_total += encrypted_bytes.len() as u64;
                 decrypted_bytes
             })

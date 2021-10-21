@@ -168,7 +168,7 @@ impl UploadedFileProperties {
     }
 }
 
-/// Calls [UPLOAD_DONE_PATH] endpoint. Used to mark upload as done after all file chunks were uploaded.
+/// Calls [UPLOAD_DONE_PATH] endpoint. Used to mark upload as done after all file chunks (+1 dummy chunk) were uploaded.
 pub fn upload_done_request(
     payload: &UploadDoneRequestPayload,
     filen_settings: &FilenSettings,
@@ -176,7 +176,7 @@ pub fn upload_done_request(
     queries::query_filen_api(UPLOAD_DONE_PATH, payload, filen_settings)
 }
 
-/// Calls [UPLOAD_DONE_PATH] endpoint asynchronously. Used to mark upload as done after all file chunks were uploaded.
+/// Calls [UPLOAD_DONE_PATH] endpoint asynchronously. Used to mark upload as done after all file chunks (+1 dummy chunk) were uploaded.
 pub async fn upload_done_request_async(
     payload: &UploadDoneRequestPayload,
     filen_settings: &FilenSettings,
@@ -242,16 +242,12 @@ fn encrypt_and_upload_chunk(
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<UploadFileChunkResponsePayload> {
-    let chunk_encrypted = crypto::encrypt_file_data(
-        &chunk,
-        upload_properties.file_key.unsecure().as_bytes().try_into().unwrap(),
-        upload_properties.version,
-    )?;
-
+    let file_key = upload_properties.file_key.unsecure().as_bytes().try_into().unwrap();
+    let chunk_encrypted = crypto::encrypt_file_chunk(&chunk, file_key, upload_properties.version)?;
     let api_endpoint = upload_properties.to_api_endpoint(chunk_index, api_key);
     queries::upload_to_filen::<UploadFileChunkResponsePayload>(
         &api_endpoint,
-        chunk_encrypted,
+        chunk_encrypted.into_bytes(),
         retry_settings,
         filen_settings,
     )
@@ -265,7 +261,7 @@ async fn encrypt_and_upload_chunk_async(
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<UploadFileChunkResponsePayload> {
-    let chunk_encrypted = crypto::encrypt_file_data(
+    let chunk_encrypted = crypto::encrypt_file_chunk(
         &chunk,
         file_properties.file_key.unsecure().as_bytes().try_into().unwrap(),
         file_properties.version,
@@ -273,7 +269,7 @@ async fn encrypt_and_upload_chunk_async(
 
     queries::upload_to_filen_async::<UploadFileChunkResponsePayload>(
         &file_properties.to_api_endpoint(chunk_index, api_key),
-        chunk_encrypted,
+        chunk_encrypted.into_bytes(),
         retry_settings,
         filen_settings,
     )

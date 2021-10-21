@@ -87,7 +87,7 @@ pub fn encrypt_metadata(data: &[u8], key: &[u8], metadata_version: u32) -> Resul
         1 => base64::encode(encrypt_aes_openssl(data, key, None)).as_bytes().to_vec(), // Deprecated since August 2021
         2 => {
             let mut version_mark = format!("{:0>3}", metadata_version).into_bytes();
-            version_mark.extend(encrypt_aes_gcm(data, key));
+            version_mark.extend(encrypt_aes_gcm_base64(data, key));
             version_mark
         }
         version => bail!(unsupported(&format!("Unsupported metadata version: {}", version))),
@@ -122,7 +122,7 @@ pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     let decrypted_metadata = match metadata_version {
         -1 => decrypt_aes_openssl(data, key)?, // Deprecated since August 2021
         1 => decrypt_aes_openssl(&base64::decode(data)?, key)?, // Deprecated since August 2021
-        2 => decrypt_aes_gcm(&data[FILEN_VERSION_LENGTH..], key)?,
+        2 => decrypt_aes_gcm_base64(&data[FILEN_VERSION_LENGTH..], key)?,
         version => bail!(unsupported(&format!("Unsupported metadata version: {}", version))),
     };
     Ok(decrypted_metadata)
@@ -143,17 +143,23 @@ pub fn decrypt_metadata_str(data: &str, m_key: &str) -> Result<String> {
     })
 }
 
-/// Encrypts file chunk for uploading to Filen. File key can be fetched from file metadata.
-pub fn encrypt_file_data(chunk_data: &[u8], file_key: &[u8; AES_CBC_KEY_LENGTH], version: u32) -> Result<Vec<u8>> {
+/// Encrypts file chunk for uploading to Filen. Resulting encoded chunk bytes are treated as unicode scalars, hence the resulting type.
+/// File key can be fetched from file metadata.
+/// Note that [encrypt_file_data] and [decrypt_file_data] are not symmetric.
+/// You are supposed to encrypt your bytes with [encrypt_file_chunk] and send them to Filen,
+/// instead of passing them to [decrypt_file_chunk] for some reason.
+pub fn encrypt_file_chunk(chunk_data: &[u8], file_key: &[u8; AES_CBC_KEY_LENGTH], version: u32) -> Result<String> {
     if chunk_data.is_empty() {
-        Ok(vec![0u8; 0])
+        Ok(String::new())
     } else {
         match version {
             1 => {
                 let iv: &[u8; 16] = &file_key[..16].try_into().unwrap();
-                Ok(encrypt_aes_cbc_with_key_and_iv(chunk_data, file_key, iv))
+                Ok(utils::bytes_to_binary_string(&encrypt_aes_cbc_with_key_and_iv(
+                    chunk_data, file_key, iv,
+                )))
             }
-            2 => Ok(encrypt_aes_gcm(chunk_data, file_key)),
+            2 => Ok(encrypt_aes_gcm_bstr(chunk_data, file_key)),
             _ => {
                 let message = format!("Unsupported file data encryption version: {}", version);
                 bail!(unsupported(&message))
@@ -163,28 +169,33 @@ pub fn encrypt_file_data(chunk_data: &[u8], file_key: &[u8; AES_CBC_KEY_LENGTH],
 }
 
 /// Decrypts file chunk downloaded from Filen. File key can be fetched from file metadata.
-pub fn decrypt_file_data(
-    encrypted_chunk_data: &[u8],
+/// Note that [encrypt_file_data] and [decrypt_file_data] are not symmetric.
+/// You are supposed to call [decrypt_file_data] on file chunks received from Filen, not on strings produced by [encrypt_file_data].
+pub fn decrypt_file_chunk(
+    filen_encrypted_chunk_data: &[u8],
     file_key: &[u8; AES_CBC_KEY_LENGTH],
     version: u32,
 ) -> Result<Vec<u8>> {
     match version {
         1 => {
-            if encrypted_chunk_data.len() < OPENSSL_SALT_PREFIX.len() {
+            if filen_encrypted_chunk_data.len() < OPENSSL_SALT_PREFIX.len() {
                 bail!(anyhow!(bad_argument("Encrypted data is too short, < 8 bytes")))
             } else {
-                let possible_prefix = &encrypted_chunk_data[..OPENSSL_SALT_PREFIX.len()];
+                let possible_prefix = &filen_encrypted_chunk_data[0..OPENSSL_SALT_PREFIX.len()];
                 if possible_prefix == OPENSSL_SALT_PREFIX {
-                    decrypt_aes_openssl(encrypted_chunk_data, file_key)
+                    decrypt_aes_openssl(base64::encode(filen_encrypted_chunk_data).as_bytes(), file_key)
                 } else if possible_prefix == OPENSSL_SALT_PREFIX_BASE64 {
-                    decrypt_aes_openssl(&base64::decode(encrypted_chunk_data)?, file_key)
+                    decrypt_aes_openssl(
+                        utils::bytes_to_binary_string(filen_encrypted_chunk_data).as_bytes(),
+                        file_key,
+                    )
                 } else {
                     let iv: &[u8; 16] = &file_key[..16].try_into().unwrap();
-                    decrypt_aes_cbc_with_key_and_iv(&encrypted_chunk_data, file_key, iv)
+                    decrypt_aes_cbc_with_key_and_iv(filen_encrypted_chunk_data, file_key, iv)
                 }
             }
         }
-        2 => decrypt_aes_gcm(encrypted_chunk_data, file_key),
+        2 => decrypt_aes_gcm(filen_encrypted_chunk_data, file_key),
         _ => {
             let message = format!("Unsupported file data encryption version: {}", version);
             bail!(unsupported(&message))
@@ -252,13 +263,15 @@ fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -> Ve
     result
 }
 
-/// Decrypts data prefiously encrypted with [encrypt_aes_001].
+/// Decrypts data prefiously encrypted with [encrypt_aes_openssl].
 fn decrypt_aes_openssl(aes_encrypted_data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     let (salt, message) = salt_and_message_from_aes_openssl_encrypted_data(aes_encrypted_data, OPENSSL_SALT_LENGTH)?;
     let (key, iv) = generate_aes_key_and_iv(AES_CBC_KEY_LENGTH, AES_CBC_IV_LENGTH, 1, Some(&salt), key);
     decrypt_aes_cbc_with_key_and_iv(message, &key.try_into().unwrap(), &iv.try_into().unwrap())
 }
 
+/// Calculates hash of the given data using AES256 with CBC mode and Pkcs7 padding,
+/// based on the specified key and IV. Returns raw bytes from cipher.
 fn encrypt_aes_cbc_with_key_and_iv(
     data: &[u8],
     key: &[u8; AES_CBC_KEY_LENGTH],
@@ -268,6 +281,7 @@ fn encrypt_aes_cbc_with_key_and_iv(
     cipher.encrypt_vec(data)
 }
 
+/// Decrypts data prefiously encrypted with [encrypt_aes_cbc_with_key_and_iv].
 fn decrypt_aes_cbc_with_key_and_iv(
     aes_encrypted_data: &[u8],
     key: &[u8; AES_CBC_KEY_LENGTH],
@@ -282,41 +296,64 @@ fn decrypt_aes_cbc_with_key_and_iv(
 
 /// Calculates AES-GCM hash. Returns IV within [0, [AES_GCM_IV_LENGTH]) range,
 /// and encrypted message in base64-encoded part starting at [AES_GCM_IV_LENGTH] string index.
-fn encrypt_aes_gcm(data: &[u8], key: &[u8]) -> Vec<u8> {
+fn encrypt_aes_gcm_base64(data: &[u8], key: &[u8]) -> Vec<u8> {
+    let (iv, encrypted) = encrypt_aes_gcm(data, key);
+    let combined = iv + &base64::encode(encrypted);
+    combined.into_bytes()
+}
+
+/// Calculates AES-GCM hash. Returns IV within [0, [AES_GCM_IV_LENGTH]) range,
+/// and encrypted message in unicode scalars starting at [AES_GCM_IV_LENGTH] string index.
+/// Used only in [encrypt_file_chunk].
+fn encrypt_aes_gcm_bstr(data: &[u8], key: &[u8]) -> String {
+    let (iv, encrypted) = encrypt_aes_gcm(data, key);
+    iv + &utils::bytes_to_binary_string(&encrypted)
+}
+
+/// Calculates AES-GCM hash. Returns IV in the first item,
+/// and raw encrypted message in the second item.
+fn encrypt_aes_gcm(data: &[u8], key: &[u8]) -> (String, Vec<u8>) {
     let key = derive_key_from_password_256(key, key, 1);
     let iv = utils::random_alphanumeric_string(AES_GCM_IV_LENGTH);
     let cipher = Aes256Gcm::new(Key::from_slice(&key));
     let nonce = Nonce::from_slice(iv.as_bytes());
     let encrypted = cipher.encrypt(nonce, data).unwrap(); // Will only panic when data.len() > 1 << 36
-    let combined = iv + &base64::encode(encrypted);
-    combined.into_bytes()
+    (iv, encrypted)
 }
 
-/// Decrypts data prefiously encrypted with [encrypt_aes_002].
-fn decrypt_aes_gcm(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
-    fn extract_iv_and_message<'a>(data: &'a [u8]) -> Result<(&'a [u8], &'a [u8])> {
-        if data.len() <= AES_GCM_IV_LENGTH {
-            bail!(bad_argument("Encrypted data is too small to contain AES GCM IV"))
-        }
+/// Decrypts data prefiously encrypted with [encrypt_aes_gcm_base64].
+fn decrypt_aes_gcm_base64(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
+    let (iv, encrypted_base64) = extract_aes_gcm_iv_and_message(data)?;
+    base64::decode(encrypted_base64)
+        .map_err(|_| anyhow!(bad_argument("Given data to decrypt did not contain message in base64")))
+        .and_then(|encrypted| decrypt_aes_gcm_from_iv_and_bytes(key, iv, &encrypted))
+}
 
-        let (iv, message) = data.split_at(AES_GCM_IV_LENGTH);
-        Ok((iv, message))
+/// Decrypts data prefiously encrypted with [encrypt_aes_gcm].
+fn decrypt_aes_gcm(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
+    let (iv, encrypted) = extract_aes_gcm_iv_and_message(&data)?;
+    decrypt_aes_gcm_from_iv_and_bytes(key, iv, &encrypted)
+}
+
+fn decrypt_aes_gcm_from_iv_and_bytes(key: &[u8], iv: &[u8], encrypted: &[u8]) -> Result<Vec<u8>> {
+    let key = derive_key_from_password_256(key, key, 1);
+    let cipher = Aes256Gcm::new(Key::from_slice(&key));
+    let nonce = Nonce::from_slice(iv);
+    cipher
+        .decrypt(nonce, encrypted)
+        .map_err(|_| anyhow!(decryption_fail("Prefixed AES GCM cannot decipher data")))
+}
+
+fn extract_aes_gcm_iv_and_message<'a>(data: &'a [u8]) -> Result<(&'a [u8], &'a [u8])> {
+    if data.len() <= AES_GCM_IV_LENGTH {
+        bail!(bad_argument("Encrypted data is too small to contain AES GCM IV"))
     }
 
-    let (iv, encrypted_base64) = extract_iv_and_message(data)?;
-    let decrypted_data = base64::decode(encrypted_base64)
-        .map_err(|_| anyhow!(bad_argument("Given data to decrypt did not contain message in base64")))
-        .and_then(|encrypted| {
-            let key = derive_key_from_password_256(key, key, 1);
-            let cipher = Aes256Gcm::new(Key::from_slice(&key));
-            let nonce = Nonce::from_slice(iv);
-            cipher
-                .decrypt(nonce, encrypted.as_ref())
-                .map_err(|_| anyhow!(decryption_fail("Prefixed AES GCM cannot decipher data")))
-        })?;
-    Ok(decrypted_data)
+    let (iv, message) = data.split_at(AES_GCM_IV_LENGTH);
+    Ok((iv, message))
 }
 
+/// Calculates RSA hash (using SHA512 with OAEP padding) from given data with the specified RSA public key.
 fn encrypt_rsa(data: &[u8], public_key: &[u8]) -> Result<Vec<u8>> {
     let mut rng = thread_rng();
     let padding = rsa::PaddingScheme::new_oaep::<sha2::Sha512>();
@@ -326,6 +363,7 @@ fn encrypt_rsa(data: &[u8], public_key: &[u8]) -> Result<Vec<u8>> {
     })
 }
 
+/// Decrypts data prefiously encrypted with [encrypt_rsa] using PKCS#8 private key in ASN.1 DER-encoded format.
 fn decrypt_rsa(data: &[u8], private_key: &[u8]) -> Result<Vec<u8>> {
     let padding = rsa::PaddingScheme::new_oaep::<sha2::Sha512>();
     let private_key = rsa::RsaPrivateKey::from_pkcs8_der(private_key)?;
@@ -349,7 +387,7 @@ fn salt_and_message_from_aes_openssl_encrypted_data(
     if &salt_with_prefix[..8] != OPENSSL_SALT_PREFIX {
         bail!(bad_argument("Encrypted data does not contain OpenSSL salt prefix"))
     }
-    let (_, salt) = salt_with_prefix.split_at(OPENSSL_SALT_PREFIX.len());
+    let salt = &salt_with_prefix[OPENSSL_SALT_PREFIX.len()..];
     Ok((salt, message))
 }
 
@@ -464,12 +502,12 @@ mod tests {
     fn encrypt_aes_gcm_should_should_work_and_have_same_algorithm() {
         let key = b"test";
         let expected_data = "This is Jimmy.";
-        let encrypted_data = encrypt_aes_gcm(expected_data.as_bytes(), key);
+        let encrypted_data = encrypt_aes_gcm_base64(expected_data.as_bytes(), key);
 
         assert_eq!(encrypted_data.len(), 52);
         assert_ne!(&encrypted_data[..3], b"002");
 
-        let decrypted_data = decrypt_aes_gcm(&encrypted_data, key).unwrap();
+        let decrypted_data = decrypt_aes_gcm_base64(&encrypted_data, key).unwrap();
         assert_eq!(String::from_utf8_lossy(&decrypted_data), expected_data);
     }
 
@@ -511,7 +549,7 @@ mod tests {
     fn decrypt_aes_openssl_should_decrypt_currently_encrypted() {
         let key = b"test";
         let expected_data = b"This is Jimmy.";
-        let encrypted_data = encrypt_aes_openssl(expected_data, key, Some(&[0u8, 1, 2, 3, 4, 5, 6, 7])); //b"U2FsdGVkX1/Yn4fcMeb/VlvaU8447BMpZgao7xwEM9I=";
+        let encrypted_data = encrypt_aes_openssl(expected_data, key, Some(&[0u8, 1, 2, 3, 4, 5, 6, 7]));
 
         let actual_data_result = decrypt_aes_openssl(&encrypted_data, key);
         let actual_data = actual_data_result.unwrap();
@@ -602,24 +640,7 @@ mod tests {
         let file_key: &[u8; 32] = "sh1YRHfx22Ij40tQBbt6BgpBlqkzch8Y".as_bytes().try_into().unwrap();
         let file_encrypted_bytes = read_project_file("tests/resources/responses/download_file_aes_cbc_as_is.bin");
 
-        let file_decrypted_bytes_result = decrypt_file_data(&file_encrypted_bytes, file_key, 1);
-        assert!(file_decrypted_bytes_result.is_ok());
-        let file_decrypted_bytes = file_decrypted_bytes_result.unwrap();
-        let image_load_result = image::load_from_memory_with_format(&file_decrypted_bytes, image::ImageFormat::Png);
-        assert!(image_load_result.is_ok())
-    }
-
-    #[test]
-    fn decrypt_file_data_should_decrypt_currently_encrypted() {
-        let version = 1;
-        let file_key: &[u8; 32] = "sh1YRHfx22Ij40tQBbt6BgpBlqkzch8Y".as_bytes().try_into().unwrap();
-        let file_bytes = read_project_file("tests/resources/lina.png");
-
-        let file_encrypted_bytes_result = encrypt_file_data(&file_bytes, file_key, version);
-        assert!(file_encrypted_bytes_result.is_ok());
-        let file_encrypted_bytes = file_encrypted_bytes_result.unwrap();
-
-        let file_decrypted_bytes_result = decrypt_file_data(&file_encrypted_bytes, file_key, version);
+        let file_decrypted_bytes_result = decrypt_file_chunk(&file_encrypted_bytes, file_key, 1);
         assert!(file_decrypted_bytes_result.is_ok());
         let file_decrypted_bytes = file_decrypted_bytes_result.unwrap();
         let image_load_result = image::load_from_memory_with_format(&file_decrypted_bytes, image::ImageFormat::Png);
