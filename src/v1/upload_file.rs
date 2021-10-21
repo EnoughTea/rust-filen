@@ -7,7 +7,7 @@ use std::{
 use crate::{
     crypto,
     errors::unknown,
-    file_chunk_pos::FileChunkPositions,
+    file_chunk_pos::{FileChunkPosition, FileChunkPositions},
     filen_settings::FilenSettings,
     queries,
     retry_settings::RetrySettings,
@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 const DEFAULT_EXPIRE: &str = "never";
-const FILE_CHUNK_SIZE: u32 = 1024 * 1024 * 1;
+const FILE_CHUNK_SIZE: u32 = 1024 * 1024 * 1; // Hardcoded mostly because Filen also hardcoded chunk size
 const FILE_VERSION: u32 = 1;
 const UPLOAD_PATH: &str = "/v1/upload";
 const UPLOAD_DONE_PATH: &str = "/v1/upload/done";
@@ -29,16 +29,21 @@ const UPLOAD_DONE_PATH: &str = "/v1/upload/done";
 /// Response data for [UPLOAD_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UploadFileChunkResponseData {
+    /// Server's bucket where file is stored.
     pub bucket: String,
 
+    /// Server region.
     pub region: String,
 
+    /// 1 if expire was set when uploading chunk; 0 otherwise.
     #[serde(rename = "expireSet")]
     pub expire_set: u32,
 
+    /// Timestanp when chunk will be considired expired.
     #[serde(rename = "expireTimestamp")]
     pub expire_timestamp: u64,
 
+    /// Timestanp when chunk will be deleted.
     #[serde(rename = "deleteTimestamp")]
     pub delete_timestamp: u64,
 }
@@ -60,7 +65,8 @@ pub struct UploadDoneRequestPayload {
 utils::display_from_json!(UploadDoneRequestPayload);
 
 /// File properties needed to upload file to Filen.
-struct UploadedFileProperties {
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct FileUploadProperties {
     /// File ID, UUID V4 in hyphenated lowercase format.
     pub uuid: String,
 
@@ -103,13 +109,13 @@ struct UploadedFileProperties {
     pub version: u32,
 }
 
-impl UploadedFileProperties {
+impl FileUploadProperties {
+    /// Assigns file upload properties from given [FileProperties], parent folder and user's last master key.
     pub fn from_file_properties(
         file_properties: &FileProperties,
-        parent_uuid: &str,
-        chunk_size: u32,
+        folder_to_upload_to_uuid: &str,
         last_master_key: &SecUtf8,
-    ) -> Result<UploadedFileProperties> {
+    ) -> Result<FileUploadProperties> {
         let new_file_uuid = Uuid::new_v4().to_hyphenated().to_string();
         let rm = SecUtf8::from(utils::random_alphanumeric_string(32));
         let upload_key = SecUtf8::from(utils::random_alphanumeric_string(32));
@@ -120,8 +126,8 @@ impl UploadedFileProperties {
         let mime_metadata_encrypted = file_properties.mime_encrypted();
         let name_hashed = LocationNameMetadata::name_hashed(&file_properties.name);
 
-        let file_chunks = calculate_chunk_count(chunk_size, file_properties.size);
-        Ok(UploadedFileProperties {
+        let file_chunks = calculate_chunk_count(FILE_CHUNK_SIZE, file_properties.size);
+        Ok(FileUploadProperties {
             uuid: new_file_uuid,
             name_metadata: name_metadata_encrypted,
             name_hashed,
@@ -133,12 +139,12 @@ impl UploadedFileProperties {
             rm,
             upload_key,
             expire: DEFAULT_EXPIRE.to_owned(),
-            parent_uuid: parent_uuid.to_owned(),
+            parent_uuid: folder_to_upload_to_uuid.to_owned(),
             version: FILE_VERSION,
         })
     }
 
-    /// Produces percent-encoded string of query parameters for Filen upload endpoint.
+    /// Produces percent-encoded string of query parameters for Filen upload endpoint, using this properties.
     pub fn to_query_params(&self, chunk_index: u32, api_key: &SecUtf8) -> String {
         let query_builder = Url::parse_with_params(
             "https://localhost?",
@@ -163,6 +169,7 @@ impl UploadedFileProperties {
         query_builder.query().unwrap().to_owned()
     }
 
+    /// Produces API endpoint for file upload using this properties.
     pub fn to_api_endpoint(&self, chunk_index: u32, api_key: &SecUtf8) -> String {
         format!("{}?{}", UPLOAD_PATH, self.to_query_params(chunk_index, api_key))
     }
@@ -171,6 +178,7 @@ impl UploadedFileProperties {
 /// Calls [UPLOAD_DONE_PATH] endpoint. Used to mark upload as done after all file chunks (+1 dummy chunk) were uploaded.
 pub fn upload_done_request(
     payload: &UploadDoneRequestPayload,
+    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api(UPLOAD_DONE_PATH, payload, filen_settings)
@@ -179,66 +187,20 @@ pub fn upload_done_request(
 /// Calls [UPLOAD_DONE_PATH] endpoint asynchronously. Used to mark upload as done after all file chunks (+1 dummy chunk) were uploaded.
 pub async fn upload_done_request_async(
     payload: &UploadDoneRequestPayload,
+    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(UPLOAD_DONE_PATH, payload, filen_settings).await
 }
 
-/// Test blocking stuff; currently returns 'Upload chunks are not matching.' from upload_done_request.
-fn upload_file<R: std::io::Read + std::io::Seek>(
-    api_key: &SecUtf8,
-    parent_uuid: &str,
-    file_properties: &FileProperties,
-    last_master_key: &SecUtf8,
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
-    reader: &mut std::io::BufReader<R>,
-) -> Result<(PlainApiResponse, Vec<UploadFileChunkResponsePayload>)> {
-    let upload_properties =
-        UploadedFileProperties::from_file_properties(file_properties, parent_uuid, FILE_CHUNK_SIZE, last_master_key)?;
-    let file_chunk_positions = FileChunkPositions::new(FILE_CHUNK_SIZE, file_properties.size);
-    let chunk_upload_responses = file_chunk_positions
-        .map(|chunk_pos| {
-            let mut chunk_buf = vec![0u8; chunk_pos.chunk_size as usize];
-            let read_result = reader
-                .seek(SeekFrom::Start(chunk_pos.start_position))
-                .and_then(|_| reader.read_exact(&mut chunk_buf));
-            read_result.map_err(|io_err| anyhow!(io_err)).and_then(|_| {
-                encrypt_and_upload_chunk(
-                    api_key,
-                    chunk_pos.index,
-                    chunk_buf,
-                    &upload_properties,
-                    retry_settings,
-                    filen_settings,
-                )
-            })
-        })
-        .collect::<Result<Vec<UploadFileChunkResponsePayload>>>()?;
-
-    let maybe_failed_chunk = chunk_upload_responses.iter().find(|r| !r.status);
-    match maybe_failed_chunk {
-        Some(failed_chunk) => {
-            // At least one chunk failed with 'status: false', so fail entire upload, I guess
-            let message = format!("Filen failed at least one uploaded file chunk: {:?}", failed_chunk);
-            Err(anyhow!(unknown(&message)))
-        }
-        None => {
-    let upload_done_payload = UploadDoneRequestPayload {
-        uuid: upload_properties.uuid,
-        upload_key: upload_properties.upload_key,
-    };
-            let mark_done_response = upload_done_request(&upload_done_payload, &filen_settings)?;
-            Ok((mark_done_response, chunk_upload_responses))
-        }
-    }
-}
-
-fn encrypt_and_upload_chunk(
+/// Calls [UPLOAD_PATH] endpoint. Used to encrypt and upload a file chunk to Filen.
+/// After uploading all file chunks, upload additional empty chunk with incremented chunk index.
+/// That way Filen knows that file uploading is complete, and 'upload done' call for file's upload key will succeed.
+pub fn encrypt_and_upload_chunk(
     api_key: &SecUtf8,
     chunk_index: u32,
     chunk: Vec<u8>,
-    upload_properties: &UploadedFileProperties,
+    upload_properties: &FileUploadProperties,
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<UploadFileChunkResponsePayload> {
@@ -253,23 +215,297 @@ fn encrypt_and_upload_chunk(
     )
 }
 
-async fn encrypt_and_upload_chunk_async(
+/// Calls [UPLOAD_PATH] endpoint asynchronously. Used to encrypt and upload a file chunk to Filen.
+/// After uploading all file chunks, upload additional empty chunk with incremented chunk index.
+/// That way Filen knows that file uploading is complete, and 'upload done' call for file's upload key will succeed.
+pub async fn encrypt_and_upload_chunk_async(
     api_key: &SecUtf8,
     chunk_index: u32,
     chunk: Vec<u8>,
-    file_properties: &UploadedFileProperties,
+    upload_properties: &FileUploadProperties,
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<UploadFileChunkResponsePayload> {
     let chunk_encrypted = crypto::encrypt_file_chunk(
         &chunk,
-        file_properties.file_key.unsecure().as_bytes().try_into().unwrap(),
-        file_properties.version,
+        upload_properties.file_key.unsecure().as_bytes().try_into().unwrap(),
+        upload_properties.version,
     )?;
 
     queries::upload_to_filen_async::<UploadFileChunkResponsePayload>(
-        &file_properties.to_api_endpoint(chunk_index, api_key),
+        &upload_properties.to_api_endpoint(chunk_index, api_key),
         chunk_encrypted.into_bytes(),
+        retry_settings,
+        filen_settings,
+    )
+    .await
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct FileUploadInfo {
+    pub properties: FileUploadProperties,
+    pub mark_done_response: PlainApiResponse,
+    pub chunk_responses: Vec<UploadFileChunkResponsePayload>,
+}
+
+impl FileUploadInfo {
+    pub fn new(
+        upload_properties: FileUploadProperties,
+        mark_done_response: PlainApiResponse,
+        chunk_responses: Vec<UploadFileChunkResponsePayload>,
+    ) -> FileUploadInfo {
+        FileUploadInfo {
+            properties: upload_properties,
+            mark_done_response,
+            chunk_responses,
+        }
+    }
+
+    pub fn is_uploaded_successfully(&self) -> bool {
+        self.mark_done_response.status
+    }
+}
+
+/// Uploads file to Filen by reading file chunks from given reader,
+/// encrypting them and uploading each chunk with additional dummy chunk at the end.
+pub fn encrypt_and_upload_file<R: std::io::Read + std::io::Seek>(
+    api_key: &SecUtf8,
+    parent_uuid: &str,
+    file_properties: &FileProperties,
+    last_master_key: &SecUtf8,
+    retry_settings: &RetrySettings,
+    filen_settings: &FilenSettings,
+    reader: &mut std::io::BufReader<R>,
+) -> Result<FileUploadInfo> {
+    let upload_properties = FileUploadProperties::from_file_properties(file_properties, parent_uuid, last_master_key)?;
+    let chunk_upload_responses = upload_chunks(
+        api_key,
+        FILE_CHUNK_SIZE,
+        file_properties.size,
+        &upload_properties,
+        retry_settings,
+        filen_settings,
+        reader,
+    )?;
+
+    let finalize_action = |chunk_upload_responses: Vec<UploadFileChunkResponsePayload>| {
+        send_dummy_chunk(
+            FILE_CHUNK_SIZE,
+            file_properties.size,
+            api_key,
+            &upload_properties,
+            retry_settings,
+            filen_settings,
+        )
+        .and_then(|response| {
+            if response.status {
+                let upload_done_payload = UploadDoneRequestPayload {
+                    uuid: upload_properties.uuid.clone(),
+                    upload_key: upload_properties.upload_key.clone(),
+                };
+                let mark_done_response = upload_done_request(&upload_done_payload, &retry_settings, &filen_settings)?;
+                Ok(FileUploadInfo::new(
+                    upload_properties,
+                    mark_done_response,
+                    chunk_upload_responses,
+                ))
+            } else {
+                Err(anyhow!(unknown("Filen failed at uploading dummy chunk")))
+            }
+        })
+    };
+
+    utils::flatten_result(finalize_chunks_if_all_uploaded(chunk_upload_responses, finalize_action))
+}
+
+/// Asynchronously uploads file to Filen by reading file chunks from given reader,
+/// encrypting them and uploading each chunk with additional dummy chunk at the end.
+pub async fn encrypt_and_upload_file_async<R: std::io::Read + std::io::Seek>(
+    api_key: &SecUtf8,
+    parent_uuid: &str,
+    file_properties: &FileProperties,
+    last_master_key: &SecUtf8,
+    retry_settings: &RetrySettings,
+    filen_settings: &FilenSettings,
+    reader: &mut std::io::BufReader<R>,
+) -> Result<FileUploadInfo> {
+    let upload_properties = FileUploadProperties::from_file_properties(file_properties, parent_uuid, last_master_key)?;
+    let chunk_upload_responses = upload_chunks_async(
+        api_key,
+        FILE_CHUNK_SIZE,
+        file_properties.size,
+        &upload_properties,
+        retry_settings,
+        filen_settings,
+        reader,
+    )
+    .await?;
+
+    let finalize_action = |chunk_upload_responses: Vec<UploadFileChunkResponsePayload>| async {
+        let dummy_chunk_response = send_dummy_chunk_async(
+            FILE_CHUNK_SIZE,
+            file_properties.size,
+            api_key,
+            &upload_properties,
+            retry_settings,
+            filen_settings,
+        )
+        .await?;
+        if dummy_chunk_response.status {
+            let upload_done_payload = UploadDoneRequestPayload {
+                uuid: upload_properties.uuid.clone(),
+                upload_key: upload_properties.upload_key.clone(),
+            };
+            let mark_done_response =
+                upload_done_request_async(&upload_done_payload, &retry_settings, &filen_settings).await?;
+            Ok(FileUploadInfo::new(
+                upload_properties,
+                mark_done_response,
+                chunk_upload_responses,
+            ))
+        } else {
+            Err(anyhow!(unknown("Filen failed at uploading dummy chunk")))
+        }
+    };
+
+    match finalize_chunks_if_all_uploaded(chunk_upload_responses, finalize_action) {
+        Ok(future_file_upload_info) => future_file_upload_info.await,
+        Err(f_err) => Err(f_err),
+    }
+}
+
+fn finalize_chunks_if_all_uploaded<F, FR>(
+    chunk_upload_responses: Vec<UploadFileChunkResponsePayload>,
+    finalize_action: F,
+) -> Result<FR>
+where
+    F: FnOnce(Vec<UploadFileChunkResponsePayload>) -> FR,
+{
+    let maybe_failed_chunk = chunk_upload_responses.iter().find(|r| !r.status);
+    match maybe_failed_chunk {
+        Some(failed_chunk) => {
+            // At least one chunk failed with 'status: false', so fail entire upload, I guess
+            let message = format!("Filen failed at least one uploaded file chunk: {:?}", failed_chunk);
+            Err(anyhow!(unknown(&message)))
+        }
+        None => Ok(finalize_action(chunk_upload_responses)),
+    }
+}
+
+/// Uploads all real file chunks to Filen; do not forget to upload dummy chunk after real chunks are uploaded.
+fn upload_chunks<R: std::io::Read + std::io::Seek>(
+    api_key: &SecUtf8,
+    file_chunk_size: u32,
+    file_size: u64,
+    upload_properties: &FileUploadProperties,
+    retry_settings: &RetrySettings,
+    filen_settings: &FilenSettings,
+    reader: &mut std::io::BufReader<R>,
+) -> Result<Vec<UploadFileChunkResponsePayload>> {
+    let chunk_processor = |chunk_pos: FileChunkPosition, chunk: Vec<u8>| {
+        encrypt_and_upload_chunk(
+            api_key,
+            chunk_pos.index,
+            chunk,
+            &upload_properties,
+            retry_settings,
+            filen_settings,
+        )
+    };
+    read_into_chunks_and_process(file_chunk_size, file_size, reader, chunk_processor)
+        .flatten()
+        .collect()
+}
+
+/// Uploads all real file chunks to Filen; do not forget to upload dummy chunk after real chunks are uploaded.
+async fn upload_chunks_async<R: std::io::Read + std::io::Seek>(
+    api_key: &SecUtf8,
+    file_chunk_size: u32,
+    file_size: u64,
+    upload_properties: &FileUploadProperties,
+    retry_settings: &RetrySettings,
+    filen_settings: &FilenSettings,
+    reader: &mut std::io::BufReader<R>,
+) -> Result<Vec<UploadFileChunkResponsePayload>> {
+    let chunk_processor = |chunk_pos: FileChunkPosition, chunk: Vec<u8>| {
+        encrypt_and_upload_chunk_async(
+            api_key,
+            chunk_pos.index,
+            chunk,
+            &upload_properties,
+            retry_settings,
+            filen_settings,
+        )
+    };
+    // You might notice that file chunks are still read sequentially.
+    // I assume that trying to read multiple chunks of the file in parallel is not fast
+    // because it forces continuos seeks during IO.
+    let future_chunk_responses: Result<Vec<_>> =
+        read_into_chunks_and_process(file_chunk_size, file_size, reader, chunk_processor).collect();
+    futures::future::try_join_all(future_chunk_responses?).await
+}
+
+fn read_into_chunks_and_process<'a, R, ProcType, ProcResult>(
+    file_chunk_size: u32,
+    file_size: u64,
+    reader: &'a mut std::io::BufReader<R>,
+    chunk_processor: ProcType,
+) -> impl Iterator<Item = Result<ProcResult>> + 'a
+where
+    R: std::io::Read + std::io::Seek,
+    ProcType: Fn(FileChunkPosition, Vec<u8>) -> ProcResult,
+    ProcType: 'a,
+{
+    let file_chunk_positions = FileChunkPositions::new(file_chunk_size, file_size);
+    file_chunk_positions.map(move |chunk_pos| {
+        let mut chunk_buf = vec![0u8; chunk_pos.chunk_size as usize];
+        reader
+            .seek(SeekFrom::Start(chunk_pos.start_position))
+            .and_then(|_| reader.read_exact(&mut chunk_buf))
+            .map_err(|io_err| anyhow!(format!("Cannot process read file chunks due to IO error: {:?}", io_err)))
+            .map(|_| chunk_processor(chunk_pos, chunk_buf))
+    })
+}
+
+fn send_dummy_chunk(
+    chunk_size: u32,
+    file_size: u64,
+    api_key: &SecUtf8,
+    upload_properties: &FileUploadProperties,
+    retry_settings: &RetrySettings,
+    filen_settings: &FilenSettings,
+) -> Result<UploadFileChunkResponsePayload> {
+    assert!(file_size != 0);
+
+    let last_index = ((file_size - 1) / chunk_size as u64) as u32;
+    let dummy_buf = vec![0u8; 0];
+    encrypt_and_upload_chunk(
+        api_key,
+        last_index + 1,
+        dummy_buf,
+        upload_properties,
+        retry_settings,
+        filen_settings,
+    )
+}
+
+async fn send_dummy_chunk_async(
+    chunk_size: u32,
+    file_size: u64,
+    api_key: &SecUtf8,
+    upload_properties: &FileUploadProperties,
+    retry_settings: &RetrySettings,
+    filen_settings: &FilenSettings,
+) -> Result<UploadFileChunkResponsePayload> {
+    assert!(file_size != 0);
+
+    let last_index = ((file_size - 1) / chunk_size as u64) as u32;
+    let dummy_buf = vec![0u8; 0];
+    encrypt_and_upload_chunk_async(
+        api_key,
+        last_index + 1,
+        dummy_buf,
+        upload_properties,
         retry_settings,
         filen_settings,
     )
@@ -298,8 +534,7 @@ mod tests {
         let m_key = SecUtf8::from("b49cadfb92e1d7d54e9dd9d33ba9feb2af1f10ae");
         let file_metadata = FileProperties::from_name_size_modified("test.txt", 128, &SystemTime::now()).unwrap();
         let properties =
-            UploadedFileProperties::from_file_properties(&file_metadata, "some parent uuid", FILE_CHUNK_SIZE, &m_key)
-                .unwrap();
+            FileUploadProperties::from_file_properties(&file_metadata, "some parent uuid", &m_key).unwrap();
 
         let query_params = properties.to_query_params(0, &SecUtf8::from("some api key"));
         let query_params_2 = properties.to_query_params(0, &SecUtf8::from("some api key"));
