@@ -172,20 +172,18 @@ api_response_struct!(
 /// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder, created by Filen's client.
 pub fn download_dir_request(
     payload: &DownloadDirRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<DownloadDirResponsePayload> {
-    queries::query_filen_api(DOWNLOAD_DIR, payload, retry_settings, filen_settings)
+    queries::query_filen_api(DOWNLOAD_DIR, payload, filen_settings)
 }
 
 /// Calls [USER_DIRS_PATH] endpoint asynchronously. Used to get a list of user's folders.
 /// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder, created by Filen's client.
 pub async fn download_dir_request_async(
     payload: &DownloadDirRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<DownloadDirResponsePayload> {
-    queries::query_filen_api_async(DOWNLOAD_DIR, payload, retry_settings, filen_settings).await
+    queries::query_filen_api_async(DOWNLOAD_DIR, payload, filen_settings).await
 }
 
 #[cfg(test)]
@@ -205,7 +203,6 @@ mod tests {
     #[tokio::test]
     async fn download_dir_request_and_async_should_be_correctly_typed() -> Result<()> {
         let (server, filen_settings) = init_server();
-        let retry_settings = RetrySettings::default();
         let request_payload = DownloadDirRequestPayload {
             api_key: API_KEY.clone(),
             uuid: "cf2af9a0-6f4e-485d-862c-0459f4662cf1".to_owned(),
@@ -215,12 +212,12 @@ mod tests {
         let mock = setup_json_mock(DOWNLOAD_DIR, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { download_dir_request(&request_payload, &retry_settings, &filen_settings) }),
+            closure!(clone request_payload, clone filen_settings, || { download_dir_request(&request_payload, &filen_settings) }),
         ).await??;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
-        let async_response = download_dir_request_async(&request_payload, &retry_settings, &filen_settings).await?;
+        let async_response = download_dir_request_async(&request_payload, &filen_settings).await?;
         mock.assert_hits(2);
         assert_eq!(async_response, expected_response);
         Ok(())

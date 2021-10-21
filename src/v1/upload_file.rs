@@ -181,7 +181,7 @@ pub fn upload_done_request(
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(UPLOAD_DONE_PATH, payload, retry_settings, filen_settings)
+    queries::query_filen_api(UPLOAD_DONE_PATH, payload, filen_settings)
 }
 
 /// Calls [UPLOAD_DONE_PATH] endpoint asynchronously. Used to mark upload as done after all file chunks (+1 dummy chunk) were uploaded.
@@ -190,7 +190,7 @@ pub async fn upload_done_request_async(
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(UPLOAD_DONE_PATH, payload, retry_settings, filen_settings).await
+    queries::query_filen_api_async(UPLOAD_DONE_PATH, payload, filen_settings).await
 }
 
 /// Calls [UPLOAD_PATH] endpoint. Used to encrypt and upload a file chunk to Filen.

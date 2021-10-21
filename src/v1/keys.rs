@@ -1,4 +1,4 @@
-use crate::{crypto, errors::bad_argument, filen_settings::FilenSettings, queries, retry_settings::RetrySettings};
+use crate::{crypto, errors::bad_argument, filen_settings::FilenSettings, queries};
 use anyhow::*;
 use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
@@ -113,19 +113,17 @@ api_response_struct!(
 /// Calls [KEY_PAIR_INFO_PATH] endpoint. Used to get RSA public/private key pair.
 pub fn key_pair_info_request(
     payload: &UserKeyPairInfoRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<UserKeyPairInfoResponsePayload> {
-    queries::query_filen_api(KEY_PAIR_INFO_PATH, payload, retry_settings, filen_settings)
+    queries::query_filen_api(KEY_PAIR_INFO_PATH, payload, filen_settings)
 }
 
 /// Calls [KEY_PAIR_INFO_PATH] endpoint asynchronously. Used to get RSA public/private key pair.
 pub async fn key_pair_info_request_async(
     payload: &UserKeyPairInfoRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<UserKeyPairInfoResponsePayload> {
-    queries::query_filen_api_async(KEY_PAIR_INFO_PATH, payload, retry_settings, filen_settings).await
+    queries::query_filen_api_async(KEY_PAIR_INFO_PATH, payload, filen_settings).await
 }
 
 /// Calls [MASTER_KEYS_PATH] endpoint. Used to get/update user's master keys.
@@ -133,10 +131,9 @@ pub async fn key_pair_info_request_async(
 /// and resulting master keys chain returned in response payload.
 pub fn master_keys_fetch_request(
     payload: &MasterKeysFetchRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<MasterKeysFetchResponsePayload> {
-    queries::query_filen_api(MASTER_KEYS_PATH, payload, retry_settings, filen_settings)
+    queries::query_filen_api(MASTER_KEYS_PATH, payload, filen_settings)
 }
 
 /// Calls [MASTER_KEYS_PATH] endpoint asynchronously. Used to get/update user's master keys.
@@ -144,10 +141,9 @@ pub fn master_keys_fetch_request(
 /// and resulting master keys chain returned in response payload.
 pub async fn master_keys_fetch_request_async(
     payload: &MasterKeysFetchRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<MasterKeysFetchResponsePayload> {
-    queries::query_filen_api_async(MASTER_KEYS_PATH, payload, retry_settings, filen_settings).await
+    queries::query_filen_api_async(MASTER_KEYS_PATH, payload, filen_settings).await
 }
 
 #[cfg(test)]
@@ -193,7 +189,6 @@ mod tests {
     #[tokio::test]
     async fn master_keys_fetch_request_and_async_should_work() -> Result<()> {
         let (server, filen_settings) = init_server();
-        let retry_settings = RetrySettings::default();
         let request_payload = MasterKeysFetchRequestPayload {
             api_key: SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"),
             master_keys_metadata:
@@ -204,13 +199,12 @@ mod tests {
         let mock = setup_json_mock(MASTER_KEYS_PATH, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { master_keys_fetch_request(&request_payload, &retry_settings, &filen_settings) }),
+            closure!(clone request_payload, clone filen_settings, || { master_keys_fetch_request(&request_payload, &filen_settings) }),
         ).await??;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
-        let async_response =
-            master_keys_fetch_request_async(&request_payload, &retry_settings, &filen_settings).await?;
+        let async_response = master_keys_fetch_request_async(&request_payload, &filen_settings).await?;
         mock.assert_hits(2);
         assert_eq!(async_response, expected_response);
         Ok(())

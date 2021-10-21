@@ -2,9 +2,7 @@ use crate::{
     crypto::{self, FilenPasswordWithMasterKey},
     errors::*,
     filen_settings::FilenSettings,
-    queries,
-    retry_settings::RetrySettings,
-    utils,
+    queries, utils,
 };
 use anyhow::*;
 use secstr::{SecUtf8, SecVec};
@@ -136,37 +134,30 @@ api_response_struct!(
 /// Calls [AUTH_INFO_PATH] endpoint. Used to get used auth version and Filen salt.
 pub fn auth_info_request(
     payload: &AuthInfoRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<AuthInfoResponsePayload> {
-    queries::query_filen_api(AUTH_INFO_PATH, payload, retry_settings, filen_settings)
+    queries::query_filen_api(AUTH_INFO_PATH, payload, filen_settings)
 }
 
 /// Calls [AUTH_INFO_PATH] endpoint asynchronously. Used to get used auth version and Filen salt.
 pub async fn auth_info_request_async(
     payload: &AuthInfoRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<AuthInfoResponsePayload> {
-    queries::query_filen_api_async(AUTH_INFO_PATH, payload, retry_settings, filen_settings).await
+    queries::query_filen_api_async(AUTH_INFO_PATH, payload, filen_settings).await
 }
 
 /// Calls [LOGIN_PATH] endpoint. Used to get API key, master keys and private key.
-pub fn login_request(
-    payload: &LoginRequestPayload,
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
-) -> Result<LoginResponsePayload> {
-    queries::query_filen_api(LOGIN_PATH, payload, retry_settings, filen_settings)
+pub fn login_request(payload: &LoginRequestPayload, filen_settings: &FilenSettings) -> Result<LoginResponsePayload> {
+    queries::query_filen_api(LOGIN_PATH, payload, filen_settings)
 }
 
 /// Calls [LOGIN_PATH] endpoint asynchronously. Used to get API key, master keys and private key.
 pub async fn login_request_async(
     payload: &LoginRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<LoginResponsePayload> {
-    queries::query_filen_api_async(LOGIN_PATH, payload, retry_settings, filen_settings).await
+    queries::query_filen_api_async(LOGIN_PATH, payload, filen_settings).await
 }
 
 #[cfg(test)]
@@ -217,7 +208,6 @@ mod tests {
     #[tokio::test]
     async fn auth_info_request_and_async_should_work_with_v1() -> Result<()> {
         let (server, filen_settings) = init_server();
-        let retry_settings = RetrySettings::default();
         let request_payload = AuthInfoRequestPayload {
             email: SecUtf8::from("test@email.com"),
             two_factor_key: SecUtf8::from("XXXXXX"),
@@ -227,12 +217,12 @@ mod tests {
         let mock = setup_json_mock(AUTH_INFO_PATH, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { auth_info_request(&request_payload, &retry_settings, &filen_settings) }),
+            closure!(clone request_payload, clone filen_settings, || { auth_info_request(&request_payload, &filen_settings) }),
         ).await??;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
-        let async_response = auth_info_request_async(&request_payload, &retry_settings, &filen_settings).await?;
+        let async_response = auth_info_request_async(&request_payload, &filen_settings).await?;
         mock.assert_hits(2);
         assert_eq!(async_response, expected_response);
         Ok(())
@@ -241,7 +231,6 @@ mod tests {
     #[tokio::test]
     async fn auth_info_request_and_async_should_work_with_v2() -> Result<()> {
         let (server, filen_settings) = init_server();
-        let retry_settings = RetrySettings::default();
         let request_payload = AuthInfoRequestPayload {
             email: SecUtf8::from("test@email.com"),
             two_factor_key: SecUtf8::from("XXXXXX"),
@@ -251,13 +240,13 @@ mod tests {
         let mock = setup_json_mock(AUTH_INFO_PATH, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || auth_info_request(&request_payload, &retry_settings, &filen_settings)),
+            closure!(clone request_payload, clone filen_settings, || auth_info_request(&request_payload, &filen_settings)),
         )
         .await??;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
-        let async_response = auth_info_request_async(&request_payload, &retry_settings, &filen_settings).await?;
+        let async_response = auth_info_request_async(&request_payload, &filen_settings).await?;
         mock.assert_hits(2);
         assert_eq!(async_response, expected_response);
         Ok(())
@@ -266,7 +255,6 @@ mod tests {
     #[tokio::test]
     async fn login_request_and_async_should_work_with_v1() -> Result<()> {
         let (server, filen_settings) = init_server();
-        let retry_settings = RetrySettings::default();
         let request_payload = LoginRequestPayload {
             email: SecUtf8::from("test@email.com"),
             password: SecUtf8::from("test"),
@@ -277,13 +265,13 @@ mod tests {
         let mock = setup_json_mock(LOGIN_PATH, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || login_request(&request_payload, &retry_settings, &filen_settings)),
+            closure!(clone request_payload, clone filen_settings, || login_request(&request_payload, &filen_settings)),
         )
         .await??;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
-        let async_response = login_request_async(&request_payload, &retry_settings, &filen_settings).await?;
+        let async_response = login_request_async(&request_payload, &filen_settings).await?;
         mock.assert_hits(2);
         assert_eq!(async_response, expected_response);
         Ok(())

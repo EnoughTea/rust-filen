@@ -1,9 +1,7 @@
 use crate::{
     crypto,
     filen_settings::FilenSettings,
-    queries,
-    retry_settings::RetrySettings,
-    utils,
+    queries, utils,
     v1::fs::*,
     v1::{api_response_struct, PlainApiResponse},
 };
@@ -191,69 +189,59 @@ impl DirRenameRequestPayload {
 /// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder, created by Filen's client.
 pub fn user_dirs_request(
     payload: &UserDirsRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<UserDirsResponsePayload> {
-    queries::query_filen_api(USER_DIRS_PATH, payload, retry_settings, filen_settings)
+    queries::query_filen_api(USER_DIRS_PATH, payload, filen_settings)
 }
 
 /// Calls [USER_DIRS_PATH] endpoint asynchronously. Used to get a list of user's folders.
 /// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder, created by Filen's client.
 pub async fn user_dirs_request_async(
     payload: &UserDirsRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<UserDirsResponsePayload> {
-    queries::query_filen_api_async(USER_DIRS_PATH, payload, retry_settings, filen_settings).await
+    queries::query_filen_api_async(USER_DIRS_PATH, payload, filen_settings).await
 }
 
 /// Calls [DIR_CREATE_PATH] endpoint. Creates parentless folder that you need to move yourself later.
 pub fn dir_create_request(
     payload: &DirCreateRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(DIR_CREATE_PATH, payload, retry_settings, filen_settings)
+    queries::query_filen_api(DIR_CREATE_PATH, payload, filen_settings)
 }
 
 /// Calls [DIR_CREATE_PATH] endpoint asynchronously. Creates parentless folder that you need to move yourself later.
 pub async fn dir_create_request_async(
     payload: &DirCreateRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(DIR_CREATE_PATH, payload, retry_settings, filen_settings).await
+    queries::query_filen_api_async(DIR_CREATE_PATH, payload, filen_settings).await
 }
 
 /// Calls [DIR_EXISTS_PATH] endpoint.
 /// Checks if folder with the given name exists within the specified parent folder.
 pub fn dir_exists_request(
     payload: &LocationExistsRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<LocationExistsResponsePayload> {
-    queries::query_filen_api(DIR_EXISTS_PATH, payload, retry_settings, filen_settings)
+    queries::query_filen_api(DIR_EXISTS_PATH, payload, filen_settings)
 }
 
 /// Calls [DIR_EXISTS_PATH] endpoint asynchronously.
 /// Checks if folder with the given name exists within the specified parent folder.
 pub async fn dir_exists_request_async(
     payload: &LocationExistsRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<LocationExistsResponsePayload> {
-    queries::query_filen_api_async(DIR_EXISTS_PATH, payload, retry_settings, filen_settings).await
+    queries::query_filen_api_async(DIR_EXISTS_PATH, payload, filen_settings).await
 }
 
 /// Calls [DIR_MOVE_PATH] endpoint.
 /// Moves folder with the given uuid to the specified parent folder. It is a good idea to check first if folder
 /// with the same name already exists within the parent folder.
-pub fn dir_move_request(
-    payload: &DirMoveRequestPayload,
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
-    queries::query_filen_api(DIR_MOVE_PATH, payload, retry_settings, filen_settings)
+pub fn dir_move_request(payload: &DirMoveRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
+    queries::query_filen_api(DIR_MOVE_PATH, payload, filen_settings)
 }
 
 /// Calls [DIR_MOVE_PATH] endpoint asynchronously.
@@ -261,10 +249,9 @@ pub fn dir_move_request(
 /// with the same name already exists within the parent folder.
 pub async fn dir_move_request_async(
     payload: &DirMoveRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(DIR_MOVE_PATH, payload, retry_settings, filen_settings).await
+    queries::query_filen_api_async(DIR_MOVE_PATH, payload, filen_settings).await
 }
 
 /// Calls [DIR_RENAME_PATH] endpoint.
@@ -272,10 +259,9 @@ pub async fn dir_move_request_async(
 /// with the new name already exists within the parent folder.
 pub fn dir_rename_request(
     payload: &DirRenameRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(DIR_RENAME_PATH, payload, retry_settings, filen_settings)
+    queries::query_filen_api(DIR_RENAME_PATH, payload, filen_settings)
 }
 
 /// Calls [DIR_RENAME_PATH] endpoint asynchronously.
@@ -283,10 +269,9 @@ pub fn dir_rename_request(
 /// with the new name already exists within the parent folder.
 pub async fn dir_rename_request_async(
     payload: &DirRenameRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(DIR_RENAME_PATH, payload, retry_settings, filen_settings).await
+    queries::query_filen_api_async(DIR_RENAME_PATH, payload, filen_settings).await
 }
 
 /// Calls [DIR_TRASH_PATH] endpoint.
@@ -294,10 +279,9 @@ pub async fn dir_rename_request_async(
 /// so you cannot create a new folder with it.
 pub fn dir_trash_request(
     payload: &LocationTrashRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(DIR_TRASH_PATH, payload, retry_settings, filen_settings)
+    queries::query_filen_api(DIR_TRASH_PATH, payload, filen_settings)
 }
 
 /// Calls [DIR_TRASH_PATH] endpoint asynchronously.
@@ -305,10 +289,9 @@ pub fn dir_trash_request(
 /// so you cannot create a new folder with it.
 pub async fn dir_trash_request_async(
     payload: &LocationTrashRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(DIR_TRASH_PATH, payload, retry_settings, filen_settings).await
+    queries::query_filen_api_async(DIR_TRASH_PATH, payload, filen_settings).await
 }
 
 #[cfg(test)]
@@ -345,7 +328,6 @@ mod tests {
     #[tokio::test]
     async fn user_dirs_request_and_async_should_work() -> Result<()> {
         let (server, filen_settings) = init_server();
-        let retry_settings = RetrySettings::default();
         let request_payload = UserDirsRequestPayload {
             api_key: API_KEY.clone(),
         };
@@ -354,12 +336,12 @@ mod tests {
         let mock = setup_json_mock(USER_DIRS_PATH, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { user_dirs_request(&request_payload, &retry_settings, &filen_settings) }),
+            closure!(clone request_payload, clone filen_settings, || { user_dirs_request(&request_payload, &filen_settings) }),
         ).await??;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
-        let async_response = user_dirs_request_async(&request_payload, &retry_settings, &filen_settings).await?;
+        let async_response = user_dirs_request_async(&request_payload, &filen_settings).await?;
         mock.assert_hits(2);
         assert_eq!(async_response, expected_response);
         Ok(())
@@ -368,7 +350,6 @@ mod tests {
     #[tokio::test]
     async fn dir_create_request_and_async_should_work() -> Result<()> {
         let (server, filen_settings) = init_server();
-        let retry_settings = RetrySettings::default();
         let request_payload = DirCreateRequestPayload {
             api_key: API_KEY.clone(),
             uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
@@ -380,12 +361,12 @@ mod tests {
         let mock = setup_json_mock(DIR_CREATE_PATH, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { dir_create_request(&request_payload, &retry_settings, &filen_settings) }),
+            closure!(clone request_payload, clone filen_settings, || { dir_create_request(&request_payload, &filen_settings) }),
         ).await??;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
-        let async_response = dir_create_request_async(&request_payload, &retry_settings, &filen_settings).await?;
+        let async_response = dir_create_request_async(&request_payload, &filen_settings).await?;
         mock.assert_hits(2);
         assert_eq!(async_response, expected_response);
         Ok(())
@@ -394,7 +375,6 @@ mod tests {
     #[tokio::test]
     async fn dir_exists_request_and_async_should_work() -> Result<()> {
         let (server, filen_settings) = init_server();
-        let retry_settings = RetrySettings::default();
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
             parent: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
@@ -405,12 +385,12 @@ mod tests {
         let mock = setup_json_mock(DIR_EXISTS_PATH, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { dir_exists_request(&request_payload, &retry_settings, &filen_settings) }),
+            closure!(clone request_payload, clone filen_settings, || { dir_exists_request(&request_payload, &filen_settings) }),
         ).await??;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
-        let async_response = dir_exists_request_async(&request_payload, &retry_settings, &filen_settings).await?;
+        let async_response = dir_exists_request_async(&request_payload, &filen_settings).await?;
         mock.assert_hits(2);
         assert_eq!(async_response, expected_response);
         Ok(())
@@ -419,7 +399,6 @@ mod tests {
     #[tokio::test]
     async fn dir_move_request_and_async_should_work() -> Result<()> {
         let (server, filen_settings) = init_server();
-        let retry_settings = RetrySettings::default();
         let request_payload = DirMoveRequestPayload {
             api_key: API_KEY.clone(),
             folder_uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
@@ -429,12 +408,12 @@ mod tests {
         let mock = setup_json_mock(DIR_MOVE_PATH, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { dir_move_request(&request_payload, &retry_settings, &filen_settings) }),
+            closure!(clone request_payload, clone filen_settings, || { dir_move_request(&request_payload, &filen_settings) }),
         ).await??;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
-        let async_response = dir_move_request_async(&request_payload, &retry_settings, &filen_settings).await?;
+        let async_response = dir_move_request_async(&request_payload, &filen_settings).await?;
         mock.assert_hits(2);
         assert_eq!(async_response, expected_response);
         Ok(())
@@ -443,7 +422,6 @@ mod tests {
     #[tokio::test]
     async fn dir_rename_request_and_async_should_work() -> Result<()> {
         let (server, filen_settings) = init_server();
-        let retry_settings = RetrySettings::default();
         let request_payload = DirRenameRequestPayload {
             api_key: API_KEY.clone(),
             uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
@@ -454,12 +432,12 @@ mod tests {
         let mock = setup_json_mock(DIR_RENAME_PATH, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { dir_rename_request(&request_payload, &retry_settings, &filen_settings) }),
+            closure!(clone request_payload, clone filen_settings, || { dir_rename_request(&request_payload, &filen_settings) }),
         ).await??;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
-        let async_response = dir_rename_request_async(&request_payload, &retry_settings, &filen_settings).await?;
+        let async_response = dir_rename_request_async(&request_payload, &filen_settings).await?;
         mock.assert_hits(2);
         assert_eq!(async_response, expected_response);
         Ok(())

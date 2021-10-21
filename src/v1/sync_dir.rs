@@ -1,8 +1,6 @@
 use crate::{
     filen_settings::FilenSettings,
-    queries,
-    retry_settings::RetrySettings,
-    utils,
+    queries, utils,
     v1::{fs::*, *},
 };
 use anyhow::*;
@@ -82,20 +80,18 @@ api_response_struct!(
 /// to return empty data if nothing has been changed since the last call.
 pub fn get_dir_request(
     payload: &GetDirRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<GetDirResponsePayload> {
-    queries::query_filen_api(GET_DIR_PATH, payload, retry_settings, filen_settings)
+    queries::query_filen_api(GET_DIR_PATH, payload, filen_settings)
 }
 
 /// Calls [GET_DIR_PATH] endpoint asynchronously. It fetches the entire Filen sync folder contents, with option
 /// to return empty data if nothing has been changed since the last call.
 pub async fn get_dir_request_async(
     payload: &GetDirRequestPayload,
-    retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<GetDirResponsePayload> {
-    queries::query_filen_api_async(GET_DIR_PATH, payload, retry_settings, filen_settings).await
+    queries::query_filen_api_async(GET_DIR_PATH, payload, filen_settings).await
 }
 
 #[cfg(test)]
@@ -115,7 +111,6 @@ mod tests {
     #[tokio::test]
     async fn get_dir_request_and_async_should_work_for_unchanged_data() -> Result<()> {
         let (server, filen_settings) = init_server();
-        let retry_settings = RetrySettings::default();
         let request_payload = GetDirRequestPayload {
             api_key: API_KEY.clone(),
             sync_folder_uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
@@ -126,12 +121,12 @@ mod tests {
         let mock = setup_json_mock(GET_DIR_PATH, &request_payload, &expected_response, &server);
 
         let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { get_dir_request(&request_payload, &retry_settings, &filen_settings) }),
+            closure!(clone request_payload, clone filen_settings, || { get_dir_request(&request_payload, &filen_settings) }),
         ).await??;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
-        let async_response = get_dir_request_async(&request_payload, &retry_settings, &filen_settings).await?;
+        let async_response = get_dir_request_async(&request_payload, &filen_settings).await?;
         mock.assert_hits(2);
         assert_eq!(async_response, expected_response);
         Ok(())
