@@ -5,7 +5,7 @@ use anyhow::*;
 use futures::FutureExt;
 use secstr::SecUtf8;
 
-/// Sets how many chunks to download and decrypt in parallel.
+/// Sets how many chunks to download and decrypt concurrently.
 const ASYNC_CHUNK_BATCH_SIZE: usize = 16; // Is it a good idea to simply hardcode this param?
 
 /// Gets encrypted file chunk bytes from Filen download server defined by a region and a bucket.
@@ -40,7 +40,10 @@ pub async fn download_chunk_async(
     queries::download_from_filen_async(&api_endpoint, retry_settings, filen_settings).await
 }
 
-pub fn download_and_decrypt_file_from_data_and_key<W: std::io::Write>(
+/// Synchronously downloads and decrypts the file defined by given [DownloadedFileData] from Filen download server.
+/// Returns total size of downloaded encrypted chunks.
+/// All file chunks are downloaded and decrypted sequentially one by one, with each decrypted chunk immediately written to the provided writer.
+pub fn download_and_decrypt_file_from_data_and_key<W: Write>(
     file_data: &DownloadedFileData,
     file_key: &SecUtf8,
     retry_settings: &RetrySettings,
@@ -60,10 +63,34 @@ pub fn download_and_decrypt_file_from_data_and_key<W: std::io::Write>(
     )
 }
 
+/// Asynchronously downloads and decrypts the file defined by given [DownloadedFileData] from Filen download server.
+/// Returns total size of downloaded encrypted chunks.
+/// All file chunks are downloaded and decrypted in concurrently first, and then written to the provided writer.
+pub async fn download_and_decrypt_file_from_data_and_key_async<W: Write>(
+    file_data: &DownloadedFileData,
+    file_key: &SecUtf8,
+    retry_settings: &RetrySettings,
+    filen_settings: &FilenSettings,
+    writer: &mut std::io::BufWriter<W>,
+) -> Result<u64> {
+    download_and_decrypt_file_async(
+        &file_data.region,
+        &file_data.bucket,
+        &file_data.uuid,
+        file_data.chunks,
+        file_data.version,
+        file_key,
+        retry_settings,
+        filen_settings,
+        writer,
+    )
+    .await
+}
+
 /// Synchronously downloads and decrypts the specified file from Filen download server defined by a region and a bucket.
 /// Returns total size of downloaded encrypted chunks.
 /// All file chunks are downloaded and decrypted sequentially one by one, with each decrypted chunk immediately written to the provided writer.
-pub fn download_and_decrypt_file<W: std::io::Write>(
+pub fn download_and_decrypt_file<W: Write>(
     region: &str,
     bucket: &str,
     file_uuid: &str,
@@ -88,13 +115,14 @@ pub fn download_and_decrypt_file<W: std::io::Write>(
         })
         .collect::<Result<Vec<u64>>>()?;
 
+    writer.flush()?;
     Ok(written_chunk_lengths.iter().sum::<u64>())
 }
 
 /// Asynchronously downloads the specified file from Filen download server defined by a region and a bucket.
 /// Returns total size of downloaded encrypted file chunks.
-/// All file chunks are downloaded and decrypted in parallel first, and then written to the provided writer.
-pub async fn download_and_decrypt_file_async<W: std::io::Write>(
+/// All file chunks are downloaded and decrypted concurrently first, and then written to the provided writer.
+pub async fn download_and_decrypt_file_async<W: Write>(
     region: &str,
     bucket: &str,
     file_uuid: &str,
@@ -122,12 +150,13 @@ pub async fn download_and_decrypt_file_async<W: std::io::Write>(
         .map(|(batch, encrypted_size)| write_batch(batch, encrypted_size.clone(), writer))
         .collect::<Result<Vec<u64>>>()?;
 
+    writer.flush()?;
     Ok(written_batch_lengths.iter().sum::<u64>())
 }
 
 /// Writes batch of file chunks to the given writer and returns total size of passed encrypted batch.
 /// If one write in the batch fails, entire batch fails.
-fn write_batch<W: std::io::Write>(
+fn write_batch<W: Write>(
     batch: &Vec<Vec<u8>>,
     batch_encrypted_size: u64,
     writer: &mut std::io::BufWriter<W>,

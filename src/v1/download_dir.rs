@@ -9,6 +9,7 @@ use crate::{
 use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
+use std::io::Write;
 
 const DOWNLOAD_DIR: &str = "/v1/download/dir";
 const DOWNLOAD_DIR_SHARED: &str = "/v1/download/dir/shared";
@@ -113,7 +114,7 @@ impl DownloadedFileData {
     }
 
     /// Uses this file's properties to call [download_and_decrypt_file].
-    pub fn download_and_decrypt_file<W: std::io::Write>(
+    pub fn download_and_decrypt_file<W: Write>(
         &self,
         file_key: &SecUtf8,
         retry_settings: &RetrySettings,
@@ -134,7 +135,7 @@ impl DownloadedFileData {
     }
 
     /// Uses this file's properties to call [download_and_decrypt_file_async].
-    pub async fn download_and_decrypt_file_async<W: std::io::Write>(
+    pub async fn download_and_decrypt_file_async<W: Write>(
         &self,
         file_key: &SecUtf8,
         retry_settings: &RetrySettings,
