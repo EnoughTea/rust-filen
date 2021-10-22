@@ -1,5 +1,3 @@
-use serde_with::*;
-
 pub mod auth;
 mod dirs;
 mod download_dir;
@@ -43,8 +41,8 @@ macro_rules! api_response_struct {
         $struct_name:ident<$response_data_type:ty>
     ) => {
         $(#[$meta])*
-        #[skip_serializing_none]
-        #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+        #[serde_with::skip_serializing_none]
+        #[derive(Clone, Debug, serde::Deserialize, Eq, PartialEq, serde::Serialize)]
         pub struct $struct_name {
             /// True when API call was successful; false otherwise.
             pub status: bool,

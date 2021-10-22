@@ -2,7 +2,6 @@ use std::{convert::TryInto, io::Write};
 
 use crate::{crypto, filen_settings::FilenSettings, queries, retry_settings::RetrySettings, utils, v1::fs::*};
 use anyhow::*;
-use futures::FutureExt;
 use secstr::SecUtf8;
 
 /// Sets how many chunks to download and decrypt concurrently.
@@ -12,7 +11,7 @@ const ASYNC_CHUNK_BATCH_SIZE: usize = 16; // Is it a good idea to simply hardcod
 /// Resulting bytes can be decrypted with file key from file metadata.
 ///
 /// Download server endpoint is <filen download server>/<region>/<bucket>/<file uuid>/<chunk index>
-pub fn download_chunk(
+pub fn download_file_chunk(
     region: &str,
     bucket: &str,
     file_uuid: &str,
@@ -27,7 +26,7 @@ pub fn download_chunk(
 /// Resulting bytes can be decrypted with file key from file metadata.
 ///
 /// Download server endpoint is <filen download server>/<region>/<bucket>/<file uuid>/<chunk index>
-pub async fn download_chunk_async(
+pub async fn download_file_chunk_async(
     region: &str,
     bucket: &str,
     file_uuid: &str,
@@ -102,7 +101,7 @@ pub fn download_and_decrypt_file<W: Write>(
     let written_chunk_lengths = (0..chunk_count)
         .map(|chunk_index| {
             let encrypted_bytes =
-                retry_settings.retry(|| download_chunk(region, bucket, file_uuid, chunk_index, filen_settings))?;
+                retry_settings.retry(|| download_file_chunk(region, bucket, file_uuid, chunk_index, filen_settings))?;
             let file_key_bytes: &[u8; 32] = file_key.unsecure().as_bytes().try_into()?;
             let encrypted_bytes_len = encrypted_bytes.len() as u64;
             let decrypted_bytes = crypto::decrypt_file_chunk(&encrypted_bytes, file_key_bytes, version)?;
@@ -131,13 +130,13 @@ pub async fn download_and_decrypt_file_async<W: Write>(
     filen_settings: &FilenSettings,
     writer: &mut std::io::BufWriter<W>,
 ) -> Result<u64> {
-    let download_and_decrypt_action = |batch_indices: Vec<u32>| {
-        download_batch_async(region, bucket, file_uuid, batch_indices, retry_settings, filen_settings).map(
-            |maybe_batch| match maybe_batch {
-                Ok(batch) => decrypt_batch(&batch, version, file_key),
-                Err(err) => Err(err),
-            },
-        )
+    let download_and_decrypt_action = |batch_indices: Vec<u32>| async {
+        let batch_or_err =
+            download_batch_async(region, bucket, file_uuid, batch_indices, retry_settings, filen_settings).await;
+        match batch_or_err {
+            Ok(batch) => decrypt_batch(&batch, version, file_key),
+            Err(err) => Err(err),
+        }
     };
     let batches = batch_chunks(chunk_count, ASYNC_CHUNK_BATCH_SIZE);
     let download_and_decrypt_batches = batches.iter().map(|batch| download_and_decrypt_action(batch.clone()));
@@ -198,7 +197,8 @@ async fn download_batch_async(
     filen_settings: &FilenSettings,
 ) -> Result<Vec<Vec<u8>>> {
     let download_action = |chunk_index: u32| {
-        retry_settings.retry_async(move || download_chunk_async(region, bucket, file_uuid, chunk_index, filen_settings))
+        retry_settings
+            .retry_async(move || download_file_chunk_async(region, bucket, file_uuid, chunk_index, filen_settings))
     };
     futures::future::try_join_all(batch_indices.iter().map(|chunk_index| download_action(*chunk_index))).await
 }
