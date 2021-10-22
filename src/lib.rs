@@ -1,7 +1,9 @@
 #![allow(dead_code)]
 #![forbid(unsafe_code)]
 
+pub use fure;
 pub use reqwest;
+pub use retry;
 pub use secstr;
 
 mod crypto;

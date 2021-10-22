@@ -1,5 +1,5 @@
 use crate::retry_settings::RetrySettings;
-use std::{convert::TryInto, time::Duration};
+use std::time::Duration;
 
 /// Each retry increases the delay since the last exponentially, but a maximum delay is limited.
 #[derive(Debug)]
@@ -10,6 +10,16 @@ pub struct LimitedExponential {
 }
 
 impl LimitedExponential {
+    /// Create a new `Exponential` using the given millisecond duration as the initial delay,
+    /// a variable multiplication factor and a max limit for delay growth.
+    pub fn new(base: u64, factor: f64, max: u64) -> Self {
+        LimitedExponential {
+            current: base,
+            factor,
+            max,
+        }
+    }
+
     /// Create a new `Exponential` using the given millisecond duration as the initial delay and a max limit for delay growth.
     pub fn from_millis_and_max(base: u64, max: u64) -> Self {
         LimitedExponential {
@@ -19,20 +29,11 @@ impl LimitedExponential {
         }
     }
 
-    /// Create a new `Exponential` using the given millisecond duration as the initial delay, a variable multiplication factor and a max limit for delay growth.
-    pub fn from_millis_with_factor_and_max(base: u64, factor: f64, max: u64) -> Self {
-        LimitedExponential {
-            current: base,
-            factor,
-            max,
-        }
-    }
-
     pub fn from_retry_settings(settings: &RetrySettings) -> LimitedExponential {
         LimitedExponential {
-            current: settings.initial_delay.as_millis().try_into().unwrap(),
-            factor: settings.exp_factor as f64,
-            max: settings.max_delay.as_millis().try_into().unwrap(),
+            current: settings.initial_delay().as_millis() as u64,
+            factor: settings.exp_factor() as f64,
+            max: settings.max_delay().as_millis() as u64,
         }
     }
 }

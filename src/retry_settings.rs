@@ -5,31 +5,34 @@ use anyhow::*;
 use once_cell::sync::Lazy;
 
 const RETRY_EXP_FACTOR: u32 = 2;
-const RETRY_INITIAL_DELAY_MILLIS: u64 = 500;
-const RETRY_MAX_DELAY_MILLIS: u64 = 10000;
-const DEFAULT_MAX_TRIES: usize = 0;
+const RETRY_INITIAL_DELAY_MILLIS: u64 = 1000;
+const RETRY_MAX_DELAY_MILLIS: u64 = 15000;
 
-/// Static instance of zero-retries [RetrySettings].
+/// 'No retries' retry settings with [RetrySettings::max_tries] set to 0.
 pub static NO_RETRIES: Lazy<RetrySettings> = Lazy::new(RetrySettings::default);
 
-/// Parameters for exponential backoff retry strategy. Default instance performs no retries.
+/// Retry settings to retry 5 times with 1, 2, 4, 8 and 15 seconds pause between retries.
+pub static STANDARD: Lazy<RetrySettings> = Lazy::new(|| RetrySettings {
+    max_tries: 5,
+    ..RetrySettings::default()
+});
+
+/// Parameters for exponential backoff retry strategy with random jitter. Default instance performs no retries.
 ///
-/// Instance returned from [RetrySettings::from_max_tries] has [RetrySettings::max_delay] set to [RETRY_MAX_DELAY_MILLIS] by default,
-/// so an API query with RetrySettings::from_max_tries(6) call will take at most ≈half a minute,
-/// with every additional retry adding another [RetrySettings::max_delay].
+/// Retry sync operations with [RetrySettings::retry] and futures with [RetrySettings::retry_async].
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct RetrySettings {
     /// Initial delay for exponential backoff.
-    pub initial_delay: Duration,
+    initial_delay: Duration,
 
     /// Exponential backoff factor. If set to 0, [max_delay] will always be used as a delay.
-    pub exp_factor: u32,
+    exp_factor: u32,
 
     /// Max delay for exponential backoff.
-    pub max_delay: Duration,
+    max_delay: Duration,
 
     /// Amount of retries to perform when something fails. If set to 0, no retries will be made.
-    pub max_tries: usize,
+    max_tries: usize,
 }
 
 impl RetrySettings {
@@ -42,17 +45,9 @@ impl RetrySettings {
         }
     }
 
-    /// Creates exponential backoff retry strategy with given amount of max retries.
-    pub fn from_max_tries(max_tries: usize) -> RetrySettings {
-        RetrySettings {
-            max_tries,
-            ..RetrySettings::default()
-        }
-    }
-
     pub(crate) fn get_exp_backoff_iterator(&self) -> impl Iterator<Item = Duration> {
         LimitedExponential::from_retry_settings(self)
-            //.map(retry::delay::jitter) is kinda meh, I see no reason to jitter for now
+            .map(retry::delay::jitter)
             .take(self.max_tries)
     }
 
@@ -77,15 +72,36 @@ impl RetrySettings {
             retry::Error::Internal(description) => anyhow!(unknown(&description)),
         })
     }
+
+    /// Get a reference to the initial delay.
+    pub fn initial_delay(&self) -> &Duration {
+        &self.initial_delay
+    }
+
+    /// Get the exponential factor. If set to 0, [RetrySettings::max_delay] will always be used as a delay.
+    pub fn exp_factor(&self) -> u32 {
+        self.exp_factor
+    }
+
+    /// Get a reference to the maximum possible delay for exponential backoff.
+    pub fn max_delay(&self) -> &Duration {
+        &self.max_delay
+    }
+
+    /// Get a reference to the amount of retries to perform when something fails. If set to 0, no retries will be made.
+    pub fn max_tries(&self) -> usize {
+        self.max_tries
+    }
 }
 
 impl Default for RetrySettings {
+    /// Default instance performs no retries.
     fn default() -> Self {
         Self {
             initial_delay: Duration::from_millis(RETRY_INITIAL_DELAY_MILLIS),
             exp_factor: RETRY_EXP_FACTOR,
             max_delay: Duration::from_millis(RETRY_MAX_DELAY_MILLIS),
-            max_tries: DEFAULT_MAX_TRIES,
+            max_tries: 0,
         }
     }
 }
