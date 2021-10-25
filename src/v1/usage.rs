@@ -3,7 +3,7 @@ use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 const USER_USAGE_PATH: &str = "/v1/user/usage";
 const USER_SYNC_GET_DATA_PATH: &str = "/v1/user/sync/get/data";

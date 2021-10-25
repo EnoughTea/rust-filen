@@ -6,7 +6,7 @@ use snafu::{ensure, Backtrace, ResultExt, Snafu};
 
 use super::api_response_struct;
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 const KEY_PAIR_INFO_PATH: &str = "/v1/user/keyPair/info";
 const MASTER_KEYS_PATH: &str = "/v1/user/masterKeys";

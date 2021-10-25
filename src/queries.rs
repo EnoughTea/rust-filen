@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use crate::filen_settings::FilenSettings;
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 static ASYNC_CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
 static BLOCKING_CLIENT: Lazy<reqwest::blocking::Client> = Lazy::new(reqwest::blocking::Client::new);

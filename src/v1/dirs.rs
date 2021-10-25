@@ -11,7 +11,7 @@ use serde_with::*;
 use snafu::{Backtrace, ResultExt, Snafu};
 use uuid::Uuid;
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub const FILEN_FOLDER_TYPE: &str = "folder";
 pub const FILEN_SYNC_FOLDER_NAME: &str = "Filen Sync";

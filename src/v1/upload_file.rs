@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use snafu::{Backtrace, ResultExt, Snafu};
 use uuid::Uuid;
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 const DEFAULT_EXPIRE: &str = "never";
 const FILE_CHUNK_SIZE: u32 = 1024 * 1024; // Hardcoded mostly because Filen also hardcoded chunk size

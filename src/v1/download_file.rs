@@ -4,7 +4,7 @@ use crate::{crypto, filen_settings::FilenSettings, queries, retry_settings::Retr
 use secstr::SecUtf8;
 use snafu::{ResultExt, Snafu};
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// Sets how many chunks to download and decrypt concurrently.
 const ASYNC_CHUNK_BATCH_SIZE: usize = 16; // Is it a good idea to simply hardcode this param?

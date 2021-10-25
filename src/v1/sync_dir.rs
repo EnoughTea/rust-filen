@@ -7,7 +7,7 @@ use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub const FILEN_SYNC_FOLDER_TYPE: &str = "sync";
 

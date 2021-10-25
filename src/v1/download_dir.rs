@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::io::Write;
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 const DOWNLOAD_DIR: &str = "/v1/download/dir";
 const DOWNLOAD_DIR_SHARED: &str = "/v1/download/dir/shared";

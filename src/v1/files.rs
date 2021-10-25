@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use snafu::{ensure, Backtrace, ResultExt, Snafu};
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 const FILE_ARCHIVE_PATH: &str = "/v1/file/archive";
 const FILE_EXISTS_PATH: &str = "/v1/file/exists";

@@ -20,7 +20,7 @@ use snafu::{ensure, Backtrace, ResultExt, Snafu};
 
 use crate::utils;
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
