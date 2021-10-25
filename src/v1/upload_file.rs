@@ -38,6 +38,12 @@ pub enum Error {
     #[snafu(display("Filen did not accept at least one uploaded file chunk: {}", reason))]
     ChunkNotAccepted { reason: String, backtrace: Backtrace },
 
+    #[snafu(display(
+        "Not all uploaded chunks with status == true actually had data: {}",
+        file_upload_info
+    ))]
+    ChunkUploadResponseMissingData { file_upload_info: FileUploadInfo },
+
     #[snafu(display("Filen did not accept uploaded dummy chunk: {}", reason))]
     DummyChunkNotAccepted { reason: String, backtrace: Backtrace },
 
@@ -209,6 +215,8 @@ impl FileUploadProperties {
     }
 }
 
+utils::display_from_json!(FileUploadProperties);
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FileUploadInfo {
     pub properties: FileUploadProperties,
@@ -232,7 +240,38 @@ impl FileUploadInfo {
     pub fn is_uploaded_successfully(&self) -> bool {
         self.mark_done_response.status
     }
+
+    /// Retrieves uploaded file chunks locations, taking them from [FileUploadInfo::chunk_responses].
+    pub fn get_file_chunk_locations(&self) -> Result<Vec<FileChunkLocation>> {
+        let chunk_datas = self
+            .chunk_responses
+            .iter()
+            .map(|chunk_response| chunk_response.data.clone())
+            .flatten()
+            .enumerate();
+
+        let locations = chunk_datas
+            .map(|(index, data)| FileChunkLocation {
+                region: data.region,
+                bucket: data.bucket,
+                file_uuid: self.properties.uuid.clone(),
+                chunk_index: index as u32,
+            })
+            .collect::<Vec<FileChunkLocation>>();
+
+        // Sanity check that Filen did not return chunk's upload status == true without any data.
+        if locations.len() == self.chunk_responses.len() {
+            Ok(locations)
+        } else {
+            ChunkUploadResponseMissingData {
+                file_upload_info: self.clone(),
+            }
+            .fail()
+        }
+    }
 }
+
+utils::display_from_json!(FileUploadInfo);
 
 /// Calls [UPLOAD_DONE_PATH] endpoint. Used to mark upload as done after all file chunks (+1 dummy chunk) were uploaded.
 pub fn upload_done_request(
@@ -463,6 +502,7 @@ where
 }
 
 /// Uploads all real file chunks to Filen; do not forget to upload dummy chunk after real chunks are uploaded.
+/// Returned file chunk upload responses are in order: first upload response corresponds to the first file chunk uploaded, and so on.
 fn upload_chunks<R: Read + Seek>(
     api_key: &SecUtf8,
     file_chunk_size: u32,
@@ -482,6 +522,7 @@ fn upload_chunks<R: Read + Seek>(
 }
 
 /// Uploads all real file chunks to Filen; do not forget to upload dummy chunk after real chunks are uploaded.
+/// Returned file chunk upload responses are in order: first upload response corresponds to the first file chunk uploaded, and so on.
 async fn upload_chunks_async<R: Read + Seek>(
     api_key: &SecUtf8,
     file_chunk_size: u32,
