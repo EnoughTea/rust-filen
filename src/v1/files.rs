@@ -65,6 +65,12 @@ pub enum Error {
         source: queries::Error,
     },
 
+    #[snafu(display(
+        "File path does not contain valid filename.\
+         Check that given file path is a UTF-8 string with a file name at the end"
+    ))]
+    FilePathDoesNotContainValidFilename { backtrace: Backtrace },
+
     #[snafu(display("File system failed to get metadata for a file: {}", source))]
     FileSystemMetadataError { source: std::io::Error },
 
@@ -119,10 +125,17 @@ impl FileProperties {
         })
     }
 
-    pub fn from_name_and_local_path(name: &str, local_file_path: &Path) -> Result<FileProperties> {
+    pub fn from_local_path(local_file_path: &Path) -> Result<FileProperties> {
+        match local_file_path.file_name().and_then(|filename| filename.to_str()) {
+            Some(file_name) => FileProperties::from_name_and_local_path(file_name, local_file_path),
+            None => FilePathDoesNotContainValidFilename {}.fail(),
+        }
+    }
+
+    pub fn from_name_and_local_path(filen_filename: &str, local_file_path: &Path) -> Result<FileProperties> {
         let fs_metadata = fs::metadata(local_file_path).context(FileSystemMetadataError {})?;
         let last_modified_time = fs_metadata.modified().unwrap_or_else(|_| SystemTime::now());
-        FileProperties::from_name_size_modified(name, fs_metadata.len(), &last_modified_time)
+        FileProperties::from_name_size_modified(filen_filename, fs_metadata.len(), &last_modified_time)
     }
 
     /// Decrypts file metadata string.
