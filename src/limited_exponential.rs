@@ -11,7 +11,7 @@ pub struct LimitedExponential {
 
 impl LimitedExponential {
     /// Create a new `Exponential` using the given millisecond duration as the initial delay,
-    /// a variable multiplication factor and a max limit for delay growth.
+    /// a variable multiplication factor and an upper limit for produced durations.
     pub fn new(base: u64, factor: f64, max: u64) -> Self {
         LimitedExponential {
             current: base,
@@ -20,7 +20,8 @@ impl LimitedExponential {
         }
     }
 
-    /// Create a new `Exponential` using the given millisecond duration as the initial delay and a max limit for delay growth.
+    /// Create a new `Exponential` using the given millisecond duration as the initial delay and an upper limit for
+    /// produced durations.
     pub fn from_millis_and_max(base: u64, max: u64) -> Self {
         LimitedExponential {
             current: base,

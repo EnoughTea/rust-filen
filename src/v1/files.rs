@@ -242,7 +242,7 @@ impl FileRenameRequestPayload {
     ) -> FileRenameRequestPayload {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(new_file_name, last_master_key);
         let name_hashed = LocationNameMetadata::name_hashed(new_file_name);
-        let metadata = file_metadata.to_metadata_string(last_master_key).unwrap(); // Should never panic... I think
+        let metadata = file_metadata.to_metadata_string(last_master_key).unwrap(); // Should never panic...
         FileRenameRequestPayload {
             api_key,
             uuid,
@@ -405,9 +405,11 @@ mod tests {
             deserialize_from_file("tests/resources/responses/file_exists.json");
         let mock = setup_json_mock(super::FILE_EXISTS_PATH, &request_payload, &expected_response, &server);
 
-        let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { file_exists_request(&request_payload, &filen_settings) }),
-        ).await.unwrap()?;
+        let response = spawn_blocking(closure!(clone request_payload, clone filen_settings, || {
+            file_exists_request(&request_payload, &filen_settings)
+        }))
+        .await
+        .unwrap()?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 

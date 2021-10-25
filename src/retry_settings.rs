@@ -18,7 +18,8 @@ pub static STANDARD_RETRIES: Lazy<RetrySettings> = Lazy::new(|| RetrySettings {
 
 /// Parameters for exponential backoff retry strategy with random jitter. Default instance performs no retries.
 ///
-/// Turn any API query into retriable if needed: call [RetrySettings::retry] for sync operations and [RetrySettings::retry_async] for futures.
+/// Turn any API query into retriable if needed: call [RetrySettings::retry] for sync operations and
+/// [RetrySettings::retry_async] for futures.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct RetrySettings {
     /// Initial delay for exponential backoff.

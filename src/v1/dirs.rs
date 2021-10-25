@@ -234,7 +234,8 @@ impl DirRenameRequestPayload {
 }
 
 /// Calls [USER_DIRS_PATH] endpoint. Used to get a list of user's folders.
-/// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder, created by Filen's client.
+/// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder,
+/// created by Filen's client.
 pub fn user_dirs_request(
     payload: &UserDirsRequestPayload,
     filen_settings: &FilenSettings,
@@ -245,7 +246,8 @@ pub fn user_dirs_request(
 }
 
 /// Calls [USER_DIRS_PATH] endpoint asynchronously. Used to get a list of user's folders.
-/// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder, created by Filen's client.
+/// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder,
+/// created by Filen's client.
 pub async fn user_dirs_request_async(
     payload: &UserDirsRequestPayload,
     filen_settings: &FilenSettings,
@@ -419,9 +421,11 @@ mod tests {
             deserialize_from_file("tests/resources/responses/user_dirs_default.json");
         let mock = setup_json_mock(USER_DIRS_PATH, &request_payload, &expected_response, &server);
 
-        let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { user_dirs_request(&request_payload, &filen_settings) }),
-        ).await.unwrap()?;
+        let response = spawn_blocking(closure!(clone request_payload, clone filen_settings, || {
+           user_dirs_request(&request_payload, &filen_settings)
+        }))
+        .await
+        .unwrap()?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
@@ -444,9 +448,11 @@ mod tests {
         let expected_response: PlainApiResponse = deserialize_from_file("tests/resources/responses/dir_create.json");
         let mock = setup_json_mock(DIR_CREATE_PATH, &request_payload, &expected_response, &server);
 
-        let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { dir_create_request(&request_payload, &filen_settings) }),
-        ).await.unwrap()?;
+        let response = spawn_blocking(closure!(clone request_payload, clone filen_settings, || {
+            dir_create_request(&request_payload, &filen_settings)
+        }))
+        .await
+        .unwrap()?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
@@ -491,9 +497,11 @@ mod tests {
         let expected_response: PlainApiResponse = deserialize_from_file("tests/resources/responses/dir_move.json");
         let mock = setup_json_mock(DIR_MOVE_PATH, &request_payload, &expected_response, &server);
 
-        let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { dir_move_request(&request_payload, &filen_settings) }),
-        ).await.unwrap()?;
+        let response = spawn_blocking(closure!(clone request_payload, clone filen_settings, || {
+            dir_move_request(&request_payload, &filen_settings)
+        }))
+        .await
+        .unwrap()?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
@@ -515,9 +523,11 @@ mod tests {
         let expected_response: PlainApiResponse = deserialize_from_file("tests/resources/responses/dir_rename.json");
         let mock = setup_json_mock(DIR_RENAME_PATH, &request_payload, &expected_response, &server);
 
-        let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { dir_rename_request(&request_payload, &filen_settings) }),
-        ).await.unwrap()?;
+        let response = spawn_blocking(closure!(clone request_payload, clone filen_settings, || {
+            dir_rename_request(&request_payload, &filen_settings)
+        }))
+        .await
+        .unwrap()?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 

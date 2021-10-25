@@ -182,14 +182,15 @@ pub fn encrypt_metadata_str(data: &str, m_key: &str, metadata_version: u32) -> R
         .map(|bytes| String::from_utf8_lossy(&bytes).to_string())
 }
 
-/// Restores file metadata prefiously encrypted with [encrypt_metadata]. Convenience overload of the [decrypt_metadata] for string params.
+/// Restores file metadata prefiously encrypted with [encrypt_metadata].
+/// Convenience overload of the [decrypt_metadata] for string params.
 pub fn decrypt_metadata_str(data: &str, m_key: &str) -> Result<String> {
     decrypt_metadata(data.as_bytes(), m_key.as_bytes())
         .and_then(|bytes| String::from_utf8(bytes).context(DecryptedMetadataIsNotUtf8 {}))
 }
 
-/// Encrypts file chunk for uploading to Filen. Resulting encoded chunk bytes are treated as unicode scalars, hence the resulting type.
-/// File key can be fetched from file metadata.
+/// Encrypts file chunk for uploading to Filen. Resulting encoded chunk bytes are treated as unicode scalars,
+/// hence the resulting type. File key can be fetched from file metadata.
 /// Note that [encrypt_file_data] and [decrypt_file_data] are not symmetric.
 /// You are supposed to encrypt your bytes with [encrypt_file_chunk] and send them to Filen,
 /// instead of passing them to [decrypt_file_chunk] for some reason.
@@ -212,7 +213,8 @@ pub fn encrypt_file_chunk(chunk_data: &[u8], file_key: &[u8; AES_CBC_KEY_LENGTH]
 
 /// Decrypts file chunk downloaded from Filen. File key can be fetched from file metadata.
 /// Note that [encrypt_file_data] and [decrypt_file_data] are not symmetric.
-/// You are supposed to call [decrypt_file_data] on file chunks received from Filen, not on strings produced by [encrypt_file_data].
+/// You are supposed to call [decrypt_file_data] on file chunks received from Filen, not on strings produced by
+/// [encrypt_file_data].
 pub fn decrypt_file_chunk(
     filen_encrypted_chunk_data: &[u8],
     file_key: &[u8; AES_CBC_KEY_LENGTH],
@@ -296,7 +298,8 @@ pub(crate) fn decrypt_private_key_metadata(
         .and_then(|str| decode_base64_to_secvec(&str))
 }
 
-/// Calculates OpenSSL-compatible AES 256 CBC (Pkcs7 padding) hash with 'Salted__' prefix, then 8 bytes of salt, rest is ciphered.
+/// Calculates OpenSSL-compatible AES 256 CBC (Pkcs7 padding) hash with 'Salted__' prefix,
+/// then 8 bytes of salt, rest is ciphered.
 fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -> Vec<u8> {
     let mut salt = [0u8; OPENSSL_SALT_LENGTH];
     match maybe_salt {
@@ -473,7 +476,8 @@ mod tests {
     #[test]
     fn encrypt_metadata_v1_should_use_simple_aes_with_base64() {
         let m_key = hash_fn("test");
-        let metadata = "{\"name\":\"perform.js\",\"size\":156,\"mime\":\"application/javascript\",\"key\":\"tqNrczqVdTCgFzB1b1gyiQBIYmwDBwa9\",\"lastModified\":499162500}";
+        let metadata = "{\"name\":\"perform.js\",\"size\":156,\"mime\":\"application/javascript\",\
+        \"key\":\"tqNrczqVdTCgFzB1b1gyiQBIYmwDBwa9\",\"lastModified\":499162500}";
 
         let encrypted_metadata = encrypt_metadata(metadata.as_bytes(), m_key.as_bytes(), 1).unwrap();
 
@@ -484,8 +488,11 @@ mod tests {
     #[test]
     fn decrypt_metadata_v1_should_use_simple_aes() {
         let m_key = hash_fn("test");
-        let metadata_base64 = "U2FsdGVkX1//gOpv81xPNI3PuT1CryNCVXpcfmISGNR+1g2OPT8SBP2/My7G6o5lSvVtkn2smbYrAo1Mgaq9RIJlCEjcYpMsr+A9RSpkX7zLyXtMPV6q+PRbQj1WkP8ymuh0lmmnFRa+oRy0EvJnw97m3aLTHN4DD5XmJ36tecA2cwSrFskYn9E8+0y+Wj/LcXh1l5n4Q1l5j8TSjS5mIQ==";
-        let expected_metadata = "{\"name\":\"perform.js\",\"size\":156,\"mime\":\"application/javascript\",\"key\":\"tqNrczqVdTCgFzB1b1gyiQBIYmwDBwa9\",\"lastModified\":499162500}";
+        let metadata_base64 = "U2FsdGVkX1//gOpv81xPNI3PuT1CryNCVXpcfmISGNR+1g2OPT8SBP2/My7G6o5lSvVtkn2smbYrAo1\
+        Mgaq9RIJlCEjcYpMsr+A9RSpkX7zLyXtMPV6q+PRbQj1WkP8ymuh0lmmnFRa+oRy0EvJnw97m3aLTHN4DD5XmJ36tecA2cwSrFskYn9E8+0\
+        y+Wj/LcXh1l5n4Q1l5j8TSjS5mIQ==";
+        let expected_metadata = "{\"name\":\"perform.js\",\"size\":156,\"mime\":\"application/javascript\",\
+        \"key\":\"tqNrczqVdTCgFzB1b1gyiQBIYmwDBwa9\",\"lastModified\":499162500}";
 
         let decrypted_metadata = decrypt_metadata(&metadata_base64.as_bytes(), m_key.as_bytes()).unwrap();
 
@@ -495,8 +502,8 @@ mod tests {
     #[test]
     fn encrypt_metadata_v2_should_use_aes_gcm_with_version_mark() {
         let m_key = hash_fn("test");
-        let metadata = "{\"name\":\"perform.js\",\"size\":156,\"mime\":\"application/javascript\",".to_owned()
-            + "\"key\":\"tqNrczqVdTCgFzB1b1gyiQBIYmwDBwa9\",\"lastModified\":499162500}";
+        let metadata = "{\"name\":\"perform.js\",\"size\":156,\"mime\":\"application/javascript\",\
+        \"key\":\"tqNrczqVdTCgFzB1b1gyiQBIYmwDBwa9\",\"lastModified\":499162500}";
 
         let encrypted_metadata = encrypt_metadata(metadata.as_bytes(), m_key.as_bytes(), 2).unwrap();
 
@@ -507,11 +514,11 @@ mod tests {
     #[test]
     fn decrypt_metadata_v2_should_use_aes_gcm_with_version_mark() {
         let m_key = hash_fn("test");
-        let encrypted_metadata = "002CWAZWUt8h5n0Il13bkeirz7uY05vmrO58ZXemzaIGnmy+iLe95hXtwiAWHF4s".to_owned()
-            + "9+g7gcj3LmwykWnZzUEZIAu8zIEyqe2J//iKaZOJMSIqGIg05GvVBl9INeqf2ACU7wRE9P7tCI5tKqgEWG/sMqRwPGwbNN"
-            + "rn3yI8McEqCBdPWNfi6gl8OwzcqUVnMKZI/DPVSkUZQpaN83zCtA=";
-        let expected_metadata = "{\"name\":\"perform.js\",\"size\":156,\"mime\":\"application/javascript\",".to_owned()
-            + "\"key\":\"tqNrczqVdTCgFzB1b1gyiQBIYmwDBwa9\",\"lastModified\":499162500}";
+        let encrypted_metadata = "002CWAZWUt8h5n0Il13bkeirz7uY05vmrO58ZXemzaIGnmy+iLe95hXtwiAWHF4s\
+        9+g7gcj3LmwykWnZzUEZIAu8zIEyqe2J//iKaZOJMSIqGIg05GvVBl9INeqf2ACU7wRE9P7tCI5tKqgEWG/sMqRwPGwbNN\
+        rn3yI8McEqCBdPWNfi6gl8OwzcqUVnMKZI/DPVSkUZQpaN83zCtA=";
+        let expected_metadata = "{\"name\":\"perform.js\",\"size\":156,\"mime\":\"application/javascript\",\
+        \"key\":\"tqNrczqVdTCgFzB1b1gyiQBIYmwDBwa9\",\"lastModified\":499162500}";
 
         let decrypted_metadata = decrypt_metadata(encrypted_metadata.as_bytes(), m_key.as_bytes()).unwrap();
         let decrypted_metadata_str = String::from_utf8_lossy(&decrypted_metadata);
@@ -629,10 +636,9 @@ mod tests {
     #[test]
     fn hash_password_should_return_valid_hash() {
         let password = "test_pwd".to_owned();
-        let expected_hash = "21160f51da2cbbe04a195db31d7da72639d2eb99f9da3b05461123ab39b856cbb981fc9b97e64b36ab897"
-            .to_owned()
-            + "7c6190117b18fa6d3055ac0b3411ea086fdc71bae0d806ec431c8628905f437276c3f64349683680974a7e"
-            + "00ef216b94dbbc711bd4645df3ab46de3ed787828b73fc5c8a5abd959cb0d64591042519ef1b14ad08db7";
+        let expected_hash = "21160f51da2cbbe04a195db31d7da72639d2eb99f9da3b05461123ab39b856cbb981fc9b97e64b36ab897\
+        7c6190117b18fa6d3055ac0b3411ea086fdc71bae0d806ec431c8628905f437276c3f64349683680974a7e\
+        00ef216b94dbbc711bd4645df3ab46de3ed787828b73fc5c8a5abd959cb0d64591042519ef1b14ad08db7";
 
         let actual_hash = hash_password(&password);
 

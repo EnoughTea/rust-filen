@@ -41,7 +41,7 @@ pub enum Error {
     CannotDeserializeResponseBodyJson { source: reqwest::Error },
 }
 
-/// Represents file's address on Filen servers.
+/// Represents file's address on Filen servers, assuming all this file's chunks use the same region and bucket.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct FileLocation {
     pub region: String,

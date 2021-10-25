@@ -283,7 +283,8 @@ pub fn upload_done_request(
     })
 }
 
-/// Calls [UPLOAD_DONE_PATH] endpoint asynchronously. Used to mark upload as done after all file chunks (+1 dummy chunk) were uploaded.
+/// Calls [UPLOAD_DONE_PATH] endpoint asynchronously. Used to mark upload as done after all file chunks
+/// (+1 dummy chunk) were uploaded.
 pub async fn upload_done_request_async(
     payload: &UploadDoneRequestPayload,
     filen_settings: &FilenSettings,

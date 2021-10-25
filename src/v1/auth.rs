@@ -31,7 +31,8 @@ impl FilenPasswordWithMasterKey {
         FilenPasswordWithMasterKey { m_key, sent_password }
     }
 
-    /// Derives master key and login hash from user's password and Filen salt (from /auth/info API call). Expects plain text password.
+    /// Derives master key and login hash from user's password and Filen salt (from /auth/info API call).
+    /// Expects plain text password.
     pub fn from_user_password_and_auth_info_salt(password: &SecUtf8, salt: &SecUtf8) -> FilenPasswordWithMasterKey {
         let (password_bytes, salt_bytes) = (password.unsecure().as_bytes(), salt.unsecure().as_bytes());
         let pbkdf2_hash = crypto::derive_key_from_password_512(password_bytes, salt_bytes, 200_000);
@@ -154,12 +155,15 @@ pub struct LoginResponseData {
     /// This string is a Filen metadata encrypted by the last master key and base64-encoded.
     /// It contains either a single master key string or multiple master keys strings delimited by '|'.
     /// Master key is in turn used to decrypt various metadata.
+    ///
     /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "masterKeys")]
     pub master_keys_metadata: Option<String>,
 
-    /// A user's RSA private key stored as Filen metadata encrypted by user's last master key, containing a base64-encoded key bytes.
-    /// Private key is currently used for decrypting name and metadata of the shared download folders.
+    /// A user's RSA private key stored as Filen metadata encrypted by user's last master key, containing a
+    /// base64-encoded key bytes. Private key is currently used for decrypting name and metadata of the shared
+    /// download folders.
+    ///
     /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "privateKey")]
     pub private_key_metadata: Option<String>,
@@ -242,9 +246,9 @@ mod tests {
 
     #[test]
     fn derived_key_to_sent_password_should_return_valid_mkey_and_password() {
-        let expected_m_key = "f82a1812080acab7ed5751e7193984565c8b159be00bb6c66eac70ff0c8ad8dd".to_owned();
-        let expected_password = "7a499370cf3f72fd2ce351297916fa8926daf33a01d592c92e3ee9e83c152".to_owned()
-            + "1c342e60f2ecbde37bfdc00c45923c2568bc6a9c85c8653e19ade89e71ed9deac1d";
+        let expected_m_key = "f82a1812080acab7ed5751e7193984565c8b159be00bb6c66eac70ff0c8ad8dd";
+        let expected_password = "7a499370cf3f72fd2ce351297916fa8926daf33a01d592c92e3ee9e83c152\
+        1c342e60f2ecbde37bfdc00c45923c2568bc6a9c85c8653e19ade89e71ed9deac1d";
         let pbkdf2_hash: [u8; 64] = [
             248, 42, 24, 18, 8, 10, 202, 183, 237, 87, 81, 231, 25, 57, 132, 86, 92, 139, 21, 155, 224, 11, 182, 198,
             110, 172, 112, 255, 12, 138, 216, 221, 58, 253, 102, 41, 117, 40, 216, 13, 51, 181, 109, 144, 46, 10, 63,
@@ -302,13 +306,17 @@ mod tests {
             deserialize_from_file("tests/resources/responses/auth_info_v1.json");
         let mock = setup_json_mock(AUTH_INFO_PATH, &request_payload, &expected_response, &server);
 
-        let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { auth_info_request(&request_payload, &filen_settings) }),
-        ).await.unwrap()?;
+        let response = spawn_blocking(closure!(clone request_payload, clone filen_settings, || {
+            auth_info_request(&request_payload, &filen_settings)
+        }))
+        .await
+        .unwrap()?;
+
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
         let async_response = auth_info_request_async(&request_payload, &filen_settings).await?;
+
         mock.assert_hits(2);
         assert_eq!(async_response, expected_response);
         Ok(())

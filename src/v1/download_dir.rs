@@ -142,8 +142,9 @@ impl DownloadedFileData {
         })
     }
 
-    /// Decrypt name, size and mime metadata. File key is contained within file metadata in [DownloadedFileData::metadata] field,
-    /// which can be decrypted with [DownloadedFileData::decrypt_file_metadata] call.
+    /// Decrypt name, size and mime metadata. File key is contained within file metadata in
+    /// [DownloadedFileData::metadata] field, which can be decrypted with [DownloadedFileData::decrypt_file_metadata]
+    /// call.
     pub fn decrypt_name_size_mime(&self, file_key: &SecUtf8) -> Result<FileNameSizeMime> {
         let name = crypto::decrypt_metadata_str(&self.name_metadata, file_key.unsecure()).context(
             DecryptFileNameMetadataFailed {
@@ -224,7 +225,8 @@ api_response_struct!(
 );
 
 /// Calls [USER_DIRS_PATH] endpoint. Used to get a list of user's folders.
-/// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder, created by Filen's client.
+/// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder,
+/// created by Filen's client.
 pub fn download_dir_request(
     payload: &DownloadDirRequestPayload,
     filen_settings: &FilenSettings,
@@ -235,7 +237,8 @@ pub fn download_dir_request(
 }
 
 /// Calls [USER_DIRS_PATH] endpoint asynchronously. Used to get a list of user's folders.
-/// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder, created by Filen's client.
+/// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder,
+/// created by Filen's client.
 pub async fn download_dir_request_async(
     payload: &DownloadDirRequestPayload,
     filen_settings: &FilenSettings,

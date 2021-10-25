@@ -50,13 +50,17 @@ pub struct UserKeyPairInfoRequestPayload {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserKeyPairInfoResponseData {
-    /// User's public key, base64-encoded. Currently used for encrypting name and metadata of the shared download folders.
+    /// User's public key, base64-encoded. Currently used for encrypting name and metadata of the shared
+    /// download folders.
+    ///
     /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "publicKey")]
     pub public_key: Option<String>,
 
-    /// A user's RSA private key stored as Filen metadata encrypted by user's last master key, containing a base64-encoded key bytes.
+    /// A user's RSA private key stored as Filen metadata encrypted by user's last master key, containing a
+    /// base64-encoded key bytes.
     /// Private key is currently used for decrypting name and metadata of the shared download folders.
+    ///
     /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "privateKey")]
     pub private_key_metadata: Option<String>,
@@ -129,7 +133,8 @@ impl MasterKeysFetchRequestPayload {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct MasterKeysFetchResponseData {
-    /// Metadata containing current Filen master keys, split by '|'. Last user key will be at the end. Can be used to update current user master keys.
+    /// Metadata containing current Filen master keys, split by '|'. Last user key will be at the end.
+    /// Can be used to update current user master keys.
     #[serde(rename = "keys")]
     pub keys_metadata: Option<String>,
 }
@@ -167,8 +172,8 @@ pub async fn key_pair_info_request_async(
 }
 
 /// Calls [MASTER_KEYS_PATH] endpoint. Used to get/update user's master keys.
-/// My guess is via that method new user master keys, passed in request payload, get joined with current Filen-known user master keys,
-/// and resulting master keys chain returned in response payload.
+/// My guess is via that method new user master keys, passed in request payload, get joined with current
+/// Filen-known user master keys, and resulting master keys chain is returned in response payload.
 pub fn master_keys_fetch_request(
     payload: &MasterKeysFetchRequestPayload,
     filen_settings: &FilenSettings,
@@ -179,8 +184,8 @@ pub fn master_keys_fetch_request(
 }
 
 /// Calls [MASTER_KEYS_PATH] endpoint asynchronously. Used to get/update user's master keys.
-/// My guess is via that method new user master keys, passed in request payload, get joined with current Filen-known user master keys,
-/// and resulting master keys chain returned in response payload.
+/// My guess is via that method new user master keys, passed in request payload, get joined with current
+/// Filen-known user master keys, and resulting master keys chain is returned in response payload.
 pub async fn master_keys_fetch_request_async(
     payload: &MasterKeysFetchRequestPayload,
     filen_settings: &FilenSettings,
@@ -244,9 +249,11 @@ mod tests {
             deserialize_from_file("tests/resources/responses/user_masterKeys.json");
         let mock = setup_json_mock(MASTER_KEYS_PATH, &request_payload, &expected_response, &server);
 
-        let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { master_keys_fetch_request(&request_payload, &filen_settings) }),
-        ).await.unwrap()?;
+        let response = spawn_blocking(closure!(clone request_payload, clone filen_settings, || {
+            master_keys_fetch_request(&request_payload, &filen_settings)
+        }))
+        .await
+        .unwrap()?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
