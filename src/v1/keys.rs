@@ -1,13 +1,42 @@
-use crate::{crypto, errors::bad_argument, filen_settings::FilenSettings, queries};
-use anyhow::*;
+use crate::{crypto, filen_settings::FilenSettings, queries};
 use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
 use serde_with::*;
+use snafu::{ensure, Backtrace, ResultExt, Snafu};
 
 use super::api_response_struct;
 
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
 const KEY_PAIR_INFO_PATH: &str = "/v1/user/keyPair/info";
 const MASTER_KEYS_PATH: &str = "/v1/user/masterKeys";
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("Caller provided invalid argument: {}", message))]
+    BadArgument { message: String, backtrace: Backtrace },
+
+    #[snafu(display("Public key was not a valid base64-encoded string"))]
+    DecodePublicKeyFailed { source: base64::DecodeError },
+
+    #[snafu(display("Failed to decrypt master keys: {}", source))]
+    DecryptMasterKeysFailed { source: crypto::Error },
+
+    #[snafu(display("Failed to decrypt private key: {}", source))]
+    DecryptPrivateKeyFailed { source: crypto::Error },
+
+    #[snafu(display("Failed to encrypt master keys: {}", source))]
+    EncryptMasterKeysFailed { source: crypto::Error },
+
+    #[snafu(display("{} query failed: {}", KEY_PAIR_INFO_PATH, source))]
+    KeyPairInfoQueryFailed { source: queries::Error },
+
+    #[snafu(display("{} query failed: {}", MASTER_KEYS_PATH, source))]
+    MasterKeysQueryFailed {
+        payload: MasterKeysFetchRequestPayload,
+        source: queries::Error,
+    },
+}
 
 /// Used for requests to [KEY_PAIR_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -37,15 +66,19 @@ impl UserKeyPairInfoResponseData {
     /// Conveniently decodes base64-encoded public key into bytes.
     pub fn decode_public_key(&self) -> Result<Vec<u8>> {
         match &self.public_key {
-            Some(key) => base64::decode(key).with_context(|| "Public key was not a valid base64-encoded string"),
-            _ => bail!("Cannot decode public key, it is empty"),
+            Some(key) => base64::decode(key).context(DecodePublicKeyFailed {}),
+            _ => BadArgument {
+                message: "Cannot decode public key, it is empty",
+            }
+            .fail(),
         }
     }
 
     /// Decrypts [LoginResponseData].private_key_metadata field with given user's last master key
     /// into RSA key bytes.
     pub fn decrypt_private_key(&self, last_master_key: &SecUtf8) -> Result<SecVec<u8>> {
-        crypto::decrypt_private_key_metadata(&self.private_key_metadata, last_master_key)
+        crypto::decrypt_private_key_metadata(&self.private_key_metadata.as_deref(), last_master_key)
+            .context(DecryptPrivateKeyFailed {})
     }
 }
 
@@ -71,15 +104,19 @@ impl MasterKeysFetchRequestPayload {
     /// Creates [MasterKeysFetchRequestPayload] from user's API key and user's master keys.
     /// Assumes last user's master key is the last element of master keys vec.
     fn new(api_key: SecUtf8, raw_master_keys: Vec<SecUtf8>) -> Result<MasterKeysFetchRequestPayload> {
-        if raw_master_keys.is_empty() {
-            bail!(bad_argument("Given raw master keys should not be empty"));
-        }
+        ensure!(
+            !raw_master_keys.is_empty(),
+            BadArgument {
+                message: "Given raw master keys should not be empty"
+            }
+        );
 
         let master_keys_metadata = crypto::encrypt_master_keys_metadata(
             &raw_master_keys,
             raw_master_keys.last().unwrap(),
             super::METADATA_VERSION,
-        )?;
+        )
+        .context(EncryptMasterKeysFailed {})?;
 
         Ok(MasterKeysFetchRequestPayload {
             api_key,
@@ -101,7 +138,8 @@ impl MasterKeysFetchResponseData {
     /// Decrypts [MasterKeysFetchResponseData].keys_metadata field into a list of key strings,
     /// using specified user's last master key.
     pub fn decrypt_keys(&self, last_master_key: &SecUtf8) -> Result<Vec<SecUtf8>> {
-        crypto::decrypt_master_keys_metadata(&self.keys_metadata, last_master_key)
+        crypto::decrypt_master_keys_metadata(&self.keys_metadata.as_deref(), last_master_key)
+            .context(DecryptMasterKeysFailed {})
     }
 }
 
@@ -115,7 +153,7 @@ pub fn key_pair_info_request(
     payload: &UserKeyPairInfoRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserKeyPairInfoResponsePayload> {
-    queries::query_filen_api(KEY_PAIR_INFO_PATH, payload, filen_settings)
+    queries::query_filen_api(KEY_PAIR_INFO_PATH, payload, filen_settings).context(KeyPairInfoQueryFailed {})
 }
 
 /// Calls [KEY_PAIR_INFO_PATH] endpoint asynchronously. Used to get RSA public/private key pair.
@@ -123,7 +161,9 @@ pub async fn key_pair_info_request_async(
     payload: &UserKeyPairInfoRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserKeyPairInfoResponsePayload> {
-    queries::query_filen_api_async(KEY_PAIR_INFO_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(KEY_PAIR_INFO_PATH, payload, filen_settings)
+        .await
+        .context(KeyPairInfoQueryFailed {})
 }
 
 /// Calls [MASTER_KEYS_PATH] endpoint. Used to get/update user's master keys.
@@ -133,7 +173,9 @@ pub fn master_keys_fetch_request(
     payload: &MasterKeysFetchRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<MasterKeysFetchResponsePayload> {
-    queries::query_filen_api(MASTER_KEYS_PATH, payload, filen_settings)
+    queries::query_filen_api(MASTER_KEYS_PATH, payload, filen_settings).context(MasterKeysQueryFailed {
+        payload: payload.clone(),
+    })
 }
 
 /// Calls [MASTER_KEYS_PATH] endpoint asynchronously. Used to get/update user's master keys.
@@ -143,7 +185,11 @@ pub async fn master_keys_fetch_request_async(
     payload: &MasterKeysFetchRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<MasterKeysFetchResponsePayload> {
-    queries::query_filen_api_async(MASTER_KEYS_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(MASTER_KEYS_PATH, payload, filen_settings)
+        .await
+        .context(MasterKeysQueryFailed {
+            payload: payload.clone(),
+        })
 }
 
 #[cfg(test)]
@@ -200,7 +246,7 @@ mod tests {
 
         let response = spawn_blocking(
             closure!(clone request_payload, clone filen_settings, || { master_keys_fetch_request(&request_payload, &filen_settings) }),
-        ).await??;
+        ).await.unwrap()?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 

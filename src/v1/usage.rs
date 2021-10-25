@@ -1,10 +1,21 @@
 use crate::{filen_settings::FilenSettings, queries, utils, v1::*};
-use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 const USER_USAGE_PATH: &str = "/v1/user/usage";
 const USER_SYNC_GET_DATA_PATH: &str = "/v1/user/sync/get/data";
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("{} query failed: {}", USER_USAGE_PATH, source))]
+    UserUsageQueryFailed { source: queries::Error },
+
+    #[snafu(display("{} query failed: {}", USER_SYNC_GET_DATA_PATH, source))]
+    UserSyncGetDataQueryFailed { source: queries::Error },
+}
 
 // Used for requests to [USER_SYNC_GET_DATA_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -83,7 +94,7 @@ pub fn user_sync_get_data_request(
     payload: &UserSyncGetDataRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserSyncGetDataResponsePayload> {
-    queries::query_filen_api(USER_SYNC_GET_DATA_PATH, payload, filen_settings)
+    queries::query_filen_api(USER_SYNC_GET_DATA_PATH, payload, filen_settings).context(UserSyncGetDataQueryFailed {})
 }
 
 /// Calls [USER_SYNC_GET_DATA] endpoint asynchronously. Used to fetch user sync storage stats.
@@ -91,7 +102,9 @@ pub async fn user_sync_get_data_request_async(
     payload: &UserSyncGetDataRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserSyncGetDataResponsePayload> {
-    queries::query_filen_api_async(USER_SYNC_GET_DATA_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(USER_SYNC_GET_DATA_PATH, payload, filen_settings)
+        .await
+        .context(UserSyncGetDataQueryFailed {})
 }
 
 /// Calls [USER_USAGE_PATH] endpoint. Used to fetch user general usage stats.
@@ -99,7 +112,7 @@ pub fn user_usage_request(
     payload: &UserUsageRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserUsageResponsePayload> {
-    queries::query_filen_api(USER_USAGE_PATH, payload, filen_settings)
+    queries::query_filen_api(USER_USAGE_PATH, payload, filen_settings).context(UserUsageQueryFailed {})
 }
 
 /// Calls [USER_USAGE_PATH] endpoint asynchronously. Used to fetch user general usage stats.
@@ -107,5 +120,7 @@ pub async fn user_usage_request_async(
     payload: &UserUsageRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserUsageResponsePayload> {
-    queries::query_filen_api_async(USER_USAGE_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(USER_USAGE_PATH, payload, filen_settings)
+        .await
+        .context(UserUsageQueryFailed {})
 }

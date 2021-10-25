@@ -1,19 +1,37 @@
 //! This module contains helper functions for tests (aka test dump).
-use anyhow::*;
 use httpmock::Method::POST;
 use httpmock::{Mock, MockServer};
 use reqwest::Url;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::json;
+use snafu::{ResultExt, Snafu};
+use std::convert::TryFrom;
 use std::env;
 use std::path::Path;
 use std::time::Duration;
 
 use camino::Utf8PathBuf;
 
-use crate::filen_settings::FilenSettings;
-use crate::utils;
+use crate::{filen_settings::FilenSettings, utils};
+
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("Current working directory cannot be accessed: {}", source))]
+    CurrentWorkingDirectoryIsUnaccessible { source: std::io::Error },
+
+    #[snafu(display(
+        "Caller expected file system path '{}' to be a valid UTF-8 string, but it was not: {}",
+        path,
+        source
+    ))]
+    FileSystemPathIsNotUtf8 {
+        path: String,
+        source: camino::FromPathBufError,
+    },
+}
 
 pub(crate) fn init_server() -> (MockServer, FilenSettings) {
     let server = MockServer::start();
@@ -37,9 +55,10 @@ pub(crate) fn project_path() -> Result<Utf8PathBuf> {
     match env::var("CARGO_MANIFEST_DIR") {
         Ok(val) => Ok(Utf8PathBuf::from(val)),
         _ => {
-            let curr_dir = env::current_dir()?;
-            Utf8PathBuf::from_path_buf(curr_dir.clone())
-                .map_err(|_| anyhow!("Current directory is not a valid UTF-8: {:?}", curr_dir))
+            let curr_dir = env::current_dir().context(CurrentWorkingDirectoryIsUnaccessible {})?;
+            Utf8PathBuf::try_from(curr_dir.clone()).context(FileSystemPathIsNotUtf8 {
+                path: format!("{:?}", curr_dir),
+            })
         }
     }
 }

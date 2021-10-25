@@ -6,14 +6,55 @@ use crate::{
     utils,
     v1::{fs::*, *},
 };
-use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
 use std::io::Write;
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 const DOWNLOAD_DIR: &str = "/v1/download/dir";
 const DOWNLOAD_DIR_SHARED: &str = "/v1/download/dir/shared";
 const DOWNLOAD_DIR_LINK: &str = "/v1/download/dir/link";
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("Failed to decrypt file metadata {}: {}", metadata, source))]
+    DecryptFileMetadataFailed { metadata: String, source: files::Error },
+
+    #[snafu(display("Failed to decrypt folder name metadata: {}", source))]
+    DecryptFolderNameMetadataFailed {
+        name_metadata: String,
+        source: crate::v1::fs::Error,
+    },
+
+    #[snafu(display("Failed to decrypt file mime metadata {}: {}", metadata, source))]
+    DecryptFileMimeMetadataFailed { metadata: String, source: crypto::Error },
+
+    #[snafu(display("Failed to decrypt file name metadata {}: {}", metadata, source))]
+    DecryptFileNameMetadataFailed { metadata: String, source: crypto::Error },
+
+    #[snafu(display("Failed to decrypt file size metadata {}: {}", metadata, source))]
+    DecryptFileSizeMetadataFailed { metadata: String, source: crypto::Error },
+
+    #[snafu(display("Decrypted size '{}' was invalid: {}", size, source))]
+    DecryptedSizeIsInvalid {
+        size: String,
+        source: std::num::ParseIntError,
+    },
+
+    #[snafu(display("download_and_decrypt_file call failed for data {}: {}", file_data, source))]
+    DownloadAndDecryptFileFailed {
+        file_data: DownloadedFileData,
+        source: download_file::Error,
+    },
+
+    #[snafu(display("{} query failed: {}", DOWNLOAD_DIR, source))]
+    DownloadDirQueryFailed {
+        payload: DownloadDirRequestPayload,
+        source: queries::Error,
+    },
+}
 
 // Used for requests to [DOWNLOAD_DIR] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -41,6 +82,9 @@ impl DownloadDirResponseData {
             .iter()
             .map(|data| {
                 data.decrypt_name_metadata(last_master_key)
+                    .context(DecryptFolderNameMetadataFailed {
+                        name_metadata: data.name_metadata.clone(),
+                    })
                     .map(|name| (data.clone(), name))
             })
             .collect::<Result<Vec<_>>>()
@@ -100,17 +144,35 @@ utils::display_from_json!(DownloadedFileData);
 impl DownloadedFileData {
     /// Decrypts file metadata string.
     pub fn decrypt_file_metadata(&self, last_master_key: &SecUtf8) -> Result<FileProperties> {
-        FileProperties::decrypt_file_metadata(&self.metadata, last_master_key)
+        FileProperties::decrypt_file_metadata(&self.metadata, last_master_key).context(DecryptFileMetadataFailed {
+            metadata: self.metadata.clone(),
+        })
     }
 
     /// Decrypt name, size and mime metadata. File key is contained within file metadata in [DownloadedFileData::metadata] field,
     /// which can be decrypted with [DownloadedFileData::decrypt_file_metadata] call.
     pub fn decrypt_name_size_mime(&self, file_key: &SecUtf8) -> Result<FileNameSizeMime> {
-        let name = crypto::decrypt_metadata_str(&self.name_metadata, file_key.unsecure())?;
-        let size_string = &crypto::decrypt_metadata_str(&self.size_metadata, file_key.unsecure())?;
-        let size = str::parse::<u64>(size_string)?;
-        let mime = crypto::decrypt_metadata_str(&self.mime_metadata, file_key.unsecure())?;
+        let name = crypto::decrypt_metadata_str(&self.name_metadata, file_key.unsecure()).context(
+            DecryptFileNameMetadataFailed {
+                metadata: self.name_metadata.clone(),
+            },
+        )?;
+        let size_string = &crypto::decrypt_metadata_str(&self.size_metadata, file_key.unsecure()).context(
+            DecryptFileSizeMetadataFailed {
+                metadata: self.size_metadata.clone(),
+            },
+        )?;
+        let size = str::parse::<u64>(size_string).context(DecryptedSizeIsInvalid { size: size_string })?;
+        let mime = crypto::decrypt_metadata_str(&self.mime_metadata, file_key.unsecure()).context(
+            DecryptFileMimeMetadataFailed {
+                metadata: self.mime_metadata.clone(),
+            },
+        )?;
         Ok(FileNameSizeMime { name, size, mime })
+    }
+
+    pub fn get_file_location(&self) -> FileLocation {
+        FileLocation::new(self.region.clone(), self.bucket.clone(), self.uuid.clone(), self.chunks)
     }
 
     /// Uses this file's properties to call [download_and_decrypt_file].
@@ -122,16 +184,16 @@ impl DownloadedFileData {
         writer: &mut std::io::BufWriter<W>,
     ) -> Result<u64> {
         download_and_decrypt_file(
-            &self.region,
-            &self.bucket,
-            &self.uuid,
-            self.chunks,
+            &self.get_file_location(),
             self.version,
             file_key,
             retry_settings,
             filen_settings,
             writer,
         )
+        .context(DownloadAndDecryptFileFailed {
+            file_data: self.clone(),
+        })
     }
 
     /// Uses this file's properties to call [download_and_decrypt_file_async].
@@ -143,10 +205,7 @@ impl DownloadedFileData {
         writer: &mut std::io::BufWriter<W>,
     ) -> Result<u64> {
         download_and_decrypt_file_async(
-            &self.region,
-            &self.bucket,
-            &self.uuid,
-            self.chunks,
+            &self.get_file_location(),
             self.version,
             file_key,
             retry_settings,
@@ -154,6 +213,9 @@ impl DownloadedFileData {
             writer,
         )
         .await
+        .context(DownloadAndDecryptFileFailed {
+            file_data: self.clone(),
+        })
     }
 }
 
@@ -174,7 +236,9 @@ pub fn download_dir_request(
     payload: &DownloadDirRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<DownloadDirResponsePayload> {
-    queries::query_filen_api(DOWNLOAD_DIR, payload, filen_settings)
+    queries::query_filen_api(DOWNLOAD_DIR, payload, filen_settings).context(DownloadDirQueryFailed {
+        payload: payload.clone(),
+    })
 }
 
 /// Calls [USER_DIRS_PATH] endpoint asynchronously. Used to get a list of user's folders.
@@ -183,7 +247,11 @@ pub async fn download_dir_request_async(
     payload: &DownloadDirRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<DownloadDirResponsePayload> {
-    queries::query_filen_api_async(DOWNLOAD_DIR, payload, filen_settings).await
+    queries::query_filen_api_async(DOWNLOAD_DIR, payload, filen_settings)
+        .await
+        .context(DownloadDirQueryFailed {
+            payload: payload.clone(),
+        })
 }
 
 #[cfg(test)]
@@ -213,7 +281,7 @@ mod tests {
 
         let response = spawn_blocking(
             closure!(clone request_payload, clone filen_settings, || { download_dir_request(&request_payload, &filen_settings) }),
-        ).await??;
+        ).await.unwrap()?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 

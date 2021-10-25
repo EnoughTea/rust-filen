@@ -6,7 +6,6 @@ use std::{
 
 use crate::{
     crypto,
-    errors::unknown,
     file_chunk_pos::{FileChunkPosition, FileChunkPositions},
     filen_settings::FilenSettings,
     queries,
@@ -14,17 +13,50 @@ use crate::{
     utils,
     v1::{fs::*, *},
 };
-use anyhow::*;
 use reqwest::Url;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
+use snafu::{Backtrace, ResultExt, Snafu};
 use uuid::Uuid;
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 const DEFAULT_EXPIRE: &str = "never";
 const FILE_CHUNK_SIZE: u32 = 1024 * 1024; // Hardcoded mostly because Filen also hardcoded chunk size
 const FILE_VERSION: u32 = 1;
 const UPLOAD_PATH: &str = "/v1/upload";
 const UPLOAD_DONE_PATH: &str = "/v1/upload/done";
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("Chunk encryption failed"))]
+    ChunkEncryptionError {
+        upload_properties: FileUploadProperties,
+        source: crypto::Error,
+    },
+
+    #[snafu(display("Filen did not accept at least one uploaded file chunk: {}", reason))]
+    ChunkNotAccepted { reason: String, backtrace: Backtrace },
+
+    #[snafu(display("Filen did not accept uploaded dummy chunk: {}", reason))]
+    DummyChunkNotAccepted { reason: String, backtrace: Backtrace },
+
+    #[snafu(display("Failed to encrypt file metadata: {}", source))]
+    EncryptFileMetadataFailed { source: files::Error },
+
+    #[snafu(display("Cannot read file chunks due to IO error: {}", source))]
+    SeekReadError { source: std::io::Error },
+
+    #[snafu(display("{} ({} bytes) query failed: {}", api_endpoint, chunk_size, source))]
+    UploadQueryFailed {
+        api_endpoint: String,
+        chunk_size: usize,
+        source: queries::Error,
+    },
+
+    #[snafu(display("{} query failed: {}", UPLOAD_DONE_PATH, source))]
+    UploadDoneQueryFailed { file_uuid: String, source: queries::Error },
+}
 
 /// Response data for [UPLOAD_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -120,7 +152,9 @@ impl FileUploadProperties {
         let rm = SecUtf8::from(utils::random_alphanumeric_string(32));
         let upload_key = SecUtf8::from(utils::random_alphanumeric_string(32));
 
-        let file_metadata_encrypted = file_properties.to_metadata_string(last_master_key)?;
+        let file_metadata_encrypted = file_properties
+            .to_metadata_string(last_master_key)
+            .context(EncryptFileMetadataFailed {})?;
         let name_metadata_encrypted = file_properties.name_encrypted();
         let size_metadata_encrypted = file_properties.size_encrypted();
         let mime_metadata_encrypted = file_properties.mime_encrypted();
@@ -205,7 +239,9 @@ pub fn upload_done_request(
     payload: &UploadDoneRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(UPLOAD_DONE_PATH, payload, filen_settings)
+    queries::query_filen_api(UPLOAD_DONE_PATH, payload, filen_settings).context(UploadDoneQueryFailed {
+        file_uuid: payload.uuid.clone(),
+    })
 }
 
 /// Calls [UPLOAD_DONE_PATH] endpoint asynchronously. Used to mark upload as done after all file chunks (+1 dummy chunk) were uploaded.
@@ -213,7 +249,11 @@ pub async fn upload_done_request_async(
     payload: &UploadDoneRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(UPLOAD_DONE_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(UPLOAD_DONE_PATH, payload, filen_settings)
+        .await
+        .context(UploadDoneQueryFailed {
+            file_uuid: payload.uuid.clone(),
+        })
 }
 
 /// Calls [UPLOAD_PATH] endpoint. Used to encrypt and upload a file chunk to Filen.
@@ -227,13 +267,21 @@ pub fn encrypt_and_upload_chunk(
     filen_settings: &FilenSettings,
 ) -> Result<UploadFileChunkResponsePayload> {
     let file_key = upload_properties.file_key.unsecure().as_bytes().try_into().unwrap();
-    let chunk_encrypted = crypto::encrypt_file_chunk(chunk, file_key, upload_properties.version)?;
+    let chunk_encrypted =
+        crypto::encrypt_file_chunk(chunk, file_key, upload_properties.version).context(ChunkEncryptionError {
+            upload_properties: upload_properties.clone(),
+        })?;
+    let chunk_size = chunk_encrypted.len();
     let api_endpoint = upload_properties.to_api_endpoint(chunk_index, api_key);
     queries::upload_to_filen::<UploadFileChunkResponsePayload>(
         &api_endpoint,
         chunk_encrypted.into_bytes(),
         filen_settings,
     )
+    .context(UploadQueryFailed {
+        api_endpoint,
+        chunk_size: chunk_size,
+    })
 }
 
 /// Calls [UPLOAD_PATH] endpoint asynchronously. Used to encrypt and upload a file chunk to Filen.
@@ -250,14 +298,23 @@ pub async fn encrypt_and_upload_chunk_async(
         chunk,
         upload_properties.file_key.unsecure().as_bytes().try_into().unwrap(),
         upload_properties.version,
-    )?;
+    )
+    .context(ChunkEncryptionError {
+        upload_properties: upload_properties.clone(),
+    })?;
 
+    let chunk_size = chunk_encrypted.len();
+    let api_endpoint = upload_properties.to_api_endpoint(chunk_index, api_key);
     queries::upload_to_filen_async::<UploadFileChunkResponsePayload>(
-        &upload_properties.to_api_endpoint(chunk_index, api_key),
+        &api_endpoint,
         chunk_encrypted.into_bytes(),
         filen_settings,
     )
     .await
+    .context(UploadQueryFailed {
+        api_endpoint,
+        chunk_size,
+    })
 }
 
 /// Uploads file to Filen by reading file chunks from given reader,
@@ -291,8 +348,8 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
             retry_settings,
             filen_settings,
         )
-        .and_then(|response| {
-            if response.status {
+        .and_then(|dummy_chunk_response| {
+            if dummy_chunk_response.status {
                 let upload_done_payload = UploadDoneRequestPayload {
                     uuid: upload_properties.uuid.clone(),
                     upload_key: upload_properties.upload_key.clone(),
@@ -305,7 +362,10 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
                     chunk_upload_responses,
                 ))
             } else {
-                Err(anyhow!(unknown("Filen failed at uploading dummy chunk")))
+                DummyChunkNotAccepted {
+                    reason: dummy_chunk_response.message.unwrap_or("unknown reason".to_owned()),
+                }
+                .fail()
             }
         })
     };
@@ -360,7 +420,10 @@ pub async fn encrypt_and_upload_file_async<R: Read + Seek>(
                 chunk_upload_responses,
             ))
         } else {
-            Err(anyhow!(unknown("Filen failed at uploading dummy chunk")))
+            DummyChunkNotAccepted {
+                reason: dummy_chunk_response.message.unwrap_or("unknown reason".to_owned()),
+            }
+            .fail()
         }
     };
 
@@ -380,9 +443,9 @@ where
     let maybe_failed_chunk = chunk_upload_responses.iter().find(|r| !r.status);
     match maybe_failed_chunk {
         Some(failed_chunk) => {
+            let failure_reason = failed_chunk.message.as_deref().unwrap_or("unknown reason").clone();
             // At least one chunk failed with 'status: false', so fail entire upload, I guess
-            let message = format!("Filen failed at least one uploaded file chunk: {:?}", failed_chunk);
-            Err(anyhow!(unknown(&message)))
+            ChunkNotAccepted { reason: failure_reason }.fail()
         }
         None => Ok(finalize_action(chunk_upload_responses)),
     }
@@ -449,7 +512,7 @@ where
         reader
             .seek(SeekFrom::Start(chunk_pos.start_position))
             .and_then(|_| reader.read_exact(&mut chunk_buf))
-            .map_err(|io_err| anyhow!(format!("Cannot process read file chunks due to IO error: {:?}", io_err)))
+            .context(SeekReadError {})
             .map(|_| chunk_processor(chunk_pos, chunk_buf))
     })
 }

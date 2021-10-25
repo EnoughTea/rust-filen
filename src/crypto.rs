@@ -40,24 +40,6 @@ pub enum Error {
     #[snafu(display("Prefixed AES GCM failed to decipher ciphered message: {}", source))]
     AesGcmCannotDecipherData { source: aes_gcm::Error },
 
-    #[snafu(display(
-        "Cannot encrypt data with given public key, assuming RSA-OAEP with SHA512 hash and PKCS8 format: {}",
-        source
-    ))]
-    RsaPkcs8CannotEncryptData { source: rsa::errors::Error },
-
-    #[snafu(display(
-        "Cannot decrypt data with given private key, assuming RSA-OAEP with SHA512 hash and PKCS8 format: {}",
-        source
-    ))]
-    RsaPkcs8CannotDecryptData { source: rsa::errors::Error },
-
-    #[snafu(display("Cannot deserialize PKCS#8 private key from ASN.1 DER-encoded data: {}", source))]
-    RsaCannotDeserializePrivateKey { source: rsa::pkcs8::Error },
-
-    #[snafu(display("Cannot deserialize public key from ASN.1 DER-encoded data: {}", source))]
-    RsaCannotDeserializePublicKey { source: rsa::pkcs8::Error },
-
     #[snafu(display("Caller provided invalid argument: {}", message))]
     BadArgument { message: String, backtrace: Backtrace },
 
@@ -76,10 +58,28 @@ pub enum Error {
     ))]
     DecryptedMetadataIsNotUtf8 { source: std::string::FromUtf8Error },
 
-    #[snafu(display("Unsupported Filen file version: {}", file_version))]
+    #[snafu(display(
+        "Cannot encrypt data with given public key, assuming RSA-OAEP with SHA512 hash and PKCS8 format: {}",
+        source
+    ))]
+    RsaPkcs8CannotEncryptData { source: rsa::errors::Error },
+
+    #[snafu(display(
+        "Cannot decrypt data with given private key, assuming RSA-OAEP with SHA512 hash and PKCS8 format: {}",
+        source
+    ))]
+    RsaPkcs8CannotDecryptData { source: rsa::errors::Error },
+
+    #[snafu(display("Cannot deserialize PKCS#8 private key from ASN.1 DER-encoded data: {}", source))]
+    RsaCannotDeserializePrivateKey { source: rsa::pkcs8::Error },
+
+    #[snafu(display("Cannot deserialize public key from ASN.1 DER-encoded data: {}", source))]
+    RsaCannotDeserializePublicKey { source: rsa::pkcs8::Error },
+
+    #[snafu(display("Unsupported Filen file version {}", file_version))]
     UnsupportedFilenFileVersion { file_version: i64, backtrace: Backtrace },
 
-    #[snafu(display("Unsupported Filen metadata version: {}", metadata_version))]
+    #[snafu(display("Unsupported Filen metadata version {}", metadata_version))]
     UnsupportedFilenMetadataVersion {
         metadata_version: i64,
         backtrace: Backtrace,

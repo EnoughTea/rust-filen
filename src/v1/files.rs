@@ -4,17 +4,73 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::{crypto, errors::*, filen_settings::FilenSettings, queries, utils, v1::fs::*, v1::*};
-use anyhow::*;
+use crate::{crypto, filen_settings::FilenSettings, queries, utils, v1::fs::*, v1::*};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use snafu::{ensure, Backtrace, ResultExt, Snafu};
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 const FILE_ARCHIVE_PATH: &str = "/v1/file/archive";
 const FILE_EXISTS_PATH: &str = "/v1/file/exists";
 const FILE_MOVE_PATH: &str = "/v1/file/move";
 const FILE_RENAME_PATH: &str = "/v1/file/rename";
 const FILE_TRASH_PATH: &str = "/v1/file/trash";
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("Caller provided invalid argument: {}", message))]
+    BadArgument { message: String, backtrace: Backtrace },
+
+    #[snafu(display("Failed to deserialize file metadata {}: {}", metadata, source))]
+    DeserializeFileMetadataFailed {
+        metadata: String,
+        source: serde_json::Error,
+    },
+
+    #[snafu(display("Failed to decrypt file metadata {}: {}", metadata, source))]
+    DecryptFileMetadataFailed { metadata: String, source: crypto::Error },
+
+    #[snafu(display("Failed to encrypt file metadata: {}", source))]
+    EncryptFileMetadataFailed { source: crypto::Error },
+
+    #[snafu(display("{} query failed: {}", FILE_ARCHIVE_PATH, source))]
+    FileArchieveQueryFailed {
+        payload: FileArchiveRequestPayload,
+        source: queries::Error,
+    },
+
+    #[snafu(display("{} query failed: {}", FILE_EXISTS_PATH, source))]
+    FileExistsQueryFailed {
+        payload: LocationExistsRequestPayload,
+        source: queries::Error,
+    },
+
+    #[snafu(display("{} query failed: {}", FILE_MOVE_PATH, source))]
+    FileMoveQueryFailed {
+        payload: FileMoveRequestPayload,
+        source: queries::Error,
+    },
+
+    #[snafu(display("{} query failed: {}", FILE_RENAME_PATH, source))]
+    FileRenameQueryFailed {
+        payload: FileRenameRequestPayload,
+        source: queries::Error,
+    },
+
+    #[snafu(display("{} query failed: {}", FILE_TRASH_PATH, source))]
+    FileTrashQueryFailed {
+        payload: LocationTrashRequestPayload,
+        source: queries::Error,
+    },
+
+    #[snafu(display("File system failed to get metadata for a file: {}", source))]
+    FileSystemMetadataError { source: std::io::Error },
+
+    #[snafu(display("Unknown system time error: {}", source))]
+    SystemTimeError { source: std::time::SystemTimeError },
+}
 
 /// File properties and a key used to decrypt file data.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -40,14 +96,20 @@ pub struct FileProperties {
 
 impl FileProperties {
     pub fn from_name_size_modified(name: &str, size: u64, last_modified: &SystemTime) -> Result<FileProperties> {
-        if size == 0 {
-            bail!(bad_argument("File size should be > 0"));
-        }
+        ensure!(
+            size > 0,
+            BadArgument {
+                message: "File size should be > 0"
+            }
+        );
 
         let key = SecUtf8::from(utils::random_alphanumeric_string(32));
         let mime_guess = mime_guess::from_path(name).first_raw();
         let mime = mime_guess.unwrap_or("");
-        let last_modified_secs = last_modified.duration_since(UNIX_EPOCH)?.as_secs();
+        let last_modified_secs = last_modified
+            .duration_since(UNIX_EPOCH)
+            .context(SystemTimeError {})?
+            .as_secs();
         Ok(FileProperties {
             name: name.to_owned(),
             size,
@@ -58,22 +120,29 @@ impl FileProperties {
     }
 
     pub fn from_name_and_local_path(name: &str, local_file_path: &Path) -> Result<FileProperties> {
-        let fs_metadata = fs::metadata(local_file_path)?;
+        let fs_metadata = fs::metadata(local_file_path).context(FileSystemMetadataError {})?;
         let last_modified_time = fs_metadata.modified().unwrap_or_else(|_| SystemTime::now());
         FileProperties::from_name_size_modified(name, fs_metadata.len(), &last_modified_time)
     }
 
     /// Decrypts file metadata string.
     pub fn decrypt_file_metadata(metadata: &str, last_master_key: &SecUtf8) -> Result<FileProperties> {
-        crypto::decrypt_metadata_str(metadata, last_master_key.unsecure()).and_then(|metadata| {
-            serde_json::from_str::<FileProperties>(&metadata).with_context(|| "Cannot deserialize synced file metadata")
-        })
+        crypto::decrypt_metadata_str(metadata, last_master_key.unsecure())
+            .context(DecryptFileMetadataFailed {
+                metadata: metadata.clone(),
+            })
+            .and_then(|metadata| {
+                serde_json::from_str::<FileProperties>(&metadata).context(DeserializeFileMetadataFailed {
+                    metadata: metadata.clone(),
+                })
+            })
     }
 
     /// Decrypts file metadata string.
     pub fn encrypt_file_metadata(metadata: &FileProperties, last_master_key: &SecUtf8) -> Result<String> {
         let metadata_json = json!(metadata).to_string();
         crypto::encrypt_metadata_str(&metadata_json, last_master_key.unsecure(), METADATA_VERSION)
+            .context(EncryptFileMetadataFailed {})
     }
 
     pub fn to_metadata_string(&self, last_master_key: &SecUtf8) -> Result<String> {
@@ -178,7 +247,9 @@ pub fn file_archive_request(
     payload: &FileArchiveRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(FILE_ARCHIVE_PATH, payload, filen_settings)
+    queries::query_filen_api(FILE_ARCHIVE_PATH, payload, filen_settings).context(FileArchieveQueryFailed {
+        payload: payload.clone(),
+    })
 }
 
 /// Calls [FILE_ARCHIVE_PATH] endpoint asynchronously.
@@ -188,7 +259,11 @@ pub async fn file_archive_request_async(
     payload: &FileArchiveRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(FILE_ARCHIVE_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(FILE_ARCHIVE_PATH, payload, filen_settings)
+        .await
+        .context(FileArchieveQueryFailed {
+            payload: payload.clone(),
+        })
 }
 
 /// Calls [FILE_EXISTS_PATH] endpoint.
@@ -197,7 +272,9 @@ pub fn file_exists_request(
     payload: &LocationExistsRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<LocationExistsResponsePayload> {
-    queries::query_filen_api(FILE_EXISTS_PATH, payload, filen_settings)
+    queries::query_filen_api(FILE_EXISTS_PATH, payload, filen_settings).context(FileExistsQueryFailed {
+        payload: payload.clone(),
+    })
 }
 
 /// Calls [FILE_EXISTS_PATH] endpoint asynchronously.
@@ -206,14 +283,20 @@ pub async fn file_exists_request_async(
     payload: &LocationExistsRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<LocationExistsResponsePayload> {
-    queries::query_filen_api_async(FILE_EXISTS_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(FILE_EXISTS_PATH, payload, filen_settings)
+        .await
+        .context(FileExistsQueryFailed {
+            payload: payload.clone(),
+        })
 }
 
 /// Calls [FILE_MOVE_PATH] endpoint.
 /// Moves file with the given uuid to the specified parent folder. It is a good idea to check first if file
 /// with the same name already exists within the parent folder.
-pub fn dir_move_request(payload: &FileMoveRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
-    queries::query_filen_api(FILE_MOVE_PATH, payload, filen_settings)
+pub fn file_move_request(payload: &FileMoveRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
+    queries::query_filen_api(FILE_MOVE_PATH, payload, filen_settings).context(FileMoveQueryFailed {
+        payload: payload.clone(),
+    })
 }
 
 /// Calls [FILE_MOVE_PATH] endpoint asynchronously.
@@ -223,7 +306,11 @@ pub async fn file_move_request_async(
     payload: &FileMoveRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(FILE_MOVE_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(FILE_MOVE_PATH, payload, filen_settings)
+        .await
+        .context(FileMoveQueryFailed {
+            payload: payload.clone(),
+        })
 }
 
 /// Calls [FILE_RENAME_PATH] endpoint.
@@ -233,7 +320,9 @@ pub fn file_rename_request(
     payload: &FileRenameRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(FILE_RENAME_PATH, payload, filen_settings)
+    queries::query_filen_api(FILE_RENAME_PATH, payload, filen_settings).context(FileRenameQueryFailed {
+        payload: payload.clone(),
+    })
 }
 
 /// Calls [FILE_RENAME_PATH] endpoint asynchronously.
@@ -243,7 +332,11 @@ pub async fn file_rename_request_async(
     payload: &FileRenameRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(FILE_RENAME_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(FILE_RENAME_PATH, payload, filen_settings)
+        .await
+        .context(FileRenameQueryFailed {
+            payload: payload.clone(),
+        })
 }
 
 /// Calls [FILE_TRASH_PATH] endpoint.
@@ -253,7 +346,9 @@ pub fn file_trash_request(
     payload: &LocationTrashRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(FILE_TRASH_PATH, payload, filen_settings)
+    queries::query_filen_api(FILE_TRASH_PATH, payload, filen_settings).context(FileTrashQueryFailed {
+        payload: payload.clone(),
+    })
 }
 
 /// Calls [FILE_TRASH_PATH] endpoint asynchronously.
@@ -263,12 +358,15 @@ pub async fn file_trash_request_async(
     payload: &LocationTrashRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(FILE_TRASH_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(FILE_TRASH_PATH, payload, filen_settings)
+        .await
+        .context(FileTrashQueryFailed {
+            payload: payload.clone(),
+        })
 }
 
 #[cfg(test)]
 mod tests {
-    use anyhow::*;
     use closure::closure;
     use once_cell::sync::Lazy;
     use secstr::SecUtf8;
@@ -283,7 +381,7 @@ mod tests {
     const NAME_HASHED: &str = "19d24c63b1170a0b1b40520a636a25235735f39f";
 
     #[tokio::test]
-    async fn file_exists_request_and_async_should_work() -> Result<()> {
+    async fn file_exists_request_and_async_should_work() -> crate::v1::files::Result<()> {
         let (server, filen_settings) = init_server();
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
@@ -296,7 +394,7 @@ mod tests {
 
         let response = spawn_blocking(
             closure!(clone request_payload, clone filen_settings, || { file_exists_request(&request_payload, &filen_settings) }),
-        ).await??;
+        ).await.unwrap()?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 

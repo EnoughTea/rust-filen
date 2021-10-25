@@ -3,13 +3,30 @@ use crate::{
     queries, utils,
     v1::{fs::*, *},
 };
-use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub const FILEN_SYNC_FOLDER_TYPE: &str = "sync";
 
 const GET_DIR_PATH: &str = "/v1/get/dir";
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("Failed to decrypt file metadata for data {}: {}", file_data, source))]
+    DecryptFileMetadataFailed {
+        file_data: SyncedFileData,
+        source: files::Error,
+    },
+
+    #[snafu(display("{} query failed: {}", GET_DIR_PATH, source))]
+    GetDirQueryFailed {
+        payload: GetDirRequestPayload,
+        source: queries::Error,
+    },
+}
 
 // Used for requests to [GET_DIR_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -67,7 +84,9 @@ utils::display_from_json!(SyncedFileData);
 impl SyncedFileData {
     /// Decrypt name metadata into actual folder name.
     pub fn decrypt_file_metadata(&self, last_master_key: &SecUtf8) -> Result<FileProperties> {
-        FileProperties::decrypt_file_metadata(&self.metadata, last_master_key)
+        FileProperties::decrypt_file_metadata(&self.metadata, last_master_key).context(DecryptFileMetadataFailed {
+            file_data: self.clone(),
+        })
     }
 }
 
@@ -82,7 +101,9 @@ pub fn get_dir_request(
     payload: &GetDirRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<GetDirResponsePayload> {
-    queries::query_filen_api(GET_DIR_PATH, payload, filen_settings)
+    queries::query_filen_api(GET_DIR_PATH, payload, filen_settings).context(GetDirQueryFailed {
+        payload: payload.clone(),
+    })
 }
 
 /// Calls [GET_DIR_PATH] endpoint asynchronously. It fetches the entire Filen sync folder contents, with option
@@ -91,7 +112,11 @@ pub async fn get_dir_request_async(
     payload: &GetDirRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<GetDirResponsePayload> {
-    queries::query_filen_api_async(GET_DIR_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(GET_DIR_PATH, payload, filen_settings)
+        .await
+        .context(GetDirQueryFailed {
+            payload: payload.clone(),
+        })
 }
 
 #[cfg(test)]
@@ -122,7 +147,7 @@ mod tests {
 
         let response = spawn_blocking(
             closure!(clone request_payload, clone filen_settings, || { get_dir_request(&request_payload, &filen_settings) }),
-        ).await??;
+        ).await.unwrap()?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 

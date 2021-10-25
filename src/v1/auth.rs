@@ -1,18 +1,37 @@
 use crate::{
     crypto::{self, FilenPasswordWithMasterKey},
-    errors::*,
     filen_settings::FilenSettings,
     queries, utils,
 };
-use anyhow::*;
 use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
 use serde_with::*;
+use snafu::{Backtrace, ResultExt, Snafu};
 
 use super::api_response_struct;
 
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
 const AUTH_INFO_PATH: &str = "/v1/auth/info";
 const LOGIN_PATH: &str = "/v1/login";
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("{} query failed: {}", AUTH_INFO_PATH, source))]
+    AuthInfoQueryFailed { source: queries::Error },
+
+    #[snafu(display("Failed to decrypt metadata for {}: {}", property_name, source))]
+    DecryptMetadataPropertyFailed {
+        property_name: String,
+        source: crypto::Error,
+    },
+
+    #[snafu(display("{} query failed (version {}): {}", LOGIN_PATH, auth_version, source))]
+    LoginQueryFailed { auth_version: u32, source: queries::Error },
+
+    #[snafu(display("Unsupported Filen auth version {}", version))]
+    UnsupportedAuthVersion { version: i64, backtrace: Backtrace },
+}
 
 /// Used for requests to [AUTH_INFO_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -56,10 +75,10 @@ impl AuthInfoResponseData {
                     &filen_salt,
                 ))
             }
-            _ => {
-                let message = &format!("Unsupported auth version: {}", self.auth_version);
-                Err(anyhow!(unsupported(message)))
+            _ => UnsupportedAuthVersion {
+                version: self.auth_version,
             }
+            .fail(),
         }
     }
 }
@@ -116,13 +135,21 @@ impl LoginResponseData {
     /// Decrypts [LoginResponseData].master_keys_metadata field into a list of key strings,
     /// using specified user's last master key.
     pub fn decrypt_master_keys(&self, last_master_key: &SecUtf8) -> Result<Vec<SecUtf8>> {
-        crypto::decrypt_master_keys_metadata(&self.master_keys_metadata, last_master_key)
+        crypto::decrypt_master_keys_metadata(&self.master_keys_metadata.as_deref(), last_master_key).context(
+            DecryptMetadataPropertyFailed {
+                property_name: "masterKeys",
+            },
+        )
     }
 
     /// Decrypts [LoginResponseData].private_key_metadata field into RSA key bytes,
     /// using specified user's last master key.
     pub fn decrypt_private_key(&self, last_master_key: &SecUtf8) -> Result<SecVec<u8>> {
-        crypto::decrypt_private_key_metadata(&self.private_key_metadata, last_master_key)
+        crypto::decrypt_private_key_metadata(&self.private_key_metadata.as_deref(), last_master_key).context(
+            DecryptMetadataPropertyFailed {
+                property_name: "privateKey",
+            },
+        )
     }
 }
 
@@ -136,7 +163,7 @@ pub fn auth_info_request(
     payload: &AuthInfoRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<AuthInfoResponsePayload> {
-    queries::query_filen_api(AUTH_INFO_PATH, payload, filen_settings)
+    queries::query_filen_api(AUTH_INFO_PATH, payload, filen_settings).context(AuthInfoQueryFailed {})
 }
 
 /// Calls [AUTH_INFO_PATH] endpoint asynchronously. Used to get used auth version and Filen salt.
@@ -144,12 +171,16 @@ pub async fn auth_info_request_async(
     payload: &AuthInfoRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<AuthInfoResponsePayload> {
-    queries::query_filen_api_async(AUTH_INFO_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(AUTH_INFO_PATH, payload, filen_settings)
+        .await
+        .context(AuthInfoQueryFailed {})
 }
 
 /// Calls [LOGIN_PATH] endpoint. Used to get API key, master keys and private key.
 pub fn login_request(payload: &LoginRequestPayload, filen_settings: &FilenSettings) -> Result<LoginResponsePayload> {
-    queries::query_filen_api(LOGIN_PATH, payload, filen_settings)
+    queries::query_filen_api(LOGIN_PATH, payload, filen_settings).context(LoginQueryFailed {
+        auth_version: payload.auth_version,
+    })
 }
 
 /// Calls [LOGIN_PATH] endpoint asynchronously. Used to get API key, master keys and private key.
@@ -157,7 +188,11 @@ pub async fn login_request_async(
     payload: &LoginRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<LoginResponsePayload> {
-    queries::query_filen_api_async(LOGIN_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(LOGIN_PATH, payload, filen_settings)
+        .await
+        .context(LoginQueryFailed {
+            auth_version: payload.auth_version,
+        })
 }
 
 #[cfg(test)]
@@ -166,7 +201,6 @@ mod tests {
         test_utils::{self, *},
         v1::auth::*,
     };
-    use anyhow::Result;
     use closure::closure;
     use pretty_assertions::assert_eq;
     use tokio::task::spawn_blocking;
@@ -218,7 +252,7 @@ mod tests {
 
         let response = spawn_blocking(
             closure!(clone request_payload, clone filen_settings, || { auth_info_request(&request_payload, &filen_settings) }),
-        ).await??;
+        ).await.unwrap()?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
@@ -242,7 +276,7 @@ mod tests {
         let response = spawn_blocking(
             closure!(clone request_payload, clone filen_settings, || auth_info_request(&request_payload, &filen_settings)),
         )
-        .await??;
+        .await.unwrap()?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
@@ -267,7 +301,8 @@ mod tests {
         let response = spawn_blocking(
             closure!(clone request_payload, clone filen_settings, || login_request(&request_payload, &filen_settings)),
         )
-        .await??;
+        .await
+        .unwrap()?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 

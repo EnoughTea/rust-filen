@@ -5,11 +5,13 @@ use crate::{
     v1::fs::*,
     v1::{api_response_struct, PlainApiResponse},
 };
-use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_with::*;
+use snafu::{Backtrace, ResultExt, Snafu};
 use uuid::Uuid;
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub const FILEN_FOLDER_TYPE: &str = "folder";
 pub const FILEN_SYNC_FOLDER_NAME: &str = "Filen Sync";
@@ -20,6 +22,54 @@ const DIR_EXISTS_PATH: &str = "/v1/dir/exists";
 const DIR_MOVE_PATH: &str = "/v1/dir/move";
 const DIR_RENAME_PATH: &str = "/v1/dir/rename";
 const DIR_TRASH_PATH: &str = "/v1/dir/trash";
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("Caller provided invalid argument: {}", message))]
+    BadArgument { message: String, backtrace: Backtrace },
+
+    #[snafu(display("Failed to decrypt name metadata: {}", source))]
+    DecryptNameMetadataFailed {
+        metadata: String,
+        source: crate::v1::fs::Error,
+    },
+
+    #[snafu(display("{} query failed: {}", USER_DIRS_PATH, source))]
+    UserDirsQueryFailed {
+        payload: UserDirsRequestPayload,
+        source: queries::Error,
+    },
+
+    #[snafu(display("{} query failed: {}", DIR_CREATE_PATH, source))]
+    DirCreateQueryFailed {
+        payload: DirCreateRequestPayload,
+        source: queries::Error,
+    },
+
+    #[snafu(display("{} query failed: {}", DIR_EXISTS_PATH, source))]
+    DirExistsQueryFailed {
+        payload: LocationExistsRequestPayload,
+        source: queries::Error,
+    },
+
+    #[snafu(display("{} query failed: {}", DIR_MOVE_PATH, source))]
+    DirMoveQueryFailed {
+        payload: DirMoveRequestPayload,
+        source: queries::Error,
+    },
+
+    #[snafu(display("{} query failed: {}", DIR_RENAME_PATH, source))]
+    DirRenameQueryFailed {
+        payload: DirRenameRequestPayload,
+        source: queries::Error,
+    },
+
+    #[snafu(display("{} query failed: {}", DIR_TRASH_PATH, source))]
+    DirTrashQueryFailed {
+        payload: LocationTrashRequestPayload,
+        source: queries::Error,
+    },
+}
 
 // Used for requests to [USER_DIRS_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -69,7 +119,11 @@ utils::display_from_json!(UserDirData);
 impl UserDirData {
     /// Decrypt name metadata into actual folder name.
     pub fn decrypt_name_metadata(&self, last_master_key: &SecUtf8) -> Result<String> {
-        LocationNameMetadata::decrypt_name_from_metadata(&self.name_metadata, last_master_key)
+        LocationNameMetadata::decrypt_name_from_metadata(&self.name_metadata, last_master_key).context(
+            DecryptNameMetadataFailed {
+                metadata: self.name_metadata.clone(),
+            },
+        )
     }
 }
 
@@ -191,7 +245,9 @@ pub fn user_dirs_request(
     payload: &UserDirsRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserDirsResponsePayload> {
-    queries::query_filen_api(USER_DIRS_PATH, payload, filen_settings)
+    queries::query_filen_api(USER_DIRS_PATH, payload, filen_settings).context(UserDirsQueryFailed {
+        payload: payload.clone(),
+    })
 }
 
 /// Calls [USER_DIRS_PATH] endpoint asynchronously. Used to get a list of user's folders.
@@ -200,7 +256,11 @@ pub async fn user_dirs_request_async(
     payload: &UserDirsRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserDirsResponsePayload> {
-    queries::query_filen_api_async(USER_DIRS_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(USER_DIRS_PATH, payload, filen_settings)
+        .await
+        .context(UserDirsQueryFailed {
+            payload: payload.clone(),
+        })
 }
 
 /// Calls [DIR_CREATE_PATH] endpoint. Creates parentless folder that you need to move yourself later.
@@ -208,7 +268,9 @@ pub fn dir_create_request(
     payload: &DirCreateRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(DIR_CREATE_PATH, payload, filen_settings)
+    queries::query_filen_api(DIR_CREATE_PATH, payload, filen_settings).context(DirCreateQueryFailed {
+        payload: payload.clone(),
+    })
 }
 
 /// Calls [DIR_CREATE_PATH] endpoint asynchronously. Creates parentless folder that you need to move yourself later.
@@ -216,7 +278,11 @@ pub async fn dir_create_request_async(
     payload: &DirCreateRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(DIR_CREATE_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(DIR_CREATE_PATH, payload, filen_settings)
+        .await
+        .context(DirCreateQueryFailed {
+            payload: payload.clone(),
+        })
 }
 
 /// Calls [DIR_EXISTS_PATH] endpoint.
@@ -225,7 +291,9 @@ pub fn dir_exists_request(
     payload: &LocationExistsRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<LocationExistsResponsePayload> {
-    queries::query_filen_api(DIR_EXISTS_PATH, payload, filen_settings)
+    queries::query_filen_api(DIR_EXISTS_PATH, payload, filen_settings).context(DirExistsQueryFailed {
+        payload: payload.clone(),
+    })
 }
 
 /// Calls [DIR_EXISTS_PATH] endpoint asynchronously.
@@ -234,14 +302,20 @@ pub async fn dir_exists_request_async(
     payload: &LocationExistsRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<LocationExistsResponsePayload> {
-    queries::query_filen_api_async(DIR_EXISTS_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(DIR_EXISTS_PATH, payload, filen_settings)
+        .await
+        .context(DirExistsQueryFailed {
+            payload: payload.clone(),
+        })
 }
 
 /// Calls [DIR_MOVE_PATH] endpoint.
 /// Moves folder with the given uuid to the specified parent folder. It is a good idea to check first if folder
 /// with the same name already exists within the parent folder.
 pub fn dir_move_request(payload: &DirMoveRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
-    queries::query_filen_api(DIR_MOVE_PATH, payload, filen_settings)
+    queries::query_filen_api(DIR_MOVE_PATH, payload, filen_settings).context(DirMoveQueryFailed {
+        payload: payload.clone(),
+    })
 }
 
 /// Calls [DIR_MOVE_PATH] endpoint asynchronously.
@@ -251,7 +325,11 @@ pub async fn dir_move_request_async(
     payload: &DirMoveRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(DIR_MOVE_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(DIR_MOVE_PATH, payload, filen_settings)
+        .await
+        .context(DirMoveQueryFailed {
+            payload: payload.clone(),
+        })
 }
 
 /// Calls [DIR_RENAME_PATH] endpoint.
@@ -261,7 +339,9 @@ pub fn dir_rename_request(
     payload: &DirRenameRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(DIR_RENAME_PATH, payload, filen_settings)
+    queries::query_filen_api(DIR_RENAME_PATH, payload, filen_settings).context(DirRenameQueryFailed {
+        payload: payload.clone(),
+    })
 }
 
 /// Calls [DIR_RENAME_PATH] endpoint asynchronously.
@@ -271,7 +351,11 @@ pub async fn dir_rename_request_async(
     payload: &DirRenameRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(DIR_RENAME_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(DIR_RENAME_PATH, payload, filen_settings)
+        .await
+        .context(DirRenameQueryFailed {
+            payload: payload.clone(),
+        })
 }
 
 /// Calls [DIR_TRASH_PATH] endpoint.
@@ -281,7 +365,9 @@ pub fn dir_trash_request(
     payload: &LocationTrashRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(DIR_TRASH_PATH, payload, filen_settings)
+    queries::query_filen_api(DIR_TRASH_PATH, payload, filen_settings).context(DirTrashQueryFailed {
+        payload: payload.clone(),
+    })
 }
 
 /// Calls [DIR_TRASH_PATH] endpoint asynchronously.
@@ -291,7 +377,11 @@ pub async fn dir_trash_request_async(
     payload: &LocationTrashRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(DIR_TRASH_PATH, payload, filen_settings).await
+    queries::query_filen_api_async(DIR_TRASH_PATH, payload, filen_settings)
+        .await
+        .context(DirTrashQueryFailed {
+            payload: payload.clone(),
+        })
 }
 
 #[cfg(test)]
@@ -337,7 +427,7 @@ mod tests {
 
         let response = spawn_blocking(
             closure!(clone request_payload, clone filen_settings, || { user_dirs_request(&request_payload, &filen_settings) }),
-        ).await??;
+        ).await.unwrap()?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
@@ -362,7 +452,7 @@ mod tests {
 
         let response = spawn_blocking(
             closure!(clone request_payload, clone filen_settings, || { dir_create_request(&request_payload, &filen_settings) }),
-        ).await??;
+        ).await.unwrap()?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
@@ -386,7 +476,7 @@ mod tests {
 
         let response = spawn_blocking(
             closure!(clone request_payload, clone filen_settings, || { dir_exists_request(&request_payload, &filen_settings) }),
-        ).await??;
+        ).await.unwrap()?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
@@ -409,7 +499,7 @@ mod tests {
 
         let response = spawn_blocking(
             closure!(clone request_payload, clone filen_settings, || { dir_move_request(&request_payload, &filen_settings) }),
-        ).await??;
+        ).await.unwrap()?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 
@@ -433,7 +523,7 @@ mod tests {
 
         let response = spawn_blocking(
             closure!(clone request_payload, clone filen_settings, || { dir_rename_request(&request_payload, &filen_settings) }),
-        ).await??;
+        ).await.unwrap()?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
 

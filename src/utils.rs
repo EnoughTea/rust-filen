@@ -1,5 +1,4 @@
 //! This module contains general purpose functions (aka dump).
-use anyhow::*;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use std::fs::File;
@@ -55,6 +54,15 @@ pub(crate) fn flatten_result_with<V, F, E, O: FnOnce(F) -> E>(result: Result<Res
     }
 }
 
+pub(crate) fn filen_file_location_to_api_endpoint(location: &FileChunkLocation) -> String {
+    filen_file_address_to_api_endpoint(
+        &location.region,
+        &location.bucket,
+        &location.file_uuid,
+        location.chunk_index,
+    )
+}
+
 pub(crate) fn filen_file_address_to_api_endpoint(
     region: &str,
     bucket: &str,
@@ -67,11 +75,10 @@ pub(crate) fn filen_file_address_to_api_endpoint(
 }
 
 /// Reads file at the specified path to the end.
-pub(crate) fn read_file<P: AsRef<Path>>(file_path: P) -> Result<Vec<u8>> {
+pub(crate) fn read_file<P: AsRef<Path>>(file_path: P) -> Result<Vec<u8>, std::io::Error> {
     let mut f = File::open(&file_path)?;
     let mut buffer = Vec::new();
-    let _bytes_read = f.read_to_end(&mut buffer)?;
-    Ok(buffer)
+    f.read_to_end(&mut buffer).map(|_read_bytes| buffer)
 }
 
 /// This macro generates a simple [std::fmt::Display] implementation using Serde's json! on self.
@@ -90,6 +97,8 @@ macro_rules! display_from_json {
 }
 // TODO: Should this be a derive proc macro?
 pub(crate) use display_from_json;
+
+use crate::v1::fs::FileChunkLocation;
 
 #[cfg(test)]
 mod tests {

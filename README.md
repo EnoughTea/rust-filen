@@ -11,7 +11,7 @@ If you're interested, that's how it looks:
 Import all we need for exemplary purposes:
 ```rust
 use crate::{filen_settings::FilenSettings, retry_settings::RetrySettings, v1::auth, v1::fs::*};
-use anyhow::*;  // or crate::anyhow::*, it re-exports anyhow just in case
+use anyhow::*;  // simple error handling for demo purposes
 use secstr::SecUtf8;    // or crate::secstr::SecUtf8, it re-exports secstr just in case
 ```
 

@@ -1,9 +1,20 @@
 pub use super::{dirs::*, download_dir::*, download_file::*, files::*, sync_dir::*, upload_file::*};
 use crate::{crypto, utils, v1::*};
-use anyhow::*;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use snafu::{ResultExt, Snafu};
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("Failed to deserialize location name: {}", source))]
+    DeserializeLocationNameFailed { source: serde_json::Error },
+
+    #[snafu(display("Failed to decrypt location name {}: {}", metadata, source))]
+    DecryptLocationNameFailed { metadata: String, source: crypto::Error },
+}
 
 /// Folder data for one of the user folders or for one of the folders in Filen sync folder.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -41,9 +52,15 @@ impl LocationNameMetadata {
 
     /// Decrypt name metadata into actual folder name.
     pub fn decrypt_name_from_metadata(name_metadata: &str, last_master_key: &SecUtf8) -> Result<String> {
-        crypto::decrypt_metadata_str(name_metadata, last_master_key.unsecure()).and_then(|metadata| {
-            serde_json::from_str::<LocationNameMetadata>(&metadata)
-                .with_context(|| "Cannot deserialize user dir name metadata")
+        let decrypted_name_result = crypto::decrypt_metadata_str(name_metadata, last_master_key.unsecure()).context(
+            DecryptLocationNameFailed {
+                metadata: name_metadata.clone(),
+            },
+        );
+
+        decrypted_name_result.and_then(|name_metadata| {
+            serde_json::from_str::<LocationNameMetadata>(&name_metadata)
+                .context(DeserializeLocationNameFailed {})
                 .map(|typed| typed.name)
         })
     }
