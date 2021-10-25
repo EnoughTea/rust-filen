@@ -1,3 +1,7 @@
+pub use super::{
+    dirs::Error as DirsError, download_dir::Error as DownloadDirError, download_file::Error as DownloadFileError,
+    files::Error as FilesError, sync_dir::Error as SyncDirError, upload_file::Error as UploadFileError,
+};
 pub use super::{dirs::*, download_dir::*, download_file::*, files::*, sync_dir::*, upload_file::*};
 use crate::{crypto, utils, v1::*};
 use secstr::SecUtf8;
