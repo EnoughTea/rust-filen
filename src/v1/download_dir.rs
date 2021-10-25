@@ -165,7 +165,7 @@ impl DownloadedFileData {
     }
 
     pub fn get_file_location(&self) -> FileLocation {
-        FileLocation::new(self.region.clone(), self.bucket.clone(), self.uuid.clone(), self.chunks)
+        FileLocation::new(&self.region, &self.bucket, &self.uuid, self.chunks)
     }
 
     /// Uses this file's properties to call [download_and_decrypt_file].

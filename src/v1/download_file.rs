@@ -51,22 +51,17 @@ pub struct FileLocation {
 }
 
 impl FileLocation {
-    pub fn new(region: String, bucket: String, file_uuid: String, chunk_count: u32) -> FileLocation {
+    pub fn new(region: &str, bucket: &str, file_uuid: &str, chunk_count: u32) -> FileLocation {
         FileLocation {
-            region,
-            bucket,
-            file_uuid,
+            region: region.to_owned(),
+            bucket: bucket.to_owned(),
+            file_uuid: file_uuid.to_owned(),
             chunk_count,
         }
     }
 
     pub fn get_file_chunk_location(&self, chunk_index: u32) -> FileChunkLocation {
-        FileChunkLocation::new(
-            self.region.clone(),
-            self.bucket.clone(),
-            self.file_uuid.clone(),
-            chunk_index,
-        )
+        FileChunkLocation::new(&self.region, &self.bucket, &self.file_uuid, chunk_index)
     }
 }
 
@@ -90,11 +85,11 @@ pub struct FileChunkLocation {
 }
 
 impl FileChunkLocation {
-    pub fn new(region: String, bucket: String, file_uuid: String, chunk_index: u32) -> FileChunkLocation {
+    pub fn new(region: &str, bucket: &str, file_uuid: &str, chunk_index: u32) -> FileChunkLocation {
         FileChunkLocation {
-            region,
-            bucket,
-            file_uuid,
+            region: region.to_owned(),
+            bucket: bucket.to_owned(),
+            file_uuid: file_uuid.to_owned(),
             chunk_index,
         }
     }
@@ -126,14 +121,14 @@ pub fn download_file_chunk(file_chunk_location: &FileChunkLocation, filen_settin
 ///
 /// Download server endpoint is <filen download server>/<region>/<bucket>/<file uuid>/<chunk index>
 pub async fn download_file_chunk_async(
-    file_chunk_location: FileChunkLocation,
+    file_chunk_location: &FileChunkLocation,
     filen_settings: &FilenSettings,
 ) -> Result<Vec<u8>> {
-    let api_endpoint = utils::filen_file_location_to_api_endpoint(&file_chunk_location);
+    let api_endpoint = utils::filen_file_location_to_api_endpoint(file_chunk_location);
     queries::download_from_filen_async(&api_endpoint, filen_settings)
         .await
         .context(CannotDownloadFileChunk {
-            location: file_chunk_location,
+            location: file_chunk_location.to_owned(),
         })
 }
 
@@ -329,17 +324,22 @@ fn decrypt_batch(
 /// Asynchronously downloads Filen file data chunks with given indices. If one download in the batch fails, entire batch fails.
 async fn download_batch_async(
     file_location: &FileLocation,
-    batch_indices: Vec<u32>,
+    batch_indices: &[u32],
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<Vec<Vec<u8>>> {
-    let download_action = |chunk_index: u32| {
-        retry_settings.retry_async(move || {
-            let file_chunk_location = file_location.get_file_chunk_location(chunk_index);
-            download_file_chunk_async(file_chunk_location, filen_settings)
-        })
+    let download_chunk_eventually = |chunk_index: u32| async move {
+        let file_chunk_location = file_location.get_file_chunk_location(chunk_index);
+        download_file_chunk_async(&file_chunk_location, filen_settings).await
     };
-    futures::future::try_join_all(batch_indices.iter().map(|chunk_index| download_action(*chunk_index))).await
+    let download_chunk_with_retries_eventually =
+        |chunk_index: u32| retry_settings.retry_async(move || download_chunk_eventually(chunk_index));
+
+    let chunk_download_tasks = batch_indices
+        .iter()
+        .map(|chunk_index| download_chunk_with_retries_eventually(*chunk_index));
+
+    futures::future::try_join_all(chunk_download_tasks).await
 }
 
 /// Calculates batch indices from the total amount of chunks and the single batch size.
