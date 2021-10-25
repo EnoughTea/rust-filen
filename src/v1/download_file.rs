@@ -239,7 +239,7 @@ pub async fn download_and_decrypt_file_async<W: Write>(
     writer: &mut std::io::BufWriter<W>,
 ) -> Result<u64> {
     let download_and_decrypt_action = |batch_index: usize, batch_indices: Vec<u32>| async move {
-        let batch_or_err = download_batch_async(file_location, batch_indices, retry_settings, filen_settings).await;
+        let batch_or_err = download_batch_async(file_location, &batch_indices, retry_settings, filen_settings).await;
         match batch_or_err {
             Ok(batch) => decrypt_batch(batch_index, &batch, file_location, version, file_key),
             Err(err) => Err(err),
@@ -247,9 +247,9 @@ pub async fn download_and_decrypt_file_async<W: Write>(
     };
     let batches = batch_chunks(file_location.chunk_count, ASYNC_CHUNK_BATCH_SIZE);
     let download_and_decrypt_batches = batches
-        .iter()
+        .into_iter()
         .enumerate()
-        .map(|(batch_index, batch)| download_and_decrypt_action(batch_index, batch.clone()));
+        .map(|(batch_index, batch)| download_and_decrypt_action(batch_index, batch));
     let decrypted_batches = futures::future::try_join_all(download_and_decrypt_batches).await?;
     // Batches need to be written sequentially, I guess
     let written_batch_lengths = decrypted_batches
