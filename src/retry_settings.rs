@@ -1,7 +1,6 @@
 use std::time::Duration;
 
-use crate::{errors::*, limited_exponential::LimitedExponential};
-use anyhow::*;
+use crate::limited_exponential::LimitedExponential;
 use once_cell::sync::Lazy;
 
 const RETRY_EXP_FACTOR: u32 = 2;
@@ -51,25 +50,29 @@ impl RetrySettings {
             .take(self.max_tries)
     }
 
-    pub async fn retry_async<T, CF>(self: &RetrySettings, operation: CF) -> Result<T>
+    pub async fn retry_async<T, CF, OpErr>(self: &RetrySettings, operation: CF) -> Result<T, OpErr>
     where
-        CF: fure::CreateFuture<T, Error>,
+        CF: fure::CreateFuture<T, OpErr>,
+        OpErr: std::error::Error + Send + Sync,
     {
         let exp_backoff = self.get_exp_backoff_iterator();
         let policy = fure::policies::attempts(fure::policies::backoff(exp_backoff), self.max_tries);
         fure::retry(operation, policy).await
     }
 
-    pub fn retry<O, R, OR>(self: &RetrySettings, operation: O) -> Result<R>
+    pub fn retry<O, R, OR, OpErr>(self: &RetrySettings, operation: O) -> Result<R, OpErr>
     where
         O: FnMut() -> OR,
-        OR: Into<retry::OperationResult<R, Error>>,
+        OR: Into<retry::OperationResult<R, OpErr>>,
+        OpErr: std::error::Error + Send + Sync,
     {
         let policy = self.get_exp_backoff_iterator();
         let retry_result = retry::retry(policy, operation);
         retry_result.map_err(|retry_err| match retry_err {
             retry::Error::Operation { error, .. } => error,
-            retry::Error::Internal(description) => anyhow!(unknown(&description)),
+            retry::Error::Internal(description) => {
+                panic!("Sync retry internal logic failure marker: {}", description)
+            }
         })
     }
 

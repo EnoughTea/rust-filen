@@ -4,7 +4,6 @@ use std::convert::TryInto;
 use aes::Aes256;
 use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
-use anyhow::*;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Cbc};
 use crypto::hmac::Hmac;
@@ -17,9 +16,11 @@ use rand::{thread_rng, Rng};
 use rsa::pkcs8::{FromPrivateKey, FromPublicKey};
 use rsa::PublicKey;
 use secstr::*;
+use snafu::{ensure, Backtrace, ResultExt, Snafu};
 
-use crate::errors::*;
 use crate::utils;
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
@@ -30,6 +31,60 @@ const AES_CBC_IV_LENGTH: usize = 16;
 const AES_CBC_KEY_LENGTH: usize = 32;
 const AES_GCM_IV_LENGTH: usize = 12;
 const FILEN_VERSION_LENGTH: usize = 3;
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("AES CBC failed to decipher raw bytes: {}", source))]
+    AesCbcCannotDecipherData { source: block_modes::BlockModeError },
+
+    #[snafu(display("Prefixed AES GCM failed to decipher ciphered message: {}", source))]
+    AesGcmCannotDecipherData { source: aes_gcm::Error },
+
+    #[snafu(display(
+        "Cannot encrypt data with given public key, assuming RSA-OAEP with SHA512 hash and PKCS8 format: {}",
+        source
+    ))]
+    RsaPkcs8CannotEncryptData { source: rsa::errors::Error },
+
+    #[snafu(display(
+        "Cannot decrypt data with given private key, assuming RSA-OAEP with SHA512 hash and PKCS8 format: {}",
+        source
+    ))]
+    RsaPkcs8CannotDecryptData { source: rsa::errors::Error },
+
+    #[snafu(display("Cannot deserialize PKCS#8 private key from ASN.1 DER-encoded data: {}", source))]
+    RsaCannotDeserializePrivateKey { source: rsa::pkcs8::Error },
+
+    #[snafu(display("Cannot deserialize public key from ASN.1 DER-encoded data: {}", source))]
+    RsaCannotDeserializePublicKey { source: rsa::pkcs8::Error },
+
+    #[snafu(display("Caller provided invalid argument: {}", message))]
+    BadArgument { message: String, backtrace: Backtrace },
+
+    #[snafu(display(r#"Expected data to be base64-encoded, but cannot decode it as such"#))]
+    CannotDecodeBase64 { source: base64::DecodeError },
+
+    #[snafu(display("Cannot parse Filen metadata from: {:?}", erroneous_part))]
+    CannotParseFilenMetadataVersion {
+        erroneous_part: String,
+        source: std::num::ParseIntError,
+    },
+
+    #[snafu(display(
+        "Caller expected decypted metadata to be a valid UTF-8 string, but it was not. \
+         Perhaps decrypt_metadata() should be used instead of decrypt_metadata_str()?"
+    ))]
+    DecryptedMetadataIsNotUtf8 { source: std::string::FromUtf8Error },
+
+    #[snafu(display("Unsupported Filen file version: {}", file_version))]
+    UnsupportedFilenFileVersion { file_version: i64, backtrace: Backtrace },
+
+    #[snafu(display("Unsupported Filen metadata version: {}", metadata_version))]
+    UnsupportedFilenMetadataVersion {
+        metadata_version: i64,
+        backtrace: Backtrace,
+    },
+}
 
 /// Contains a Filen master key and a password hash used for a login API call.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -80,16 +135,18 @@ pub fn encrypt_metadata(data: &[u8], key: &[u8], metadata_version: u32) -> Resul
         return Ok(vec![0u8; 0]);
     }
 
-    let encrypted_metadata = match metadata_version {
-        1 => base64::encode(encrypt_aes_openssl(data, key, None)).as_bytes().to_vec(), // Deprecated since August 2021
+    match metadata_version {
+        1 => Ok(base64::encode(encrypt_aes_openssl(data, key, None)).as_bytes().to_vec()), // Deprecated since August 2021
         2 => {
             let mut version_mark = format!("{:0>3}", metadata_version).into_bytes();
             version_mark.extend(encrypt_aes_gcm_base64(data, key));
-            version_mark
+            Ok(version_mark)
         }
-        version => bail!(unsupported(&format!("Unsupported metadata version: {}", version))),
-    };
-    Ok(encrypted_metadata)
+        version => UnsupportedFilenMetadataVersion {
+            metadata_version: version,
+        }
+        .fail(),
+    }
 }
 
 /// Restores file metadata prefiously encrypted with [encrypt_metadata] and given key.
@@ -97,18 +154,18 @@ pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     fn read_metadata_version(data: &[u8]) -> Result<i32> {
         let possible_salted_mark = &data[..OPENSSL_SALT_PREFIX.len()];
         let possible_version_mark = &data[..FILEN_VERSION_LENGTH];
-        let metadata_version = if possible_salted_mark == OPENSSL_SALT_PREFIX_BASE64 {
-            1
+        if possible_salted_mark == OPENSSL_SALT_PREFIX_BASE64 {
+            Ok(1)
         } else if possible_salted_mark == OPENSSL_SALT_PREFIX {
-            -1 // Means data is base_64 decoded already, so we won't have to decode later.
+            Ok(-1) // Means data is base_64 decoded already, so we won't have to decode later.
         } else {
             let possible_version_string = String::from_utf8_lossy(possible_version_mark);
-            possible_version_string.parse::<i32>().map_err(|_| {
-                let message = format!("Invalid metadata version: {}", possible_version_string);
-                anyhow!(bad_argument(&message))
-            })?
-        };
-        Ok(metadata_version)
+            possible_version_string
+                .parse::<i32>()
+                .context(CannotParseFilenMetadataVersion {
+                    erroneous_part: possible_version_string.to_string(),
+                })
+        }
     }
 
     if data.is_empty() {
@@ -116,13 +173,17 @@ pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     }
 
     let metadata_version = read_metadata_version(data)?;
-    let decrypted_metadata = match metadata_version {
-        -1 => decrypt_aes_openssl(data, key)?, // Deprecated since August 2021
-        1 => decrypt_aes_openssl(&base64::decode(data)?, key)?, // Deprecated since August 2021
-        2 => decrypt_aes_gcm_base64(&data[FILEN_VERSION_LENGTH..], key)?,
-        version => bail!(unsupported(&format!("Unsupported metadata version: {}", version))),
-    };
-    Ok(decrypted_metadata)
+    match metadata_version {
+        -1 => decrypt_aes_openssl(data, key), // Deprecated since August 2021
+        1 => base64::decode(data)
+            .context(CannotDecodeBase64 {})
+            .and_then(|decoded| decrypt_aes_openssl(&decoded, key)), // Deprecated since August 2021
+        2 => decrypt_aes_gcm_base64(&data[FILEN_VERSION_LENGTH..], key),
+        version => UnsupportedFilenMetadataVersion {
+            metadata_version: version,
+        }
+        .fail(),
+    }
 }
 
 /// Encrypts file metadata with given key. Depending on metadata version, different encryption algos will be used.
@@ -134,10 +195,8 @@ pub fn encrypt_metadata_str(data: &str, m_key: &str, metadata_version: u32) -> R
 
 /// Restores file metadata prefiously encrypted with [encrypt_metadata]. Convenience overload for [String] params.
 pub fn decrypt_metadata_str(data: &str, m_key: &str) -> Result<String> {
-    decrypt_metadata(data.as_bytes(), m_key.as_bytes()).and_then(|bytes| {
-        String::from_utf8(bytes)
-            .with_context(|| "Decrypted metadata was not a valid UTF-8 string. Use decrypt_metadata() instead?")
-    })
+    decrypt_metadata(data.as_bytes(), m_key.as_bytes())
+        .and_then(|bytes| String::from_utf8(bytes).context(DecryptedMetadataIsNotUtf8 {}))
 }
 
 /// Encrypts file chunk for uploading to Filen. Resulting encoded chunk bytes are treated as unicode scalars, hence the resulting type.
@@ -157,10 +216,7 @@ pub fn encrypt_file_chunk(chunk_data: &[u8], file_key: &[u8; AES_CBC_KEY_LENGTH]
                 )))
             }
             2 => Ok(encrypt_aes_gcm_bstr(chunk_data, file_key)),
-            _ => {
-                let message = format!("Unsupported file data encryption version: {}", version);
-                bail!(unsupported(&message))
-            }
+            _ => UnsupportedFilenFileVersion { file_version: version }.fail(),
         }
     }
 }
@@ -176,7 +232,10 @@ pub fn decrypt_file_chunk(
     match version {
         1 => {
             if filen_encrypted_chunk_data.len() < OPENSSL_SALT_PREFIX.len() {
-                bail!(anyhow!(bad_argument("Encrypted data is too short, < 8 bytes")))
+                BadArgument {
+                    message: "encrypted data is too short, < 8 bytes",
+                }
+                .fail()
             } else {
                 let possible_prefix = &filen_encrypted_chunk_data[0..OPENSSL_SALT_PREFIX.len()];
                 if possible_prefix == OPENSSL_SALT_PREFIX {
@@ -193,10 +252,7 @@ pub fn decrypt_file_chunk(
             }
         }
         2 => decrypt_aes_gcm(filen_encrypted_chunk_data, file_key),
-        _ => {
-            let message = format!("Unsupported file data encryption version: {}", version);
-            bail!(unsupported(&message))
-        }
+        _ => UnsupportedFilenFileVersion { file_version: version }.fail(),
     }
 }
 
@@ -217,31 +273,38 @@ pub(crate) fn encrypt_master_keys_metadata(
 
 /// Helper which decrypts master keys stored in a metadata into a list of key strings, using specified master key.
 pub(crate) fn decrypt_master_keys_metadata(
-    master_keys_metadata: &Option<String>,
+    master_keys_metadata: &Option<&str>,
     last_master_key: &SecUtf8,
 ) -> Result<Vec<SecUtf8>> {
-    match master_keys_metadata {
-        Some(metadata) => decrypt_metadata_str(metadata, last_master_key.unsecure())
-            .map(|keys| keys.split('|').map(SecUtf8::from).collect()),
-        None => bail!(decryption_fail("Cannot decrypt master keys metadata, it is empty")),
-    }
+    ensure!(
+        master_keys_metadata.is_some(),
+        BadArgument {
+            message: "cannot decrypt master keys metadata, it is empty",
+        }
+    );
+
+    decrypt_metadata_str(master_keys_metadata.unwrap(), last_master_key.unsecure())
+        .map(|keys| keys.split('|').map(SecUtf8::from).collect())
 }
 
 /// Helper which decrypts user's RSA private key stored in a metadata into key bytes, using specified master key.
 pub(crate) fn decrypt_private_key_metadata(
-    private_key_metadata: &Option<String>,
+    private_key_metadata: &Option<&str>,
     last_master_key: &SecUtf8,
 ) -> Result<SecVec<u8>> {
     fn decode_base64_to_secvec(string: &str) -> Result<SecVec<u8>> {
-        Ok(SecVec::from(base64::decode(string)?))
+        base64::decode(string).context(CannotDecodeBase64 {}).map(SecVec::from)
     }
 
-    match private_key_metadata {
-        Some(metadata) => {
-            decrypt_metadata_str(metadata, last_master_key.unsecure()).and_then(|str| decode_base64_to_secvec(&str))
+    ensure!(
+        private_key_metadata.is_some(),
+        BadArgument {
+            message: "cannot decrypt private key metadata, it is empty",
         }
-        None => bail!(decryption_fail("Cannot decrypt private key metadata, it is empty")),
-    }
+    );
+
+    decrypt_metadata_str(private_key_metadata.unwrap(), last_master_key.unsecure())
+        .and_then(|str| decode_base64_to_secvec(&str))
 }
 
 /// Calculates OpenSSL-compatible AES 256 CBC (Pkcs7 padding) hash with 'Salted__' prefix, then 8 bytes of salt, rest is ciphered.
@@ -285,10 +348,9 @@ fn decrypt_aes_cbc_with_key_and_iv(
     iv: &[u8; AES_CBC_IV_LENGTH],
 ) -> Result<Vec<u8>> {
     let cipher = Aes256Cbc::new_from_slices(key, iv).unwrap();
-    let decrypted_data = cipher
+    cipher
         .decrypt_vec(aes_encrypted_data)
-        .map_err(|_| anyhow!(decryption_fail("AES CBC cannot decipher data")))?;
-    Ok(decrypted_data)
+        .context(AesCbcCannotDecipherData {})
 }
 
 /// Calculates AES-GCM hash. Returns IV within [0, [AES_GCM_IV_LENGTH]) range,
@@ -322,7 +384,7 @@ fn encrypt_aes_gcm(data: &[u8], key: &[u8]) -> (String, Vec<u8>) {
 fn decrypt_aes_gcm_base64(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     let (iv, encrypted_base64) = extract_aes_gcm_iv_and_message(data)?;
     base64::decode(encrypted_base64)
-        .map_err(|_| anyhow!(bad_argument("Given data to decrypt did not contain message in base64")))
+        .context(CannotDecodeBase64 {})
         .and_then(|encrypted| decrypt_aes_gcm_from_iv_and_bytes(key, iv, &encrypted))
 }
 
@@ -336,15 +398,16 @@ fn decrypt_aes_gcm_from_iv_and_bytes(key: &[u8], iv: &[u8], encrypted: &[u8]) ->
     let key = derive_key_from_password_256(key, key, 1);
     let cipher = Aes256Gcm::new(Key::from_slice(&key));
     let nonce = Nonce::from_slice(iv);
-    cipher
-        .decrypt(nonce, encrypted)
-        .map_err(|_| anyhow!(decryption_fail("Prefixed AES GCM cannot decipher data")))
+    cipher.decrypt(nonce, encrypted).context(AesGcmCannotDecipherData {})
 }
 
 fn extract_aes_gcm_iv_and_message(data: &[u8]) -> Result<(&[u8], &[u8])> {
-    if data.len() <= AES_GCM_IV_LENGTH {
-        bail!(bad_argument("Encrypted data is too small to contain AES GCM IV"))
-    }
+    ensure!(
+        data.len() > AES_GCM_IV_LENGTH,
+        BadArgument {
+            message: "encrypted data is too small to contain AES GCM IV"
+        }
+    );
 
     let (iv, message) = data.split_at(AES_GCM_IV_LENGTH);
     Ok((iv, message))
@@ -354,19 +417,16 @@ fn extract_aes_gcm_iv_and_message(data: &[u8]) -> Result<(&[u8], &[u8])> {
 fn encrypt_rsa(data: &[u8], public_key: &[u8]) -> Result<Vec<u8>> {
     let mut rng = thread_rng();
     let padding = rsa::PaddingScheme::new_oaep::<sha2::Sha512>();
-    let key = rsa::RsaPublicKey::from_public_key_der(public_key)?;
-    key.encrypt(&mut rng, padding, data).with_context(|| {
-        "Cannot encrypt data with given public key, assuming RSA-OAEP with SHA512 hash and PKCS8 format"
-    })
+    let key = rsa::RsaPublicKey::from_public_key_der(public_key).context(RsaCannotDeserializePublicKey {})?;
+    key.encrypt(&mut rng, padding, data)
+        .context(RsaPkcs8CannotEncryptData {})
 }
 
 /// Decrypts data prefiously encrypted with [encrypt_rsa] using PKCS#8 private key in ASN.1 DER-encoded format.
 fn decrypt_rsa(data: &[u8], private_key: &[u8]) -> Result<Vec<u8>> {
     let padding = rsa::PaddingScheme::new_oaep::<sha2::Sha512>();
-    let private_key = rsa::RsaPrivateKey::from_pkcs8_der(private_key)?;
-    private_key.decrypt(padding, data).with_context(|| {
-        "Cannot decrypt data with given private key, assuming non-base64 data encrypted by RSA-OAEP with SHA512 hash and PKCS8 format"
-    })
+    let private_key = rsa::RsaPrivateKey::from_pkcs8_der(private_key).context(RsaCannotDeserializePrivateKey {})?;
+    private_key.decrypt(padding, data).context(RsaPkcs8CannotDecryptData {})
 }
 
 fn salt_and_message_from_aes_openssl_encrypted_data(
@@ -374,16 +434,21 @@ fn salt_and_message_from_aes_openssl_encrypted_data(
     salt_length: usize,
 ) -> Result<(&[u8], &[u8])> {
     let message_index = OPENSSL_SALT_PREFIX.len() + salt_length;
-    if aes_encrypted_data.len() < message_index {
-        bail!(bad_argument(
-            "Encrypted data is too small to contain OpenSSL-compatible salt"
-        ))
-    }
+    ensure!(
+        aes_encrypted_data.len() >= message_index,
+        BadArgument {
+            message: "encrypted data is too small to contain OpenSSL-compatible salt",
+        }
+    );
 
     let (salt_with_prefix, message) = aes_encrypted_data.split_at(message_index);
-    if &salt_with_prefix[..8] != OPENSSL_SALT_PREFIX {
-        bail!(bad_argument("Encrypted data does not contain OpenSSL salt prefix"))
-    }
+    ensure!(
+        &salt_with_prefix[..8] == OPENSSL_SALT_PREFIX,
+        BadArgument {
+            message: "encrypted data does not contain OpenSSL salt prefix",
+        }
+    );
+
     let salt = &salt_with_prefix[OPENSSL_SALT_PREFIX.len()..];
     Ok((salt, message))
 }

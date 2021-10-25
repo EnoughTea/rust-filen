@@ -1,18 +1,41 @@
 //! This module contains helper methods to perform web queries to Filen servers.
-use anyhow::*;
 use once_cell::sync::Lazy;
 use rand::{thread_rng, Rng};
 use reqwest::header;
 use reqwest::Url;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use snafu::{ResultExt, Snafu};
 use std::time::Duration;
 
-use crate::{errors::*, filen_settings::FilenSettings};
+use crate::filen_settings::FilenSettings;
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 static ASYNC_CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
 static BLOCKING_CLIENT: Lazy<reqwest::blocking::Client> = Lazy::new(reqwest::blocking::Client::new);
 static CRATE_USER_AGENT: &str = "Rust-Filen API (+https://github.com/EnoughTea/rust-filen)";
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display(
+        "Cannot join chosen server URL '{}' with API endpoint '{}': {}",
+        api_endpoint,
+        chosen_server,
+        source
+    ))]
+    CannotJoinApiEndpoint {
+        api_endpoint: String,
+        chosen_server: String,
+        source: url::ParseError,
+    },
+
+    #[snafu(display("Cannot deserialize response body JSON: {}", source))]
+    CannotDeserializeResponseBodyJson { source: reqwest::Error },
+
+    #[snafu(display("{}: {}", message, source))]
+    WebRequestFailed { message: String, source: reqwest::Error },
+}
 
 /// Sends POST with given payload to one of Filen API servers.
 pub(crate) fn query_filen_api<T: Serialize + ?Sized, U: DeserializeOwned>(
@@ -52,9 +75,8 @@ pub(crate) async fn query_filen_api_async<T: Serialize + ?Sized, U: DeserializeO
 
 pub(crate) fn download_from_filen(api_endpoint: &str, filen_settings: &FilenSettings) -> Result<Vec<u8>> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.download_servers)?;
-    get_bytes(filen_endpoint.as_str(), filen_settings.download_chunk_timeout.as_secs()).map_err(|err| {
-        let message = &format!("Failed to download file chunk from: {}", filen_endpoint);
-        anyhow!(web_request_fail(message, err))
+    get_bytes(filen_endpoint.as_str(), filen_settings.download_chunk_timeout.as_secs()).context(WebRequestFailed {
+        message: format!("Failed to download file chunk from '{}'", filen_endpoint),
     })
 }
 
@@ -62,9 +84,8 @@ pub(crate) async fn download_from_filen_async(api_endpoint: &str, filen_settings
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.download_servers)?;
     get_bytes_async(filen_endpoint.as_str(), filen_settings.download_chunk_timeout.as_secs())
         .await
-        .map_err(|err| {
-            let message = &format!("Failed to download file chunk (async) from: {}", filen_endpoint);
-            anyhow!(web_request_fail(message, err))
+        .context(WebRequestFailed {
+            message: format!("Failed to download file chunk (async) from '{}'", filen_endpoint),
         })
 }
 
@@ -77,7 +98,7 @@ pub(crate) fn upload_to_filen<U: DeserializeOwned>(
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.upload_servers)?;
     let upload_result = post_blob(filen_endpoint.as_str(), &blob, filen_settings.request_timeout.as_secs());
     deserialize_response(upload_result, || {
-        format!("Failed to upload file chunk to: {}", filen_endpoint)
+        format!("Failed to upload file chunk to '{}'", filen_endpoint)
     })
 }
 
@@ -90,7 +111,7 @@ pub(crate) async fn upload_to_filen_async<U: DeserializeOwned>(
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.upload_servers)?;
     let upload_result = post_blob_async(filen_endpoint.as_str(), &blob, filen_settings.request_timeout.as_secs()).await;
     deserialize_response_async(upload_result, || {
-        format!("Failed to upload file chunk (async) to: {}", filen_endpoint)
+        format!("Failed to upload file chunk (async) to '{}'", filen_endpoint)
     })
     .await
 }
@@ -183,11 +204,9 @@ async fn post_json_async<T: Serialize + ?Sized>(
 /// Randomly chooses one of the URLs in servers slice and joins it with the given API endpoint path.
 fn produce_filen_endpoint(api_endpoint: &str, servers: &[Url]) -> Result<Url> {
     let chosen_server = choose_filen_server(servers);
-    chosen_server.join(api_endpoint).map_err(|_| {
-        anyhow!(bad_argument(&format!(
-            "Cannot join chosen server URL '{}' with API endpoint '{}'",
-            chosen_server, api_endpoint
-        )))
+    chosen_server.join(api_endpoint).context(CannotJoinApiEndpoint {
+        api_endpoint,
+        chosen_server: chosen_server.to_string(),
     })
 }
 
@@ -199,10 +218,10 @@ where
     U: DeserializeOwned,
     F: FnOnce() -> String,
 {
-    match request_result {
-        Ok(filen_response) => raw_deserialize_response_to_json(filen_response),
-        Err(err) => Err(anyhow!(web_request_fail(&error_message(), err))),
-    }
+    let response = request_result.context(WebRequestFailed {
+        message: error_message(),
+    })?;
+    response.json::<U>().context(CannotDeserializeResponseBodyJson {})
 }
 
 async fn deserialize_response_async<U, F>(
@@ -213,21 +232,8 @@ where
     U: DeserializeOwned,
     F: FnOnce() -> String,
 {
-    match request_result {
-        Ok(filen_response) => raw_deserialize_response_to_json_async(filen_response).await,
-        Err(err) => Err(anyhow!(web_request_fail(&error_message(), err))),
-    }
-}
-
-fn raw_deserialize_response_to_json<U: DeserializeOwned>(response: reqwest::blocking::Response) -> Result<U> {
-    response
-        .json::<U>()
-        .map_err(|err| anyhow!(web_request_fail("Cannot deserialize response body JSON", err)))
-}
-
-async fn raw_deserialize_response_to_json_async<U: DeserializeOwned>(response: reqwest::Response) -> Result<U> {
-    response
-        .json::<U>()
-        .await
-        .map_err(|err| anyhow!(web_request_fail("Cannot deserialize response body JSON", err)))
+    let response = request_result.context(WebRequestFailed {
+        message: error_message(),
+    })?;
+    response.json::<U>().await.context(CannotDeserializeResponseBodyJson {})
 }
