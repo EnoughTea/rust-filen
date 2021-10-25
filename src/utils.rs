@@ -98,11 +98,11 @@ macro_rules! display_from_json {
 // TODO: Should this be a derive proc macro?
 pub(crate) use display_from_json;
 
-use crate::v1::fs::FileChunkLocation;
+use crate::v1::FileChunkLocation;
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::*;
+    use super::*;
 
     #[test]
     fn byte_vec_to_hex_should_return_hex_codes_for_non_empty_bytes() {

@@ -6,7 +6,7 @@ use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_with::*;
 
-pub static DEFAULT_SETTINGS: Lazy<FilenSettings> = Lazy::new(FilenSettings::default);
+pub static DEFAULT_FILEN_SETTINGS: Lazy<FilenSettings> = Lazy::new(FilenSettings::default);
 
 static DEFAULT_API_SERVERS: Lazy<Vec<Url>> = Lazy::new(|| {
     vec![

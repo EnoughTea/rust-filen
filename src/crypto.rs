@@ -86,47 +86,36 @@ pub enum Error {
     },
 }
 
-/// Contains a Filen master key and a password hash used for a login API call.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct FilenPasswordWithMasterKey {
-    /// A hex string with 'master key', a hash that is widely used by Filen to encrypt/decrypt metadata.
-    /// Note that master key is used to encrypt/decrypt metadata 'as is', without specific hex to bytes conversion.
-    pub m_key: SecUtf8,
-
-    /// A hash based on user's password which is used for a login API call.
-    pub sent_password: SecUtf8,
-}
-
-impl FilenPasswordWithMasterKey {
-    /// Derives master key and login hash from user's password. Expects plain text password.
-    pub fn from_user_password(password: &SecUtf8) -> FilenPasswordWithMasterKey {
-        let m_key = SecUtf8::from(hash_fn(password.unsecure()));
-        let sent_password = SecUtf8::from(hash_password(password.unsecure()));
-        FilenPasswordWithMasterKey { m_key, sent_password }
-    }
-
-    /// Derives master key and login hash from user's password and Filen salt (from /auth/info API call). Expects plain text password.
-    pub fn from_user_password_and_auth_info_salt(password: &SecUtf8, salt: &SecUtf8) -> FilenPasswordWithMasterKey {
-        let (password_bytes, salt_bytes) = (password.unsecure().as_bytes(), salt.unsecure().as_bytes());
-        let pbkdf2_hash = derive_key_from_password_512(password_bytes, salt_bytes, 200_000);
-        FilenPasswordWithMasterKey::from_derived_key(&pbkdf2_hash)
-    }
-
-    fn from_derived_key(derived_key: &[u8; 64]) -> FilenPasswordWithMasterKey {
-        let (m_key, password_part) = derived_key.split_at(derived_key.len() / 2);
-        let m_key_hex = utils::bytes_to_hex_string(m_key);
-        let sent_password = sha512(&utils::bytes_to_hex_string(password_part)).to_vec();
-        let sent_password_hex = utils::bytes_to_hex_string(&sent_password);
-        FilenPasswordWithMasterKey {
-            m_key: SecUtf8::from(m_key_hex),
-            sent_password: SecUtf8::from(sent_password_hex),
-        }
-    }
-}
-
 /// Calculates poor man's alternative to pbkdf2 hash from the given string. Deprecated since August 2021.
-pub(crate) fn hash_fn(value: &str) -> String {
+pub fn hash_fn(value: &str) -> String {
     sha1(&sha512(&value.to_owned()).to_hex_string()).to_hex_string()
+}
+
+/// Calculates login key from the specified user password using chain of hashes. Deprecated since August 2021.
+pub fn hash_password(password: &str) -> String {
+    let mut sha512_part_1 =
+        sha512(&sha384(&sha256(&sha1(&password.to_owned()).to_hex_string()).to_hex_string()).to_hex_string())
+            .to_hex_string();
+    let sha512_part_2 =
+        sha512(&md5(&md4(&md2(&password.to_owned()).to_hex_string()).to_hex_string()).to_hex_string()).to_hex_string();
+    sha512_part_1.push_str(&sha512_part_2);
+    sha512_part_1
+}
+
+/// Calculates login key from the given user password and service-provided salt using SHA512 with 64 bytes output.
+pub fn derive_key_from_password_512(password: &[u8], salt: &[u8], iterations: u32) -> [u8; 64] {
+    let mut mac = Hmac::new(crypto::sha2::Sha512::new(), password);
+    let mut pbkdf2_hash = [0u8; 64];
+    derive_key_from_password_generic(salt, iterations, &mut mac, &mut pbkdf2_hash);
+    pbkdf2_hash
+}
+
+/// Calculates login key from the given user password and service-provided salt using SHA512 with 32 bytes output.
+pub fn derive_key_from_password_256(password: &[u8], salt: &[u8], iterations: u32) -> [u8; 32] {
+    let mut mac = Hmac::new(crypto::sha2::Sha512::new(), password);
+    let mut pbkdf2_hash = [0u8; 32];
+    derive_key_from_password_generic(salt, iterations, &mut mac, &mut pbkdf2_hash);
+    pbkdf2_hash
 }
 
 /// Encrypts file metadata with given key. Depending on metadata version, different encryption algos will be used.
@@ -187,13 +176,13 @@ pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
 }
 
 /// Encrypts file metadata with given key. Depending on metadata version, different encryption algos will be used.
-/// Convenience overload for [String] params.
+/// Convenience overload of the [encrypt_metadata] for string params.
 pub fn encrypt_metadata_str(data: &str, m_key: &str, metadata_version: u32) -> Result<String> {
     encrypt_metadata(data.as_bytes(), m_key.as_bytes(), metadata_version)
         .map(|bytes| String::from_utf8_lossy(&bytes).to_string())
 }
 
-/// Restores file metadata prefiously encrypted with [encrypt_metadata]. Convenience overload for [String] params.
+/// Restores file metadata prefiously encrypted with [encrypt_metadata]. Convenience overload of the [decrypt_metadata] for string params.
 pub fn decrypt_metadata_str(data: &str, m_key: &str) -> Result<String> {
     decrypt_metadata(data.as_bytes(), m_key.as_bytes())
         .and_then(|bytes| String::from_utf8(bytes).context(DecryptedMetadataIsNotUtf8 {}))
@@ -459,22 +448,6 @@ fn derive_key_from_password_generic<M: Mac>(salt: &[u8], iterations: u32, mac: &
     pbkdf2(mac, salt, iterations_or_default, pbkdf2_hash);
 }
 
-/// Calculates login key from the given user password and service-provided salt using SHA512 with 64 bytes output.
-fn derive_key_from_password_512(password: &[u8], salt: &[u8], iterations: u32) -> [u8; 64] {
-    let mut mac = Hmac::new(crypto::sha2::Sha512::new(), password);
-    let mut pbkdf2_hash = [0u8; 64];
-    derive_key_from_password_generic(salt, iterations, &mut mac, &mut pbkdf2_hash);
-    pbkdf2_hash
-}
-
-/// Calculates login key from the given user password and service-provided salt using SHA512 with 32 bytes output.
-fn derive_key_from_password_256(password: &[u8], salt: &[u8], iterations: u32) -> [u8; 32] {
-    let mut mac = Hmac::new(crypto::sha2::Sha512::new(), password);
-    let mut pbkdf2_hash = [0u8; 32];
-    derive_key_from_password_generic(salt, iterations, &mut mac, &mut pbkdf2_hash);
-    pbkdf2_hash
-}
-
 /// OpenSSL-compatible plain AES key and IV.
 fn generate_aes_key_and_iv(
     key_length: usize,
@@ -490,23 +463,12 @@ fn generate_aes_key_and_iv(
     (Vec::from(key), Vec::from(iv))
 }
 
-/// Calculates login key from the given user password. Deprecated since August 2021.
-fn hash_password(password: &str) -> String {
-    let mut sha512_part_1 =
-        sha512(&sha384(&sha256(&sha1(&password.to_owned()).to_hex_string()).to_hex_string()).to_hex_string())
-            .to_hex_string();
-    let sha512_part_2 =
-        sha512(&md5(&md4(&md2(&password.to_owned()).to_hex_string()).to_hex_string()).to_hex_string()).to_hex_string();
-    sha512_part_1.push_str(&sha512_part_2);
-    sha512_part_1
-}
-
 #[cfg(test)]
 mod tests {
-    use std::convert::TryInto;
-
-    use crate::{crypto::*, test_utils::*};
+    use super::*;
+    use crate::test_utils::*;
     use pretty_assertions::{assert_eq, assert_ne};
+    use std::convert::TryInto;
 
     #[test]
     fn encrypt_metadata_v1_should_use_simple_aes_with_base64() {
@@ -662,23 +624,6 @@ mod tests {
         let actual_pbkdf2_hash = derive_key_from_password_512(password, salt, 200_000);
 
         assert_eq!(actual_pbkdf2_hash, expected_pbkdf2_hash);
-    }
-
-    #[test]
-    fn derived_key_to_sent_password_should_return_valid_mkey_and_password() {
-        let expected_m_key = "f82a1812080acab7ed5751e7193984565c8b159be00bb6c66eac70ff0c8ad8dd".to_owned();
-        let expected_password = "7a499370cf3f72fd2ce351297916fa8926daf33a01d592c92e3ee9e83c152".to_owned()
-            + "1c342e60f2ecbde37bfdc00c45923c2568bc6a9c85c8653e19ade89e71ed9deac1d";
-        let pbkdf2_hash: [u8; 64] = [
-            248, 42, 24, 18, 8, 10, 202, 183, 237, 87, 81, 231, 25, 57, 132, 86, 92, 139, 21, 155, 224, 11, 182, 198,
-            110, 172, 112, 255, 12, 138, 216, 221, 58, 253, 102, 41, 117, 40, 216, 13, 51, 181, 109, 144, 46, 10, 63,
-            172, 173, 165, 89, 54, 223, 115, 173, 131, 123, 157, 117, 100, 113, 185, 63, 49,
-        ];
-
-        let parts = FilenPasswordWithMasterKey::from_derived_key(&pbkdf2_hash);
-
-        assert_eq!(parts.m_key.unsecure(), expected_m_key);
-        assert_eq!(parts.sent_password.unsecure(), expected_password);
     }
 
     #[test]

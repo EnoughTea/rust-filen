@@ -4,7 +4,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::{crypto, filen_settings::FilenSettings, queries, utils, v1::fs::*, v1::*};
+use crate::{crypto, filen_settings::FilenSettings, queries, utils, v1::*};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -129,7 +129,7 @@ impl FileProperties {
     pub fn decrypt_file_metadata(metadata: &str, last_master_key: &SecUtf8) -> Result<FileProperties> {
         crypto::decrypt_metadata_str(metadata, last_master_key.unsecure())
             .context(DecryptFileMetadataFailed {
-                metadata: metadata.clone(),
+                metadata: metadata.to_owned(),
             })
             .and_then(|metadata| {
                 serde_json::from_str::<FileProperties>(&metadata).context(DeserializeFileMetadataFailed {
@@ -372,7 +372,7 @@ mod tests {
     use secstr::SecUtf8;
     use tokio::task::spawn_blocking;
 
-    use crate::{test_utils::*, v1::fs::*};
+    use crate::{test_utils::*, v1::*};
 
     static API_KEY: Lazy<SecUtf8> =
         Lazy::new(|| SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"));

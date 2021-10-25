@@ -1,17 +1,20 @@
 #![allow(dead_code)]
 #![forbid(unsafe_code)]
 
-pub use fure;
-pub use reqwest;
-pub use retry;
-pub use secstr;
+pub use {fure, reqwest, retry, secstr};
+
+pub use {
+    crate::crypto::{Error as CryptoError, *},
+    filen_settings::*,
+    retry_settings::*,
+};
 
 mod crypto;
 mod file_chunk_pos;
-pub mod filen_settings;
+mod filen_settings;
 mod limited_exponential;
 mod queries;
-pub mod retry_settings;
+mod retry_settings;
 mod utils;
 pub mod v1;
 

@@ -1,13 +1,21 @@
-pub mod auth;
+pub use {
+    auth::Error as AuthError, dirs::Error as DirsError, download_dir::Error as DownloadDirError,
+    download_file::Error as DownloadFileError, files::Error as FilesError, fs::Error as FsError,
+    sync_dir::Error as SyncDirError, upload_file::Error as UploadFileError, usage::Error as UsageError,
+};
+
+pub use {auth::*, download_dir::*, download_file::*, files::*, fs::*, keys::*, sync_dir::*, upload_file::*, usage::*};
+
+mod auth;
 mod dirs;
 mod download_dir;
 mod download_file;
 mod files;
-pub mod fs;
-pub mod keys;
+mod fs;
+mod keys;
 mod sync_dir;
 mod upload_file;
-pub mod usage;
+mod usage;
 
 const METADATA_VERSION: u32 = 1;
 

@@ -1,9 +1,5 @@
-pub use super::{
-    dirs::Error as DirsError, download_dir::Error as DownloadDirError, download_file::Error as DownloadFileError,
-    files::Error as FilesError, sync_dir::Error as SyncDirError, upload_file::Error as UploadFileError,
-};
-pub use super::{dirs::*, download_dir::*, download_file::*, files::*, sync_dir::*, upload_file::*};
-use crate::{crypto, utils, v1::*};
+//! Contains structures common for Filen file&folder API.
+use crate::{crypto, utils, v1::api_response_struct};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -58,7 +54,7 @@ impl LocationNameMetadata {
     pub fn decrypt_name_from_metadata(name_metadata: &str, last_master_key: &SecUtf8) -> Result<String> {
         let decrypted_name_result = crypto::decrypt_metadata_str(name_metadata, last_master_key.unsecure()).context(
             DecryptLocationNameFailed {
-                metadata: name_metadata.clone(),
+                metadata: name_metadata.to_owned(),
             },
         );
 

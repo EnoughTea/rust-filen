@@ -1,8 +1,5 @@
-use crate::{
-    crypto::{self, FilenPasswordWithMasterKey},
-    filen_settings::FilenSettings,
-    queries, utils,
-};
+use crate::{crypto, filen_settings::FilenSettings, queries, utils};
+use easy_hasher::easy_hasher::sha512;
 use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
 use serde_with::*;
@@ -14,6 +11,44 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 
 const AUTH_INFO_PATH: &str = "/v1/auth/info";
 const LOGIN_PATH: &str = "/v1/login";
+
+/// Contains a Filen master key and a password hash used for a login API call.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FilenPasswordWithMasterKey {
+    /// A hex string with 'master key', a hash that is widely used by Filen to encrypt/decrypt metadata.
+    /// Note that master key is used to encrypt/decrypt metadata 'as is', without specific hex to bytes conversion.
+    pub m_key: SecUtf8,
+
+    /// A hash based on user's password which is used for a login API call.
+    pub sent_password: SecUtf8,
+}
+
+impl FilenPasswordWithMasterKey {
+    /// Derives master key and login hash from user's password. Expects plain text password.
+    pub fn from_user_password(password: &SecUtf8) -> FilenPasswordWithMasterKey {
+        let m_key = SecUtf8::from(crypto::hash_fn(password.unsecure()));
+        let sent_password = SecUtf8::from(crypto::hash_password(password.unsecure()));
+        FilenPasswordWithMasterKey { m_key, sent_password }
+    }
+
+    /// Derives master key and login hash from user's password and Filen salt (from /auth/info API call). Expects plain text password.
+    pub fn from_user_password_and_auth_info_salt(password: &SecUtf8, salt: &SecUtf8) -> FilenPasswordWithMasterKey {
+        let (password_bytes, salt_bytes) = (password.unsecure().as_bytes(), salt.unsecure().as_bytes());
+        let pbkdf2_hash = crypto::derive_key_from_password_512(password_bytes, salt_bytes, 200_000);
+        FilenPasswordWithMasterKey::from_derived_key(&pbkdf2_hash)
+    }
+
+    pub(crate) fn from_derived_key(derived_key: &[u8; 64]) -> FilenPasswordWithMasterKey {
+        let (m_key, password_part) = derived_key.split_at(derived_key.len() / 2);
+        let m_key_hex = utils::bytes_to_hex_string(m_key);
+        let sent_password = sha512(&utils::bytes_to_hex_string(password_part)).to_vec();
+        let sent_password_hex = utils::bytes_to_hex_string(&sent_password);
+        FilenPasswordWithMasterKey {
+            m_key: SecUtf8::from(m_key_hex),
+            sent_password: SecUtf8::from(sent_password_hex),
+        }
+    }
+}
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -204,6 +239,23 @@ mod tests {
     use closure::closure;
     use pretty_assertions::assert_eq;
     use tokio::task::spawn_blocking;
+
+    #[test]
+    fn derived_key_to_sent_password_should_return_valid_mkey_and_password() {
+        let expected_m_key = "f82a1812080acab7ed5751e7193984565c8b159be00bb6c66eac70ff0c8ad8dd".to_owned();
+        let expected_password = "7a499370cf3f72fd2ce351297916fa8926daf33a01d592c92e3ee9e83c152".to_owned()
+            + "1c342e60f2ecbde37bfdc00c45923c2568bc6a9c85c8653e19ade89e71ed9deac1d";
+        let pbkdf2_hash: [u8; 64] = [
+            248, 42, 24, 18, 8, 10, 202, 183, 237, 87, 81, 231, 25, 57, 132, 86, 92, 139, 21, 155, 224, 11, 182, 198,
+            110, 172, 112, 255, 12, 138, 216, 221, 58, 253, 102, 41, 117, 40, 216, 13, 51, 181, 109, 144, 46, 10, 63,
+            172, 173, 165, 89, 54, 223, 115, 173, 131, 123, 157, 117, 100, 113, 185, 63, 49,
+        ];
+
+        let parts = FilenPasswordWithMasterKey::from_derived_key(&pbkdf2_hash);
+
+        assert_eq!(parts.m_key.unsecure(), expected_m_key);
+        assert_eq!(parts.sent_password.unsecure(), expected_password);
+    }
 
     #[test]
     fn login_response_data_should_decrypt_master_keys() {

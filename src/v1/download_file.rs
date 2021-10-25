@@ -1,6 +1,6 @@
 use std::{convert::TryInto, fmt::Display, io::Write};
 
-use crate::{crypto, filen_settings::FilenSettings, queries, retry_settings::RetrySettings, utils, v1::fs::*};
+use crate::{crypto, filen_settings::FilenSettings, queries, retry_settings::RetrySettings, utils, v1::*};
 use secstr::SecUtf8;
 use snafu::{ResultExt, Snafu};
 
@@ -139,7 +139,12 @@ pub async fn download_file_chunk_async(
 
 /// Synchronously downloads and decrypts the file defined by given [DownloadedFileData] from Filen download server.
 /// Returns total size of downloaded encrypted chunks.
-/// All file chunks are downloaded and decrypted sequentially one by one, with each decrypted chunk immediately written to the provided writer.
+/// All file chunks are downloaded and decrypted sequentially one by one, with each decrypted chunk immediately written
+/// to the provided writer.
+///
+/// Note that file download is explicitly retriable and requires RetrySettings as an argument.
+/// You can pass [crate::NO_RETRIES] if you really want to fail the entire file download even if a single chunk
+/// download request fails temporarily, otherwise [crate::STANDARD_RETRIES] is a better fit.
 pub fn download_and_decrypt_file_from_data_and_key<W: Write>(
     file_data: &DownloadedFileData,
     file_key: &SecUtf8,
@@ -160,6 +165,10 @@ pub fn download_and_decrypt_file_from_data_and_key<W: Write>(
 /// Asynchronously downloads and decrypts the file defined by given [DownloadedFileData] from Filen download server.
 /// Returns total size of downloaded encrypted chunks.
 /// All file chunks are downloaded and decrypted in concurrently first, and then written to the provided writer.
+///
+/// Note that file download is explicitly retriable and requires RetrySettings as an argument.
+/// You can pass [crate::NO_RETRIES] if you really want to fail the entire file download even if a single chunk
+/// download request fails temporarily, otherwise [crate::STANDARD_RETRIES] is a better fit.
 pub async fn download_and_decrypt_file_from_data_and_key_async<W: Write>(
     file_data: &DownloadedFileData,
     file_key: &SecUtf8,

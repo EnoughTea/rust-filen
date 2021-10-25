@@ -11,7 +11,7 @@ use crate::{
     queries,
     retry_settings::RetrySettings,
     utils,
-    v1::{fs::*, *},
+    v1::*,
 };
 use reqwest::Url;
 use secstr::SecUtf8;
@@ -280,7 +280,7 @@ pub fn encrypt_and_upload_chunk(
     )
     .context(UploadQueryFailed {
         api_endpoint,
-        chunk_size: chunk_size,
+        chunk_size,
     })
 }
 
@@ -363,7 +363,9 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
                 ))
             } else {
                 DummyChunkNotAccepted {
-                    reason: dummy_chunk_response.message.unwrap_or("unknown reason".to_owned()),
+                    reason: dummy_chunk_response
+                        .message
+                        .unwrap_or_else(|| "unknown reason".to_owned()),
                 }
                 .fail()
             }
@@ -375,6 +377,10 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
 
 /// Asynchronously uploads file to Filen by reading file chunks from given reader,
 /// encrypting them and uploading each chunk with additional dummy chunk at the end.
+///
+/// Note that file upload is explicitly retriable and always requires RetrySettings as an argument.
+/// You can pass [crate::NO_RETRIES] if you really want to fail the entire file upload  even if a single chunk
+/// upload request fails temporarily, otherwise [crate::STANDARD_RETRIES] is a better fit.
 pub async fn encrypt_and_upload_file_async<R: Read + Seek>(
     api_key: &SecUtf8,
     parent_uuid: &str,
@@ -421,7 +427,9 @@ pub async fn encrypt_and_upload_file_async<R: Read + Seek>(
             ))
         } else {
             DummyChunkNotAccepted {
-                reason: dummy_chunk_response.message.unwrap_or("unknown reason".to_owned()),
+                reason: dummy_chunk_response
+                    .message
+                    .unwrap_or_else(|| "unknown reason".to_owned()),
             }
             .fail()
         }
@@ -443,9 +451,12 @@ where
     let maybe_failed_chunk = chunk_upload_responses.iter().find(|r| !r.status);
     match maybe_failed_chunk {
         Some(failed_chunk) => {
-            let failure_reason = failed_chunk.message.as_deref().unwrap_or("unknown reason").clone();
+            let failure_reason = failed_chunk.message.as_deref().unwrap_or("unknown reason");
             // At least one chunk failed with 'status: false', so fail entire upload, I guess
-            ChunkNotAccepted { reason: failure_reason }.fail()
+            ChunkNotAccepted {
+                reason: failure_reason.to_owned(),
+            }
+            .fail()
         }
         None => Ok(finalize_action(chunk_upload_responses)),
     }

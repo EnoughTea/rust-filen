@@ -11,14 +11,14 @@ const RETRY_MAX_DELAY_MILLIS: u64 = 15000;
 pub static NO_RETRIES: Lazy<RetrySettings> = Lazy::new(RetrySettings::default);
 
 /// Retry settings to retry 5 times with 1, 2, 4, 8 and 15 seconds pause between retries.
-pub static STANDARD: Lazy<RetrySettings> = Lazy::new(|| RetrySettings {
+pub static STANDARD_RETRIES: Lazy<RetrySettings> = Lazy::new(|| RetrySettings {
     max_tries: 5,
     ..RetrySettings::default()
 });
 
 /// Parameters for exponential backoff retry strategy with random jitter. Default instance performs no retries.
 ///
-/// Retry sync operations with [RetrySettings::retry] and futures with [RetrySettings::retry_async].
+/// Turn any API query into retriable if needed: call [RetrySettings::retry] for sync operations and [RetrySettings::retry_async] for futures.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct RetrySettings {
     /// Initial delay for exponential backoff.
