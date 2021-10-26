@@ -224,7 +224,7 @@ impl DirCreateRequestPayload {
     /// Payload to create a new folder with the specified name.
     pub fn new(name: &str, api_key: &SecUtf8, last_master_key: &SecUtf8) -> DirCreateRequestPayload {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(name, last_master_key);
-        let name_hashed = LocationNameMetadata::name_hashed(&name);
+        let name_hashed = LocationNameMetadata::name_hashed(name);
         DirCreateRequestPayload {
             api_key: api_key.clone(),
             uuid: Uuid::new_v4().to_hyphenated().to_string(),
