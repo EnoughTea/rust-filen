@@ -1,4 +1,4 @@
-use crate::{crypto, filen_settings::FilenSettings, queries, utils, v1::*};
+use crate::{filen_settings::FilenSettings, queries, utils, v1::*};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_with::*;
@@ -10,6 +10,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 pub const FILEN_FOLDER_TYPE: &str = "folder";
 pub const FILEN_SYNC_FOLDER_NAME: &str = "Filen Sync";
 
+const USER_BASE_FOLDERS_PATH: &str = "/v1/user/baseFolders";
 const USER_DIRS_PATH: &str = "/v1/user/dirs";
 const DIR_CREATE_PATH: &str = "/v1/dir/create";
 const DIR_EXISTS_PATH: &str = "/v1/dir/exists";
@@ -22,11 +23,8 @@ pub enum Error {
     #[snafu(display("Caller provided invalid argument: {}", message))]
     BadArgument { message: String, backtrace: Backtrace },
 
-    #[snafu(display("Failed to decrypt name metadata: {}", source))]
-    DecryptNameMetadataFailed {
-        metadata: String,
-        source: crate::v1::fs::Error,
-    },
+    #[snafu(display("{} query failed: {}", USER_BASE_FOLDERS_PATH, source))]
+    UserBaseFoldersQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", USER_DIRS_PATH, source))]
     UserDirsQueryFailed { source: queries::Error },
@@ -62,6 +60,70 @@ pub enum Error {
     },
 }
 
+// Used for requests to [USER_BASE_FOLDERS_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct UserBaseFoldersRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+
+    /// Boolean string. This field seems not to do anything, but Filen web manager sets it to "true".
+    #[serde(rename = "includeDefault")]
+    pub include_default: String,
+}
+
+utils::display_from_json!(UserBaseFoldersRequestPayload);
+
+/// One of the folders in response data for [USER_BASE_FOLDERS_PATH] endpoint.
+#[skip_serializing_none]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct UserBaseFolder {
+    /// Folder ID; hyphenated lowercased UUID V4.
+    pub uuid: String,
+
+    /// Metadata containing JSON with folder name: { "name": <name value> }
+    #[serde(rename = "name")]
+    pub name_metadata: String,
+
+    /// Folder color name; None means default yellow color. Possible colors: "blue", "green", "purple", "red", "gray".
+    pub color: Option<String>,
+
+    /// Folder creation time, as Unix timestamp in seconds.
+    pub timestamp: u64,
+
+    /// True if user has marked folder as favorite; false otherwise.
+    pub favorited: i32,
+
+    /// 1 if this is a default Filen folder; 0 otherwise.
+    pub is_default: i32,
+
+    /// 1 if this is a Filen sync folder; false otherwise.
+    ///
+    /// Filen sync folder is a special unique folder that is created by Filen client to store all synced files.
+    /// If user never used Filen client, no sync folder would exist.
+    ///
+    /// Filen sync folder is always named "Filen Sync" and created with a special type: "sync".
+    pub is_sync: i32,
+}
+utils::display_from_json!(UserBaseFolder);
+
+impl HasLocationName for UserBaseFolder {
+    /// Decrypts name metadata into a folder name.
+    fn name_metadata_ref<'a>(&'a self) -> &'a str {
+        &self.name_metadata
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct UserBaseFoldersResponseData {
+    pub folders: Vec<UserBaseFolder>,
+}
+
+api_response_struct!(
+    /// Response for [USER_BASE_FOLDERS_PATH] endpoint.
+    UserBaseFoldersResponsePayload<Option<UserBaseFoldersResponseData>>
+);
+
 // Used for requests to [USER_DIRS_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserDirsRequestPayload {
@@ -82,7 +144,7 @@ pub struct UserDirData {
     #[serde(rename = "name")]
     pub name_metadata: String,
 
-    /// Parent folder; None means this folder is a root, also known as 'cloud drive'.
+    /// Parent folder; None means this folder is a base folder, also known as 'cloud drive'.
     pub parent: Option<String>,
 
     /// True if this is a default Filen folder; false otherwise.
@@ -224,6 +286,29 @@ impl DirRenameRequestPayload {
             name_hashed,
         }
     }
+}
+
+/// Calls [USER_BASE_FOLDERS_PATH] endpoint. Used to get a list of user's *base* folders, also known as 'cloud drives'.
+/// Note the difference from [user_dirs_request], which returns a set of all user folders, cloud drives or not.
+/// Includes Filen "Default" folder.
+pub fn user_base_folders_request(
+    payload: &UserBaseFoldersRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<UserBaseFoldersResponsePayload> {
+    queries::query_filen_api(USER_BASE_FOLDERS_PATH, payload, filen_settings).context(UserBaseFoldersQueryFailed {})
+}
+
+/// Calls [USER_BASE_FOLDERS_PATH] endpoint asynchronously.
+/// Used to get a list of user's *base* folders, also known as 'cloud drives'.
+/// Note the difference from [user_dirs_request], which returns a set of all user folders, cloud drives or not.
+/// Includes Filen "Default" folder.
+pub async fn user_base_folders_request_async(
+    payload: &UserBaseFoldersRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<UserBaseFoldersResponsePayload> {
+    queries::query_filen_api_async(USER_BASE_FOLDERS_PATH, payload, filen_settings)
+        .await
+        .context(UserBaseFoldersQueryFailed {})
 }
 
 /// Calls [USER_DIRS_PATH] endpoint. Used to get a list of user's folders.
