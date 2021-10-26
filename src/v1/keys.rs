@@ -1,14 +1,15 @@
-use crate::{crypto, filen_settings::FilenSettings, queries};
+use crate::{crypto, filen_settings::FilenSettings, queries, utils};
 use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
 use serde_with::*;
 use snafu::{ensure, Backtrace, ResultExt, Snafu};
 
-use super::api_response_struct;
+use super::{api_response_struct, PlainApiResponse, METADATA_VERSION};
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 const KEY_PAIR_INFO_PATH: &str = "/v1/user/keyPair/info";
+const KEY_PAIR_UPDATE_PATH: &str = "/v1/user/keyPair/update";
 const MASTER_KEYS_PATH: &str = "/v1/user/masterKeys";
 
 #[derive(Snafu, Debug)]
@@ -28,8 +29,14 @@ pub enum Error {
     #[snafu(display("Failed to encrypt master keys: {}", source))]
     EncryptMasterKeysFailed { source: crypto::Error },
 
+    #[snafu(display("Failed to encrypt private key: {}", source))]
+    EncryptPrivateKeyFailed { source: crypto::Error },
+
     #[snafu(display("{} query failed: {}", KEY_PAIR_INFO_PATH, source))]
     KeyPairInfoQueryFailed { source: queries::Error },
+
+    #[snafu(display("{} query failed: {}", KEY_PAIR_UPDATE_PATH, source))]
+    KeyPairUpdateQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", MASTER_KEYS_PATH, source))]
     MasterKeysQueryFailed {
@@ -92,6 +99,53 @@ api_response_struct!(
     /// Response for [KEY_PAIR_INFO_PATH] endpoint.
     UserKeyPairInfoResponsePayload<Option<UserKeyPairInfoResponseData>>
 );
+
+/// Used for requests to [KEY_PAIR_UPDATE_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct UserKeyPairUpdateRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+
+    /// User's RSA private key bytes in PKCS#8 ASN.1 DER format,
+    /// base64-encoded and stored as Filen metadata encrypted by user's last master key.
+    #[serde(rename = "privateKey")]
+    pub private_key: SecUtf8,
+
+    /// User's public key bytes in PKCS#8 ASN.1 DER format, base64-encoded. Currently used for encrypting name and
+    /// metadata of the shared download folders.
+    #[serde(rename = "publicKey")]
+    pub public_key: String,
+}
+
+utils::display_from_json!(UserKeyPairUpdateRequestPayload);
+
+impl UserKeyPairUpdateRequestPayload {
+    /// Creates [UserKeyPairUpdateRequestPayload] with Filen-compatible private and public key strings,
+    /// given original keys bytes in PKCS#8 ASN.1 DER format.
+    pub fn from_key_bytes(
+        api_key: &SecUtf8,
+        private_key_bytes: &SecVec<u8>,
+        public_key_bytes: &[u8],
+        last_master_key: &SecUtf8,
+    ) -> Result<UserKeyPairUpdateRequestPayload> {
+        let private_key_base64 = SecUtf8::from(base64::encode(private_key_bytes.unsecure()));
+        let private_key = crypto::encrypt_metadata_str(
+            private_key_base64.unsecure(),
+            last_master_key.unsecure(),
+            METADATA_VERSION,
+        )
+        .map(SecUtf8::from)
+        .context(EncryptPrivateKeyFailed {})?;
+
+        let public_key = base64::encode(public_key_bytes);
+        Ok(UserKeyPairUpdateRequestPayload {
+            api_key: api_key.clone(),
+            private_key,
+            public_key,
+        })
+    }
+}
 
 /// Used for requests to [MASTER_KEYS_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -175,6 +229,24 @@ pub async fn key_pair_info_request_async(
     queries::query_filen_api_async(KEY_PAIR_INFO_PATH, payload, filen_settings)
         .await
         .context(KeyPairInfoQueryFailed {})
+}
+
+/// Calls [KEY_PAIR_UPDATE_PATH] endpoint. Used to set user's RSA public/private key pair.
+pub fn key_pair_update_request(
+    payload: &UserKeyPairUpdateRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api(KEY_PAIR_INFO_PATH, payload, filen_settings).context(KeyPairUpdateQueryFailed {})
+}
+
+/// Calls [KEY_PAIR_UPDATE_PATH] endpoint asynchronously. Used to set user's RSA public/private key pair.
+pub async fn key_pair_update_request_async(
+    payload: &UserKeyPairUpdateRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api_async(KEY_PAIR_INFO_PATH, payload, filen_settings)
+        .await
+        .context(KeyPairUpdateQueryFailed {})
 }
 
 /// Calls [MASTER_KEYS_PATH] endpoint. Used to get/update user's master keys.
