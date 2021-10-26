@@ -29,10 +29,7 @@ pub enum Error {
     },
 
     #[snafu(display("{} query failed: {}", USER_DIRS_PATH, source))]
-    UserDirsQueryFailed {
-        payload: UserDirsRequestPayload,
-        source: queries::Error,
-    },
+    UserDirsQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", DIR_CREATE_PATH, source))]
     DirCreateQueryFailed {
@@ -81,7 +78,7 @@ pub struct UserDirData {
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: String,
 
-    /// Metadata containing folder name.
+    /// Metadata containing JSON with folder name: { "name": <name value> }
     #[serde(rename = "name")]
     pub name_metadata: String,
 
@@ -110,14 +107,10 @@ pub struct UserDirData {
 }
 utils::display_from_json!(UserDirData);
 
-impl UserDirData {
-    /// Decrypt name metadata into actual folder name.
-    pub fn decrypt_name_metadata(&self, last_master_key: &SecUtf8) -> Result<String> {
-        LocationNameMetadata::decrypt_name_from_metadata(&self.name_metadata, last_master_key).context(
-            DecryptNameMetadataFailed {
-                metadata: self.name_metadata.clone(),
-            },
-        )
+impl HasLocationName for UserDirData {
+    /// Decrypts name metadata into a folder name.
+    fn name_metadata_ref<'a>(&'a self) -> &'a str {
+        &self.name_metadata
     }
 }
 
@@ -142,7 +135,7 @@ pub struct DirCreateRequestPayload {
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: String,
 
-    /// Metadata containing json with format: { "name": <name value> }
+    /// Metadata containing JSON with format: { "name": <name value> }
     #[serde(rename = "name")]
     pub name_metadata: String,
 
@@ -168,7 +161,7 @@ impl DirCreateRequestPayload {
     /// Payload to create a new folder with the specified name.
     pub fn new(name: &str, api_key: &SecUtf8, last_master_key: &SecUtf8) -> DirCreateRequestPayload {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(name, last_master_key);
-        let name_hashed = crypto::hash_fn(&name.to_lowercase());
+        let name_hashed = LocationNameMetadata::name_hashed(&name);
         DirCreateRequestPayload {
             api_key: api_key.clone(),
             uuid: Uuid::new_v4().to_hyphenated().to_string(),
@@ -240,9 +233,7 @@ pub fn user_dirs_request(
     payload: &UserDirsRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserDirsResponsePayload> {
-    queries::query_filen_api(USER_DIRS_PATH, payload, filen_settings).context(UserDirsQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(USER_DIRS_PATH, payload, filen_settings).context(UserDirsQueryFailed {})
 }
 
 /// Calls [USER_DIRS_PATH] endpoint asynchronously. Used to get a list of user's folders.
@@ -254,9 +245,7 @@ pub async fn user_dirs_request_async(
 ) -> Result<UserDirsResponsePayload> {
     queries::query_filen_api_async(USER_DIRS_PATH, payload, filen_settings)
         .await
-        .context(UserDirsQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(UserDirsQueryFailed {})
 }
 
 /// Calls [DIR_CREATE_PATH] endpoint. Creates parentless folder that you need to move yourself later.

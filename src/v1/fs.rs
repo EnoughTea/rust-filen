@@ -31,10 +31,10 @@ pub struct FolderData {
 }
 utils::display_from_json!(FolderData);
 
-impl FolderData {
-    /// Decrypt name metadata into actual folder name.
-    pub fn decrypt_name_metadata(&self, last_master_key: &SecUtf8) -> Result<String> {
-        LocationNameMetadata::decrypt_name_from_metadata(&self.name_metadata, last_master_key)
+impl HasLocationName for FolderData {
+    /// Decrypts name metadata into a folder name.
+    fn name_metadata_ref<'a>(&'a self) -> &'a str {
+        &self.name_metadata
     }
 }
 
@@ -45,6 +45,7 @@ pub(crate) struct LocationNameMetadata {
 }
 
 impl LocationNameMetadata {
+    /// Puts the given name into Filen-expected JSON and encrypts it into metadata.
     pub fn encrypt_name_to_metadata(name: &str, last_master_key: &SecUtf8) -> String {
         let name_json = json!(LocationNameMetadata { name: name.to_owned() }).to_string();
         crypto::encrypt_metadata_str(&name_json, last_master_key.unsecure(), super::METADATA_VERSION).unwrap()
@@ -67,6 +68,17 @@ impl LocationNameMetadata {
 
     pub fn name_hashed(name: &str) -> String {
         crypto::hash_fn(&name.to_lowercase())
+    }
+}
+
+/// Implement this trait to add decryption of a metadata containing Filen's name JSON: { "name": "some name value" }
+pub trait HasLocationName {
+    /// Returns reference to a string containing metadata with Filen's name JSON.
+    fn name_metadata_ref<'a>(&'a self) -> &'a str;
+
+    /// Decrypts name metadata into a location name.
+    fn decrypt_name_metadata(&self, last_master_key: &SecUtf8) -> Result<String> {
+        LocationNameMetadata::decrypt_name_from_metadata(self.name_metadata_ref(), last_master_key)
     }
 }
 

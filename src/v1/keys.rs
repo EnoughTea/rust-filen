@@ -38,33 +38,35 @@ pub enum Error {
     },
 }
 
-/// Used for requests to [KEY_PAIR_PATH] endpoint.
+/// Used for requests to [KEY_PAIR_INFO_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserKeyPairInfoRequestPayload {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 }
+utils::display_from_json!(UserKeyPairInfoRequestPayload);
 
-/// Response data for [KEY_PAIR_PATH] endpoint.
+/// Response data for [KEY_PAIR_INFO_PATH] endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserKeyPairInfoResponseData {
-    /// User's public key, base64-encoded. Currently used for encrypting name and metadata of the shared
-    /// download folders.
+    /// User's public key bytes in PKCS#8 ASN.1 DER format, base64-encoded. Currently used for encrypting name and
+    /// metadata of the shared download folders.
     ///
     /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "publicKey")]
     pub public_key: Option<String>,
 
-    /// A user's RSA private key stored as Filen metadata encrypted by user's last master key, containing a
-    /// base64-encoded key bytes.
+    /// User's RSA private key bytes in PKCS#8 ASN.1 DER format,
+    /// base64-encoded and stored as Filen metadata encrypted by user's last master key.
     /// Private key is currently used for decrypting name and metadata of the shared download folders.
     ///
     /// Empty when no keys were set (currently before the first login).
     #[serde(rename = "privateKey")]
     pub private_key_metadata: Option<String>,
 }
+utils::display_from_json!(UserKeyPairInfoResponseData);
 
 impl UserKeyPairInfoResponseData {
     /// Conveniently decodes base64-encoded public key into bytes.
@@ -87,7 +89,7 @@ impl UserKeyPairInfoResponseData {
 }
 
 api_response_struct!(
-    /// Response for [KEY_PAIR_PATH] endpoint.
+    /// Response for [KEY_PAIR_INFO_PATH] endpoint.
     UserKeyPairInfoResponsePayload<Option<UserKeyPairInfoResponseData>>
 );
 
@@ -103,6 +105,8 @@ pub struct MasterKeysFetchRequestPayload {
     #[serde(rename = "masterKeys")]
     pub master_keys_metadata: String,
 }
+
+utils::display_from_json!(MasterKeysFetchRequestPayload);
 
 impl MasterKeysFetchRequestPayload {
     /// Creates [MasterKeysFetchRequestPayload] from user's API key and user's master keys.
@@ -138,6 +142,8 @@ pub struct MasterKeysFetchResponseData {
     #[serde(rename = "keys")]
     pub keys_metadata: Option<String>,
 }
+
+utils::display_from_json!(MasterKeysFetchResponseData);
 
 impl MasterKeysFetchResponseData {
     /// Decrypts [MasterKeysFetchResponseData].keys_metadata field into a list of key strings,
