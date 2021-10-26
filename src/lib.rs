@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![crate_type = "staticlib"]
 #![forbid(unsafe_code)]
 
 pub use {fure, reqwest, retry, secstr};

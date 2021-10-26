@@ -123,7 +123,7 @@ utils::display_from_json!(UserKeyPairUpdateRequestPayload);
 impl UserKeyPairUpdateRequestPayload {
     /// Creates [UserKeyPairUpdateRequestPayload] with Filen-compatible private and public key strings,
     /// given original keys bytes in PKCS#8 ASN.1 DER format.
-    pub fn from_key_bytes(
+    pub fn new(
         api_key: &SecUtf8,
         private_key_bytes: &SecVec<u8>,
         public_key_bytes: &[u8],

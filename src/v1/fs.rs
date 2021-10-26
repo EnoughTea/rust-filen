@@ -26,14 +26,14 @@ pub struct FolderData {
     #[serde(rename = "name")]
     pub name_metadata: String,
 
-    /// Either parent folder ID, or "base" for rooted folders.
+    /// Either parent folder ID or "base" when folder is located in the base folder, also known as 'cloud drive'.
     pub parent: String,
 }
 utils::display_from_json!(FolderData);
 
 impl HasLocationName for FolderData {
     /// Decrypts name metadata into a folder name.
-    fn name_metadata_ref<'a>(&'a self) -> &'a str {
+    fn name_metadata_ref(&self) -> &str {
         &self.name_metadata
     }
 }
@@ -74,7 +74,7 @@ impl LocationNameMetadata {
 /// Implement this trait to add decryption of a metadata containing Filen's name JSON: { "name": "some name value" }
 pub trait HasLocationName {
     /// Returns reference to a string containing metadata with Filen's name JSON.
-    fn name_metadata_ref<'a>(&'a self) -> &'a str;
+    fn name_metadata_ref(&self) -> &str;
 
     /// Decrypts name metadata into a location name.
     fn decrypt_name_metadata(&self, last_master_key: &SecUtf8) -> Result<String> {

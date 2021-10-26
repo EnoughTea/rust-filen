@@ -1,5 +1,3 @@
-use std::ops::Range;
-
 /// Represents single file chunk bounds, defined by chunk starting byte and chunk length.
 /// Also stores this chunk's index in its file.
 #[derive(Copy, Clone, Debug)]
@@ -12,16 +10,6 @@ pub(crate) struct FileChunkPosition {
 
     /// Chunk size.
     pub chunk_size: u32,
-}
-
-impl FileChunkPosition {
-    pub fn as_range(&self) -> Range<usize> {
-        self.start_position as usize..self.next_chunk_start() as usize
-    }
-
-    pub fn next_chunk_start(&self) -> u64 {
-        self.start_position + self.chunk_size as u64
-    }
 }
 
 /// Used as an iterator calculating file chunk positions from the given file size and chunk size. Who needs for loops, right?

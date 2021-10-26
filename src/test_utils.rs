@@ -8,12 +8,14 @@ use serde_json::json;
 use snafu::{ResultExt, Snafu};
 use std::convert::TryFrom;
 use std::env;
+use std::fs::File;
+use std::io::Read;
 use std::path::Path;
 use std::time::Duration;
 
 use camino::Utf8PathBuf;
 
-use crate::{filen_settings::FilenSettings, utils};
+use crate::filen_settings::FilenSettings;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -74,9 +76,16 @@ pub(crate) fn project_path_for(file_path: &str) -> Utf8PathBuf {
     }
 }
 
+/// Reads file at the specified path to the end.
+pub(crate) fn read_file<P: AsRef<Path>>(file_path: P) -> Result<Vec<u8>, std::io::Error> {
+    let mut f = File::open(&file_path)?;
+    let mut buffer = Vec::new();
+    f.read_to_end(&mut buffer).map(|_read_bytes| buffer)
+}
+
 pub(crate) fn read_project_file(file_path: &str) -> Vec<u8> {
     let target_path = project_path_for(file_path);
-    utils::read_file(&target_path).expect(&format!("Cannot read file: {}", target_path))
+    read_file(&target_path).expect(&format!("Cannot read file: {}", target_path))
 }
 
 pub(crate) fn setup_json_mock<'a, T: Serialize, U: Serialize>(

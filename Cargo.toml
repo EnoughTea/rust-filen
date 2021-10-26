@@ -5,7 +5,6 @@ authors = ["Konstantin Zakharov <enough.tea@outlook.com>"]
 license = "MIT"
 description = "Rust interface for Filen.io API"
 keywords = ["filen.io", "api"]
-crate-type = ["staticlib"]
 edition = "2018"
 
 [dependencies]

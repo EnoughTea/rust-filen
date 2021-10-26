@@ -1,10 +1,6 @@
 //! This module contains general purpose functions (aka dump).
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
-use std::fs::File;
-use std::io::Read;
-use std::num::ParseIntError;
-use std::path::Path;
 
 /// Generate random alphanumeric string of the specified length.
 pub(crate) fn random_alphanumeric_string(size: usize) -> String {
@@ -18,14 +14,6 @@ pub(crate) fn random_alphanumeric_string(size: usize) -> String {
 /// Converts the specified bytes into corresponding hex-encoded string.
 pub(crate) fn bytes_to_hex_string(data: &[u8]) -> String {
     data.iter().map(|byte| format!("{:02x}", byte)).collect()
-}
-
-/// Converts the specified hex-encoded string into bytes.
-pub(crate) fn hex_string_to_bytes(s: &str) -> Result<Vec<u8>, ParseIntError> {
-    (0..s.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
-        .collect()
 }
 
 /// Treats given bytes as unicode scalar values and builds a string out of them.
@@ -72,13 +60,6 @@ pub(crate) fn filen_file_address_to_api_endpoint(
     vec![region, bucket, file_uuid, &chunk_index.to_string()]
         .join("/")
         .replace("//", "/")
-}
-
-/// Reads file at the specified path to the end.
-pub(crate) fn read_file<P: AsRef<Path>>(file_path: P) -> Result<Vec<u8>, std::io::Error> {
-    let mut f = File::open(&file_path)?;
-    let mut buffer = Vec::new();
-    f.read_to_end(&mut buffer).map(|_read_bytes| buffer)
 }
 
 /// This macro generates a simple [std::fmt::Display] implementation using Serde's json! on self.

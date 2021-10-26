@@ -5,6 +5,7 @@ use serde_with::*;
 use snafu::{Backtrace, ResultExt, Snafu};
 use uuid::Uuid;
 
+#[allow(dead_code)]
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub const FILEN_FOLDER_TYPE: &str = "folder";
@@ -109,7 +110,7 @@ utils::display_from_json!(UserBaseFolder);
 
 impl HasLocationName for UserBaseFolder {
     /// Decrypts name metadata into a folder name.
-    fn name_metadata_ref<'a>(&'a self) -> &'a str {
+    fn name_metadata_ref(&self) -> &str {
         &self.name_metadata
     }
 }
@@ -171,7 +172,7 @@ utils::display_from_json!(UserDirData);
 
 impl HasLocationName for UserDirData {
     /// Decrypts name metadata into a folder name.
-    fn name_metadata_ref<'a>(&'a self) -> &'a str {
+    fn name_metadata_ref(&self) -> &str {
         &self.name_metadata
     }
 }

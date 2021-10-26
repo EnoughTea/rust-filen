@@ -10,26 +10,7 @@ pub struct LimitedExponential {
 }
 
 impl LimitedExponential {
-    /// Create a new `Exponential` using the given millisecond duration as the initial delay,
-    /// a variable multiplication factor and an upper limit for produced durations.
-    pub fn new(base: u64, factor: f64, max: u64) -> Self {
-        LimitedExponential {
-            current: base,
-            factor,
-            max,
-        }
-    }
-
-    /// Create a new `Exponential` using the given millisecond duration as the initial delay and an upper limit for
-    /// produced durations.
-    pub fn from_millis_and_max(base: u64, max: u64) -> Self {
-        LimitedExponential {
-            current: base,
-            factor: base as f64,
-            max,
-        }
-    }
-
+    /// Creates a new [LimitedExponential] from the corresponding [RetrySettings] params.
     pub fn from_retry_settings(settings: &RetrySettings) -> LimitedExponential {
         LimitedExponential {
             current: settings.initial_delay().as_millis() as u64,
