@@ -98,7 +98,7 @@ pub struct UploadDoneRequestPayload {
 
     /// File upload key: random alphanumeric string associated with entire file upload.
     #[serde(rename = "uploadKey")]
-    pub upload_key: SecUtf8,
+    pub upload_key: String,
 }
 utils::display_from_json!(UploadDoneRequestPayload);
 
@@ -129,11 +129,11 @@ pub struct FileUploadProperties {
     /// Random alphanumeric key.
     pub file_key: SecUtf8,
 
-    /// Random alphanumeric key.
-    pub rm: SecUtf8,
+    /// Random alphanumeric key associated with the file.
+    pub rm: String,
 
-    /// Random alphanumeric key.
-    pub upload_key: SecUtf8,
+    /// Random alphanumeric key associated with entire file upload.
+    pub upload_key: String,
 
     /// Expire marker.
     pub expire: String,
@@ -155,8 +155,8 @@ impl FileUploadProperties {
         last_master_key: &SecUtf8,
     ) -> Result<FileUploadProperties> {
         let new_file_uuid = Uuid::new_v4().to_hyphenated().to_string();
-        let rm = SecUtf8::from(utils::random_alphanumeric_string(32));
-        let upload_key = SecUtf8::from(utils::random_alphanumeric_string(32));
+        let rm = utils::random_alphanumeric_string(32);
+        let upload_key = utils::random_alphanumeric_string(32);
 
         let file_metadata_encrypted = file_properties
             .to_metadata_string(last_master_key)
@@ -197,9 +197,9 @@ impl FileUploadProperties {
                 ("chunks", &self.chunks.to_string()),
                 ("mime", &self.mime_metadata),
                 ("index", &chunk_index.to_string()),
-                ("rm", self.rm.unsecure()),
+                ("rm", &self.rm),
                 ("expire", &self.expire),
-                ("uploadKey", self.upload_key.unsecure()),
+                ("uploadKey", &self.upload_key),
                 ("metaData", &self.file_metadata),
                 ("parent", &self.parent_uuid),
                 ("version", &self.version.to_string()),
