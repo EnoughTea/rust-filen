@@ -12,6 +12,24 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 const AUTH_INFO_PATH: &str = "/v1/auth/info";
 const LOGIN_PATH: &str = "/v1/login";
 
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("{} query failed: {}", AUTH_INFO_PATH, source))]
+    AuthInfoQueryFailed { source: queries::Error },
+
+    #[snafu(display("Failed to decrypt metadata for {}: {}", property_name, source))]
+    DecryptMetadataPropertyFailed {
+        property_name: String,
+        source: crypto::Error,
+    },
+
+    #[snafu(display("{} query failed (version {}): {}", LOGIN_PATH, auth_version, source))]
+    LoginQueryFailed { auth_version: u32, source: queries::Error },
+
+    #[snafu(display("Unsupported Filen auth version {}", version))]
+    UnsupportedAuthVersion { version: i64, backtrace: Backtrace },
+}
+
 /// Contains a Filen master key and a password hash used for a login API call.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FilenPasswordWithMasterKey {
@@ -49,24 +67,6 @@ impl FilenPasswordWithMasterKey {
             sent_password: SecUtf8::from(sent_password_hex),
         }
     }
-}
-
-#[derive(Snafu, Debug)]
-pub enum Error {
-    #[snafu(display("{} query failed: {}", AUTH_INFO_PATH, source))]
-    AuthInfoQueryFailed { source: queries::Error },
-
-    #[snafu(display("Failed to decrypt metadata for {}: {}", property_name, source))]
-    DecryptMetadataPropertyFailed {
-        property_name: String,
-        source: crypto::Error,
-    },
-
-    #[snafu(display("{} query failed (version {}): {}", LOGIN_PATH, auth_version, source))]
-    LoginQueryFailed { auth_version: u32, source: queries::Error },
-
-    #[snafu(display("Unsupported Filen auth version {}", version))]
-    UnsupportedAuthVersion { version: i64, backtrace: Backtrace },
 }
 
 /// Used for requests to [AUTH_INFO_PATH] endpoint.

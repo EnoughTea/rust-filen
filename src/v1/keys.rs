@@ -117,7 +117,6 @@ pub struct UserKeyPairUpdateRequestPayload {
     #[serde(rename = "publicKey")]
     pub public_key: String,
 }
-
 utils::display_from_json!(UserKeyPairUpdateRequestPayload);
 
 impl UserKeyPairUpdateRequestPayload {
@@ -159,7 +158,6 @@ pub struct MasterKeysFetchRequestPayload {
     #[serde(rename = "masterKeys")]
     pub master_keys_metadata: String,
 }
-
 utils::display_from_json!(MasterKeysFetchRequestPayload);
 
 impl MasterKeysFetchRequestPayload {
@@ -196,7 +194,6 @@ pub struct MasterKeysFetchResponseData {
     #[serde(rename = "keys")]
     pub keys_metadata: Option<String>,
 }
-
 utils::display_from_json!(MasterKeysFetchResponseData);
 
 impl MasterKeysFetchResponseData {

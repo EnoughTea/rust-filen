@@ -214,7 +214,6 @@ impl FileUploadProperties {
         format!("{}?{}", UPLOAD_PATH, self.to_query_params(chunk_index, api_key))
     }
 }
-
 utils::display_from_json!(FileUploadProperties);
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -270,7 +269,6 @@ impl FileUploadInfo {
         }
     }
 }
-
 utils::display_from_json!(FileUploadInfo);
 
 /// Calls [UPLOAD_DONE_PATH] endpoint. Used to mark upload as done after all file chunks (+1 dummy chunk) were uploaded.
