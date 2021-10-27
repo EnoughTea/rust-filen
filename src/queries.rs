@@ -1,4 +1,5 @@
-//! This module contains helper methods to perform web queries to Filen servers.
+//! This module contains helper methods to perform arbitrary web queries to Filen servers.
+//! You can use it to add some missing API query or re-implement some of them to your liking.
 use once_cell::sync::Lazy;
 use rand::{thread_rng, Rng};
 use reqwest::header;
@@ -38,7 +39,8 @@ pub enum Error {
 }
 
 /// Sends POST with given payload to one of Filen API servers.
-pub(crate) fn query_filen_api<T: Serialize + ?Sized, U: DeserializeOwned>(
+/// `api_endpoint` parameter should be relative, eg `/v1/some/api`, as one of the Filen servers will be chosen randomly.
+pub fn query_filen_api<T: Serialize + ?Sized, U: DeserializeOwned>(
     api_endpoint: &str,
     payload: &T,
     filen_settings: &FilenSettings,
@@ -55,7 +57,8 @@ pub(crate) fn query_filen_api<T: Serialize + ?Sized, U: DeserializeOwned>(
 }
 
 /// Asynchronously sends POST with given payload to one of Filen API servers.
-pub(crate) async fn query_filen_api_async<T: Serialize + ?Sized, U: DeserializeOwned>(
+/// `api_endpoint` parameter should be relative, eg `/v1/some/api`, as one of the Filen servers will be chosen randomly.
+pub async fn query_filen_api_async<T: Serialize + ?Sized, U: DeserializeOwned>(
     api_endpoint: &str,
     payload: &T,
     filen_settings: &FilenSettings,
@@ -73,14 +76,14 @@ pub(crate) async fn query_filen_api_async<T: Serialize + ?Sized, U: DeserializeO
     .await
 }
 
-pub(crate) fn download_from_filen(api_endpoint: &str, filen_settings: &FilenSettings) -> Result<Vec<u8>> {
+pub fn download_from_filen(api_endpoint: &str, filen_settings: &FilenSettings) -> Result<Vec<u8>> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.download_servers)?;
     get_bytes(filen_endpoint.as_str(), filen_settings.download_chunk_timeout.as_secs()).context(WebRequestFailed {
         message: format!("Failed to download file chunk from '{}'", filen_endpoint),
     })
 }
 
-pub(crate) async fn download_from_filen_async(api_endpoint: &str, filen_settings: &FilenSettings) -> Result<Vec<u8>> {
+pub async fn download_from_filen_async(api_endpoint: &str, filen_settings: &FilenSettings) -> Result<Vec<u8>> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.download_servers)?;
     get_bytes_async(filen_endpoint.as_str(), filen_settings.download_chunk_timeout.as_secs())
         .await
@@ -90,7 +93,7 @@ pub(crate) async fn download_from_filen_async(api_endpoint: &str, filen_settings
 }
 
 /// Sends POST with given data blob to one of Filen upload servers.
-pub(crate) fn upload_to_filen<U: DeserializeOwned>(
+pub fn upload_to_filen<U: DeserializeOwned>(
     api_endpoint: &str,
     blob: Vec<u8>,
     filen_settings: &FilenSettings,
@@ -103,7 +106,7 @@ pub(crate) fn upload_to_filen<U: DeserializeOwned>(
 }
 
 /// Asynchronously sends POST with given data blob to one of Filen upload servers.
-pub(crate) async fn upload_to_filen_async<U: DeserializeOwned>(
+pub async fn upload_to_filen_async<U: DeserializeOwned>(
     api_endpoint: &str,
     blob: Vec<u8>,
     filen_settings: &FilenSettings,
@@ -180,7 +183,7 @@ fn post_json<T: Serialize + ?Sized>(
 ) -> Result<reqwest::blocking::Response, reqwest::Error> {
     BLOCKING_CLIENT
         .post(url)
-        .json(&payload)
+        .json(payload)
         .header(header::USER_AGENT, CRATE_USER_AGENT)
         .timeout(Duration::from_secs(timeout_secs))
         .send()
@@ -194,7 +197,7 @@ async fn post_json_async<T: Serialize + ?Sized>(
 ) -> Result<reqwest::Response, reqwest::Error> {
     ASYNC_CLIENT
         .post(url)
-        .json(&payload)
+        .json(payload)
         .header(header::USER_AGENT, CRATE_USER_AGENT)
         .timeout(Duration::from_secs(timeout_secs))
         .send()
