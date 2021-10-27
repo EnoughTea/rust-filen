@@ -13,6 +13,7 @@ pub const FILEN_SYNC_FOLDER_NAME: &str = "Filen Sync";
 
 const USER_BASE_FOLDERS_PATH: &str = "/v1/user/baseFolders";
 const USER_DIRS_PATH: &str = "/v1/user/dirs";
+const DIR_CONTENT_PATH: &str = "/v1/dir/content";
 const DIR_CREATE_PATH: &str = "/v1/dir/create";
 const DIR_EXISTS_PATH: &str = "/v1/dir/exists";
 const DIR_MOVE_PATH: &str = "/v1/dir/move";
@@ -29,6 +30,12 @@ pub enum Error {
 
     #[snafu(display("{} query failed: {}", USER_DIRS_PATH, source))]
     UserDirsQueryFailed { source: queries::Error },
+
+    #[snafu(display("{} query failed: {}", DIR_CONTENT_PATH, source))]
+    DirContentQueryFailed {
+        payload: DirContentRequestPayload,
+        source: queries::Error,
+    },
 
     #[snafu(display("{} query failed: {}", DIR_CREATE_PATH, source))]
     DirCreateQueryFailed {
@@ -72,7 +79,6 @@ pub struct UserBaseFoldersRequestPayload {
     #[serde(rename = "includeDefault")]
     pub include_default: String,
 }
-
 utils::display_from_json!(UserBaseFoldersRequestPayload);
 
 /// One of the folders in response data for [USER_BASE_FOLDERS_PATH] endpoint.
@@ -92,11 +98,11 @@ pub struct UserBaseFolder {
     /// Folder creation time, as Unix timestamp in seconds.
     pub timestamp: u64,
 
-    /// True if user has marked folder as favorite; false otherwise.
-    pub favorited: i32,
+    /// 1 if user has marked folder as favorite; 0 otherwise.
+    pub favorited: u32,
 
     /// 1 if this is a default Filen folder; 0 otherwise.
-    pub is_default: i32,
+    pub is_default: u32,
 
     /// 1 if this is a Filen sync folder; false otherwise.
     ///
@@ -104,7 +110,7 @@ pub struct UserBaseFolder {
     /// If user never used Filen client, no sync folder would exist.
     ///
     /// Filen sync folder is always named "Filen Sync" and created with a special type: "sync".
-    pub is_sync: i32,
+    pub is_sync: u32,
 }
 utils::display_from_json!(UserBaseFolder);
 
@@ -160,10 +166,10 @@ pub struct UserDirData {
     pub sync: bool,
 
     /// Seems like [UserDirData::default] field double, only with integer type instead of bool.
-    pub is_default: i32,
+    pub is_default: u32,
 
     /// Seems like [UserDirData::sync] field double, only with integer type instead of bool.
-    pub is_sync: i32,
+    pub is_sync: u32,
 
     /// Folder color name; None means default yellow color. Possible colors: "blue", "green", "purple", "red", "gray".
     pub color: Option<String>,
@@ -187,6 +193,158 @@ impl UserDirsResponsePayload {
         self.data.iter().find(|dir_data| dir_data.default).cloned()
     }
 }
+
+// Used for requests to [DIR_CONTENT_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DirContentRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+
+    /// Folder ID; hyphenated lowercased UUID V4.
+    pub uuid: String,
+
+    /// Looks like parent folder filter for returned item, a string containing array of quoted UUIDs:
+    /// "[\"hyphenated-lowercased-folder-UUID\"]" TODO: What is this?
+    pub folders: String,
+
+    /// Requested page; starts at 1.
+    pub page: i32,
+
+    /// Boolean string. TODO: What is this?
+    pub app: String,
+}
+utils::display_from_json!(DirContentRequestPayload);
+
+/// One of the files in response data for [DIR_CONTENT_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DirContentFile {
+    /// File ID, UUID V4 in hyphenated lowercase format.
+    pub uuid: String,
+
+    /// File metadata.
+    pub metadata: String,
+
+    /// Random alphanumeric string associated with the file.
+    pub rm: String,
+
+    /// Amount of chunks file is split into.
+    pub chunks: u32,
+
+    /// Server's bucket where file is stored.
+    pub bucket: String,
+
+    /// Server region.
+    pub region: String,
+
+    /// 1 if expire was set when uploading file; 0 otherwise.
+    #[serde(rename = "expireSet")]
+    pub expire_set: u32,
+
+    /// Timestanp when file will be considired expired.
+    #[serde(rename = "expireTimestamp")]
+    pub expire_timestamp: u64,
+
+    /// Timestanp when file will be deleted.
+    #[serde(rename = "deleteTimestamp")]
+    pub delete_timestamp: u64,
+
+    /// File creation time, as Unix timestamp in seconds.
+    pub timestamp: u64,
+
+    /// ID of the folder which contains this file.
+    pub parent: String,
+
+    /// Determines how file bytes should be encrypted/decrypted.
+    /// File is encrypted using roughly the same algorithm as metadata encryption,
+    /// use [crypto::encrypt_file_data] and [crypto::decrypt_file_data] for the task.
+    pub version: u32,
+
+    /// 1 if user has marked file as favorite; 0 otherwise.
+    pub favorited: u32,
+}
+utils::display_from_json!(DirContentFile);
+
+/// One of the non-base folders in response data for [DIR_CONTENT_PATH] endpoint.
+#[skip_serializing_none]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DirContentFolder {
+    /// Folder ID; hyphenated lowercased UUID V4.
+    pub uuid: String,
+
+    /// Metadata containing JSON with folder name: { "name": <name value> }
+    #[serde(rename = "name")]
+    pub name_metadata: String,
+
+    /// Parent folder; always present, since base folders are returned in separate `folders_info` array.
+    pub parent: String,
+
+    /// Folder color name; None means default yellow color. Possible colors: "blue", "green", "purple", "red", "gray".
+    pub color: Option<String>,
+
+    /// Folder creation time, as Unix timestamp in seconds.
+    pub timestamp: u64,
+
+    /// 1 if user has marked folder as favorite; 0 otherwise.
+    pub favorited: u32,
+
+    /// 1 if this is a default Filen folder; 0 otherwise.
+    pub is_default: u32,
+
+    /// 1 if this is a Filen sync folder; false otherwise.
+    ///
+    /// Filen sync folder is a special unique folder that is created by Filen client to store all synced files.
+    /// If user never used Filen client, no sync folder would exist.
+    ///
+    /// Filen sync folder is always named "Filen Sync" and created with a special type: "sync".
+    pub is_sync: u32,
+}
+utils::display_from_json!(DirContentFolder);
+
+/// One of the base folders in response data for [DIR_CONTENT_PATH] endpoint.
+#[skip_serializing_none]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DirContentFolderInfo {
+    /// Base folder ID; hyphenated lowercased UUID V4.
+    pub uuid: String,
+
+    /// Metadata containing JSON with folder name: { "name": <name value> }
+    #[serde(rename = "name")]
+    pub name_metadata: String,
+
+    /// Folder color name; None means default yellow color. Possible colors: "blue", "green", "purple", "red", "gray".
+    pub color: Option<String>,
+}
+utils::display_from_json!(DirContentFolderInfo);
+
+/// Response data for [USER_DIRS_PATH] endpoint.
+#[skip_serializing_none]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DirContentResponseData {
+    pub uploads: Vec<DirContentFile>,
+
+    pub folders: Vec<DirContentFolder>,
+
+    #[serde(rename = "foldersInfo")]
+    pub folders_info: Vec<DirContentFolder>,
+
+    #[serde(rename = "totalUploads")]
+    pub total_uploads: u64,
+
+    #[serde(rename = "startAt")]
+    pub start_at: u32,
+
+    #[serde(rename = "perPage")]
+    pub per_page: u32,
+
+    pub page: u32,
+}
+utils::display_from_json!(DirContentResponseData);
+
+api_response_struct!(
+    /// Response for [USER_DIRS_PATH] endpoint.
+    DirContentResponsePayload<Option<DirContentResponseData>>
+);
 
 // Used for requests to [DIR_CREATE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -332,6 +490,30 @@ pub async fn user_dirs_request_async(
     queries::query_filen_api_async(USER_DIRS_PATH, payload, filen_settings)
         .await
         .context(UserDirsQueryFailed {})
+}
+
+/// Calls [DIR_CONTENT_PATH] endpoint. Used to get a paginated set of user's files and folders in a way
+/// suited for presentation.
+pub fn dir_content_request(
+    payload: &DirContentRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<DirContentResponsePayload> {
+    queries::query_filen_api(DIR_CONTENT_PATH, payload, filen_settings).context(DirContentQueryFailed {
+        payload: payload.clone(),
+    })
+}
+
+/// Calls [DIR_CONTENT_PATH] endpoint asynchronously. Used to get a paginated set of user's files and folders in a way
+/// suited for presentation.
+pub async fn dir_content_request_async(
+    payload: &DirContentRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<DirContentResponsePayload> {
+    queries::query_filen_api_async(DIR_CONTENT_PATH, payload, filen_settings)
+        .await
+        .context(DirContentQueryFailed {
+            payload: payload.clone(),
+        })
 }
 
 /// Calls [DIR_CREATE_PATH] endpoint. Creates parentless folder that you need to move yourself later.
