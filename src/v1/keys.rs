@@ -45,6 +45,44 @@ pub enum Error {
     },
 }
 
+/// Implement this trait to add decryption of a master keys metadata.
+pub trait HasMasterKeys {
+    /// Gets a reference to master keys metadata, if present.
+    fn master_keys_metadata_ref(&self) -> Option<&str>;
+
+    /// Decrypts `master_keys_metadata_ref` into a list of key strings, using the specified user's last master key.
+    fn decrypt_master_keys(&self, last_master_key: &SecUtf8) -> Result<Vec<SecUtf8>> {
+        match self.master_keys_metadata_ref() {
+            Some(metadata) => {
+                crypto::decrypt_master_keys_metadata(metadata, last_master_key).context(DecryptMasterKeysFailed {})
+            }
+            None => BadArgument {
+                message: "Master keys metadata is absent, cannot decrypt None",
+            }
+            .fail(),
+        }
+    }
+}
+
+/// Implement this trait to add decryption of a private key metadata.
+pub trait HasPrivateKey {
+    /// Gets a reference to private key metadata, if present.
+    fn private_key_metadata_ref(&self) -> Option<&str>;
+
+    /// Decrypts `private_key_metadata_ref` into RSA key bytes, using the specified user's last master key.
+    fn decrypt_private_key(&self, last_master_key: &SecUtf8) -> Result<SecVec<u8>> {
+        match self.private_key_metadata_ref() {
+            Some(metadata) => {
+                crypto::decrypt_private_key_metadata(metadata, last_master_key).context(DecryptPrivateKeyFailed {})
+            }
+            None => BadArgument {
+                message: "Private key metadata is absent, cannot decrypt None",
+            }
+            .fail(),
+        }
+    }
+}
+
 /// Used for requests to [KEY_PAIR_INFO_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserKeyPairInfoRequestPayload {
@@ -80,18 +118,17 @@ impl UserKeyPairInfoResponseData {
     pub fn decode_public_key(&self) -> Result<Vec<u8>> {
         match &self.public_key {
             Some(key) => base64::decode(key).context(DecodePublicKeyFailed {}),
-            _ => BadArgument {
-                message: "Cannot decode public key, it is empty",
+            None => BadArgument {
+                message: "Public key is absent, cannot decode None",
             }
             .fail(),
         }
     }
+}
 
-    /// Decrypts [LoginResponseData].private_key_metadata field with given user's last master key
-    /// into RSA key bytes.
-    pub fn decrypt_private_key(&self, last_master_key: &SecUtf8) -> Result<SecVec<u8>> {
-        crypto::decrypt_private_key_metadata(&self.private_key_metadata.as_deref(), last_master_key)
-            .context(DecryptPrivateKeyFailed {})
+impl HasPrivateKey for UserKeyPairInfoResponseData {
+    fn private_key_metadata_ref(&self) -> Option<&str> {
+        self.private_key_metadata.as_deref()
     }
 }
 
@@ -196,12 +233,9 @@ pub struct MasterKeysFetchResponseData {
 }
 utils::display_from_json!(MasterKeysFetchResponseData);
 
-impl MasterKeysFetchResponseData {
-    /// Decrypts [MasterKeysFetchResponseData].keys_metadata field into a list of key strings,
-    /// using specified user's last master key.
-    pub fn decrypt_keys(&self, last_master_key: &SecUtf8) -> Result<Vec<SecUtf8>> {
-        crypto::decrypt_master_keys_metadata(&self.keys_metadata.as_deref(), last_master_key)
-            .context(DecryptMasterKeysFailed {})
+impl HasMasterKeys for MasterKeysFetchResponseData {
+    fn master_keys_metadata_ref(&self) -> Option<&str> {
+        self.keys_metadata.as_deref()
     }
 }
 

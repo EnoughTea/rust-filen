@@ -1,11 +1,11 @@
 use crate::{crypto, filen_settings::FilenSettings, queries, utils};
 use easy_hasher::easy_hasher::sha512;
-use secstr::{SecUtf8, SecVec};
+use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_with::*;
 use snafu::{Backtrace, ResultExt, Snafu};
 
-use super::api_response_struct;
+use super::{api_response_struct, HasMasterKeys, HasPrivateKey};
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -17,11 +17,14 @@ pub enum Error {
     #[snafu(display("{} query failed: {}", AUTH_INFO_PATH, source))]
     AuthInfoQueryFailed { source: queries::Error },
 
-    #[snafu(display("Failed to decrypt metadata for {}: {}", property_name, source))]
-    DecryptMetadataPropertyFailed {
-        property_name: String,
-        source: crypto::Error,
-    },
+    #[snafu(display("Caller provided invalid argument: {}", message))]
+    BadArgument { message: String, backtrace: Backtrace },
+
+    #[snafu(display("Failed to decrypt master keys metadata: {}", source))]
+    DecryptMasterKeysFailed { source: crypto::Error },
+
+    #[snafu(display("Failed to decrypt private key metadata: {}", source))]
+    DecryptPrivateKeyFailed { source: crypto::Error },
 
     #[snafu(display("{} query failed (version {}): {}", LOGIN_PATH, auth_version, source))]
     LoginQueryFailed { auth_version: u32, source: queries::Error },
@@ -170,25 +173,15 @@ pub struct LoginResponseData {
 }
 utils::display_from_json!(LoginResponseData);
 
-impl LoginResponseData {
-    /// Decrypts [LoginResponseData].master_keys_metadata field into a list of key strings,
-    /// using specified user's last master key.
-    pub fn decrypt_master_keys(&self, last_master_key: &SecUtf8) -> Result<Vec<SecUtf8>> {
-        crypto::decrypt_master_keys_metadata(&self.master_keys_metadata.as_deref(), last_master_key).context(
-            DecryptMetadataPropertyFailed {
-                property_name: "masterKeys",
-            },
-        )
+impl HasMasterKeys for LoginResponseData {
+    fn master_keys_metadata_ref(&self) -> Option<&str> {
+        self.master_keys_metadata.as_deref()
     }
+}
 
-    /// Decrypts [LoginResponseData].private_key_metadata field into RSA key bytes,
-    /// using specified user's last master key.
-    pub fn decrypt_private_key(&self, last_master_key: &SecUtf8) -> Result<SecVec<u8>> {
-        crypto::decrypt_private_key_metadata(&self.private_key_metadata.as_deref(), last_master_key).context(
-            DecryptMetadataPropertyFailed {
-                property_name: "privateKey",
-            },
-        )
+impl HasPrivateKey for LoginResponseData {
+    fn private_key_metadata_ref(&self) -> Option<&str> {
+        self.private_key_metadata.as_deref()
     }
 }
 

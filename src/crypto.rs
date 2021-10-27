@@ -263,39 +263,32 @@ pub(crate) fn encrypt_master_keys_metadata(
 }
 
 /// Helper which decrypts master keys stored in a metadata into a list of key strings, using specified master key.
-pub(crate) fn decrypt_master_keys_metadata(
-    master_keys_metadata: &Option<&str>,
-    last_master_key: &SecUtf8,
-) -> Result<Vec<SecUtf8>> {
+pub fn decrypt_master_keys_metadata(master_keys_metadata: &str, last_master_key: &SecUtf8) -> Result<Vec<SecUtf8>> {
     ensure!(
-        master_keys_metadata.is_some(),
+        !master_keys_metadata.is_empty(),
         BadArgument {
             message: "cannot decrypt master keys metadata, it is empty",
         }
     );
 
-    decrypt_metadata_str(master_keys_metadata.unwrap(), last_master_key.unsecure())
+    decrypt_metadata_str(master_keys_metadata, last_master_key.unsecure())
         .map(|keys| keys.split('|').map(SecUtf8::from).collect())
 }
 
 /// Helper which decrypts user's RSA private key stored in a metadata into key bytes, using specified master key.
-pub(crate) fn decrypt_private_key_metadata(
-    private_key_metadata: &Option<&str>,
-    last_master_key: &SecUtf8,
-) -> Result<SecVec<u8>> {
+pub fn decrypt_private_key_metadata(private_key_metadata: &str, last_master_key: &SecUtf8) -> Result<SecVec<u8>> {
     fn decode_base64_to_secvec(string: &str) -> Result<SecVec<u8>> {
         base64::decode(string).context(CannotDecodeBase64 {}).map(SecVec::from)
     }
 
     ensure!(
-        private_key_metadata.is_some(),
+        !private_key_metadata.is_empty(),
         BadArgument {
             message: "cannot decrypt private key metadata, it is empty",
         }
     );
 
-    decrypt_metadata_str(private_key_metadata.unwrap(), last_master_key.unsecure())
-        .and_then(|str| decode_base64_to_secvec(&str))
+    decrypt_metadata_str(private_key_metadata, last_master_key.unsecure()).and_then(|str| decode_base64_to_secvec(&str))
 }
 
 /// Calculates OpenSSL-compatible AES 256 CBC (Pkcs7 padding) hash with 'Salted__' prefix,
