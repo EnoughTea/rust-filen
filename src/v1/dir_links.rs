@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use crate::{crypto, filen_settings::*, queries, utils, v1::*};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
@@ -17,6 +15,7 @@ const DIR_LINK_STATUS_PATH: &str = "/v1/dir/link/status";
 
 const DEFAULT_EXPIRE: &str = "never";
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display("{} query failed: {}", DIR_LINK_ADD_PATH, source))]
@@ -112,8 +111,8 @@ pub struct DirLinkAddRequestPayload {
 utils::display_from_json!(DirLinkAddRequestPayload);
 
 impl DirLinkAddRequestPayload {
-    pub fn new<'a, S: Into<Cow<'a, str>>>(
-        api_key: Cow<'a, SecUtf8>,
+    pub fn new<S: Into<String>>(
+        api_key: SecUtf8,
         linked_folder_uuid: S,
         linked_folder_metadata: S,
         linked_folder_parent: Option<S>,
@@ -124,17 +123,17 @@ impl DirLinkAddRequestPayload {
         let key_metadata = // Should never panic...
             crypto::encrypt_metadata_str(&link_key, last_master_key.unsecure(), METADATA_VERSION).unwrap();
         DirLinkAddRequestPayload {
-            api_key: api_key.into_owned(),
+            api_key,
             download_btn: DownloadBtnState::Enable,
             expiration: DEFAULT_EXPIRE.to_owned(),
             key_metadata,
             link_uuid,
-            metadata: linked_folder_metadata.into().into_owned(),
-            parent: LocationType::parent_or_base_cow(linked_folder_parent),
+            metadata: linked_folder_metadata.into(),
+            parent: LocationType::parent_or_base(linked_folder_parent),
             password: PasswordState::Empty,
             password_hashed: EMPTY_PASSWORD_HASH.clone(),
             link_type: LocationType::Folder,
-            uuid: linked_folder_uuid.into().into_owned(),
+            uuid: linked_folder_uuid.into(),
         }
     }
 }
@@ -185,8 +184,8 @@ pub struct DirLinkEditRequestPayload {
 utils::display_from_json!(DirLinkEditRequestPayload);
 
 impl DirLinkEditRequestPayload {
-    fn from_no_password<'a, S: Into<Cow<'a, str>>>(
-        api_key: Cow<'a, SecUtf8>,
+    fn from_no_password<S: Into<String>>(
+        api_key: SecUtf8,
         download_btn: DownloadBtnState,
         link_uuid: S,
         link_key_metadata: S,
@@ -195,22 +194,22 @@ impl DirLinkEditRequestPayload {
         linked_folder_parent: Option<S>,
     ) -> DirLinkEditRequestPayload {
         DirLinkEditRequestPayload {
-            api_key: api_key.into_owned(),
+            api_key,
             download_btn,
             expiration: DEFAULT_EXPIRE.to_owned(),
-            key_metadata: link_key_metadata.into().into_owned(),
-            link_uuid: link_uuid.into().into_owned(),
-            metadata: linked_folder_metadata.into().into_owned(),
-            parent: LocationType::parent_or_base_cow(linked_folder_parent),
+            key_metadata: link_key_metadata.into(),
+            link_uuid: link_uuid.into(),
+            metadata: linked_folder_metadata.into(),
+            parent: LocationType::parent_or_base(linked_folder_parent),
             password: PasswordState::Empty,
             password_hashed: EMPTY_PASSWORD_HASH.clone(),
             target_type: LocationType::Folder,
-            uuid: linked_folder_uuid.into().into_owned(),
+            uuid: linked_folder_uuid.into(),
         }
     }
 
-    fn from_plain_text_password<'a, S: Into<Cow<'a, str>>>(
-        api_key: Cow<'a, SecUtf8>,
+    fn from_plain_text_password<S: Into<String>>(
+        api_key: SecUtf8,
         download_btn: DownloadBtnState,
         link_uuid: S,
         link_key_metadata: S,
@@ -228,17 +227,17 @@ impl DirLinkEditRequestPayload {
         ));
 
         DirLinkEditRequestPayload {
-            api_key: api_key.into_owned(),
+            api_key,
             download_btn,
             expiration: DEFAULT_EXPIRE.to_owned(),
-            key_metadata: link_key_metadata.into().into_owned(),
-            link_uuid: link_uuid.into().into_owned(),
-            metadata: linked_folder_metadata.into().into_owned(),
-            parent: LocationType::parent_or_base_cow(linked_folder_parent),
+            key_metadata: link_key_metadata.into(),
+            link_uuid: link_uuid.into(),
+            metadata: linked_folder_metadata.into(),
+            parent: LocationType::parent_or_base(linked_folder_parent),
             password,
             password_hashed,
             target_type: LocationType::Folder,
-            uuid: linked_folder_uuid.into().into_owned(),
+            uuid: linked_folder_uuid.into(),
         }
     }
 }
@@ -332,7 +331,7 @@ pub fn dir_link_edit_request(
     payload: &DirLinkEditRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(DIR_LINK_ADD_PATH, payload, filen_settings).context(DirLinkEditQueryFailed {
+    queries::query_filen_api(DIR_LINK_EDIT_PATH, payload, filen_settings).context(DirLinkEditQueryFailed {
         payload: payload.clone(),
     })
 }
@@ -343,7 +342,7 @@ pub async fn dir_link_edit_request_async(
     payload: &DirLinkEditRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(DIR_LINK_ADD_PATH, payload, filen_settings)
+    queries::query_filen_api_async(DIR_LINK_EDIT_PATH, payload, filen_settings)
         .await
         .context(DirLinkEditQueryFailed {
             payload: payload.clone(),
