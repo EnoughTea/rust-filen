@@ -4,9 +4,17 @@ pub use {
     sync_dir::Error as SyncDirError, upload_file::Error as UploadFileError, usage::Error as UsageError,
 };
 
-pub use {auth::*, download_dir::*, download_file::*, files::*, fs::*, keys::*, sync_dir::*, upload_file::*, usage::*};
+pub use {
+    auth::*, dir_links::*, download_dir::*, download_file::*, files::*, fs::*, keys::*, sync_dir::*, upload_file::*,
+    usage::*,
+};
+
+use crate::crypto;
+use once_cell::sync::Lazy;
+use serde::*;
 
 mod auth;
+mod dir_links;
 mod dirs;
 mod download_dir;
 mod download_file;
@@ -18,9 +26,13 @@ mod upload_file;
 mod usage;
 
 const METADATA_VERSION: u32 = 1;
+const EMPTY_PASSWORD_MARK: &str = "empty";
+const PRESENT_PASSWORD_MARK: &str = "notempty";
+
+pub static EMPTY_PASSWORD_HASH: Lazy<String> = Lazy::new(|| crypto::hash_fn(EMPTY_PASSWORD_MARK));
 
 /// Contains just the response status and corresponding message.
-#[derive(Debug, Clone, serde::Deserialize, Eq, PartialEq, serde::Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct PlainApiResponse {
     /// True when API call was successful; false otherwise.
     pub status: bool,
@@ -29,6 +41,25 @@ pub struct PlainApiResponse {
     pub message: Option<String>,
 }
 crate::utils::display_from_json!(PlainApiResponse);
+
+/// Serves as a flag for password-protection.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PasswordState {
+    /// "empty" means no password protection is set.
+    Empty,
+    /// "notempty" means password is present.
+    NotEmpty,
+}
+
+impl std::fmt::Display for PasswordState {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            PasswordState::Empty => write!(f, "{}", EMPTY_PASSWORD_MARK),
+            PasswordState::NotEmpty => write!(f, "{}", PRESENT_PASSWORD_MARK),
+        }
+    }
+}
 
 /// This macro generates a struct to parse Filen API response into.
 ///

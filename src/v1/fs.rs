@@ -7,6 +7,10 @@ use snafu::{ResultExt, Snafu};
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
+const BASE_TYPE: &str = "base";
+const FILE_TYPE: &str = "file";
+const FOLDER_TYPE: &str = "folder";
+
 #[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display("Failed to deserialize location name: {}", source))]
@@ -14,6 +18,37 @@ pub enum Error {
 
     #[snafu(display("Failed to decrypt location name {}: {}", metadata, source))]
     DecryptLocationNameFailed { metadata: String, source: crypto::Error },
+}
+
+/// Identifies location type.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LocationType {
+    /// Location is a base folder.
+    Base,
+    /// Location is a file.
+    File,
+    /// Location is a folder.
+    Folder,
+}
+
+impl LocationType {
+    pub fn parent_or_base(parent: Option<&str>) -> String {
+        match parent {
+            Some(parent) => parent.to_owned(),
+            None => LocationType::Base.to_string(),
+        }
+    }
+}
+
+impl std::fmt::Display for LocationType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            LocationType::Base => write!(f, "{}", BASE_TYPE),
+            LocationType::File => write!(f, "{}", FILE_TYPE),
+            LocationType::Folder => write!(f, "{}", FOLDER_TYPE),
+        }
+    }
 }
 
 /// Folder data for one of the user folders or for one of the folders in Filen sync folder.
