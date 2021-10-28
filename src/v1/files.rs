@@ -306,6 +306,9 @@ pub async fn file_exists_request_async(
 /// Calls [FILE_MOVE_PATH] endpoint.
 /// Moves file with the given uuid to the specified parent folder. It is a good idea to check first if file
 /// with the same name already exists within the parent folder.
+///
+/// If file is moved into a linked and/or shared folder, don't forget to call [dir_link_add_request]
+/// and/or [share_request] after a successfull move.
 pub fn file_move_request(payload: &FileMoveRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
     queries::query_filen_api(FILE_MOVE_PATH, payload, filen_settings).context(FileMoveQueryFailed {
         payload: payload.clone(),
@@ -315,6 +318,9 @@ pub fn file_move_request(payload: &FileMoveRequestPayload, filen_settings: &File
 /// Calls [FILE_MOVE_PATH] endpoint asynchronously.
 /// Moves file with the given uuid to the specified parent folder. It is a good idea to check first if file
 /// with the same name already exists within the parent folder.
+///
+/// If file is moved into a linked and/or shared folder, don't forget to call [dir_link_add_request]
+/// and/or [share_request] after a successfull move.
 pub async fn file_move_request_async(
     payload: &FileMoveRequestPayload,
     filen_settings: &FilenSettings,
