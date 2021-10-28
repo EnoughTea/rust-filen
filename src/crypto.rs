@@ -53,10 +53,15 @@ pub enum Error {
     },
 
     #[snafu(display(
-        "Caller expected decypted metadata to be a valid UTF-8 string, but it was not. \
+        "Caller expected decrypted metadata to be a valid UTF-8 string, but it was not. \
          Perhaps decrypt_metadata() should be used instead of decrypt_metadata_str()?"
     ))]
     DecryptedMetadataIsNotUtf8 { source: std::string::FromUtf8Error },
+
+    #[snafu(display(
+        "Somehow encrypted metadata was not a valid UTF-8 string. It is probably a bug in encrypt_metadata()"
+    ))]
+    EncryptedMetadataIsNotUtf8 { source: std::string::FromUtf8Error },
 
     #[snafu(display(
         "Cannot encrypt data with given public key, assuming RSA-OAEP with SHA512 hash and PKCS8 format: {}",
@@ -179,7 +184,7 @@ pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
 /// Convenience overload of the [encrypt_metadata] for string params.
 pub fn encrypt_metadata_str(data: &str, m_key: &str, metadata_version: u32) -> Result<String> {
     encrypt_metadata(data.as_bytes(), m_key.as_bytes(), metadata_version)
-        .map(|bytes| String::from_utf8_lossy(&bytes).to_string())
+        .and_then(|bytes| String::from_utf8(bytes).context(EncryptedMetadataIsNotUtf8 {}))
 }
 
 /// Restores file metadata prefiously encrypted with [encrypt_metadata].
