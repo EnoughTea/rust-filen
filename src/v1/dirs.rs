@@ -210,14 +210,16 @@ pub struct DirContentRequestPayload {
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: String,
 
-    /// Looks like parent folder filter for returned item, a string containing array of quoted UUIDs:
-    /// "[\"hyphenated-lowercased-folder-UUID\"]" TODO: What is this?
+    /// A string containing 'path' to the listed folder as JSON array:
+    /// "[\"grand_parent_uuid\", \"parent_uuid\", \"folder_uuid\"]"
+    /// If folder has no parents, only 'folder_uuid' needs to be present.
     pub folders: String,
 
-    /// Requested page; starts at 1.
+    /// Seems like pagination parameter; currently is always 1.
     pub page: i32,
 
-    /// Boolean string. TODO: What is this?
+    // TODO: There is no way to tell its purpose from sources, need to ask Dwynr later.
+    /// This flag is always set to true.
     #[serde(deserialize_with = "bool_from_string", serialize_with = "bool_to_string")]
     pub app: bool,
 }
@@ -340,18 +342,23 @@ pub struct DirContentResponseData {
 
     pub folders: Vec<DirContentFolder>,
 
+    /// Info for folders passed in [DirContentRequestPayload::folders].
     #[serde(rename = "foldersInfo")]
     pub folders_info: Vec<DirContentFolder>,
 
+    /// Number of files in the current folder.
     #[serde(rename = "totalUploads")]
     pub total_uploads: u64,
 
+    /// Seems like pagination parameter; currently is always 0.
     #[serde(rename = "startAt")]
     pub start_at: u32,
 
+    /// Seems like pagination parameter; currently is always 999999999.
     #[serde(rename = "perPage")]
     pub per_page: u32,
 
+    /// Seems like pagination parameter; currently is always 1.
     pub page: u32,
 }
 utils::display_from_json!(DirContentResponseData);
