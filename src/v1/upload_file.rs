@@ -151,7 +151,7 @@ impl FileUploadProperties {
     /// Assigns file upload properties from given [FileProperties], parent folder and user's last master key.
     pub fn from_file_properties(
         file_properties: &FileProperties,
-        folder_to_upload_to_uuid: &str,
+        parent_folder_uuid: &str,
         last_master_key: &SecUtf8,
     ) -> Result<FileUploadProperties> {
         let new_file_uuid = Uuid::new_v4().to_hyphenated().to_string();
@@ -179,7 +179,7 @@ impl FileUploadProperties {
             rm,
             upload_key,
             expire: DEFAULT_EXPIRE.to_owned(),
-            parent_uuid: folder_to_upload_to_uuid.to_owned(),
+            parent_uuid: parent_folder_uuid.to_owned(),
             version: FILE_VERSION,
         })
     }

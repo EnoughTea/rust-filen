@@ -40,9 +40,13 @@ pub struct UserSyncGetDataResponseData {
     #[serde(rename = "storageUsed")]
     pub storage_used: u64,
 
-    /// Boolean field, 0 if user is a premium user.
-    #[serde(rename = "isPremium")]
-    pub is_premium: u32,
+    /// True if user is a premium user; false otherwise.
+    #[serde(
+        rename = "isPremium",
+        deserialize_with = "bool_from_int",
+        serialize_with = "bool_to_int"
+    )]
+    pub is_premium: bool,
 }
 utils::display_from_json!(UserSyncGetDataResponseData);
 
@@ -66,7 +70,7 @@ pub struct UserUsageResponseData {
     /// Uploaded files count.
     pub uploads: u64,
 
-    /// User folders count (including default).
+    /// User folders count (including default folder).
     pub folders: u64,
 
     /// Storage bytes used by user.

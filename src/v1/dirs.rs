@@ -389,18 +389,18 @@ impl DirCreateRequestPayload {
     /// Payload used for creation of the special Filen sync folder that is created by Filen client
     /// to store all synced files.
     /// You should only use this if you are writing your own replacement client.
-    pub fn payload_for_sync_folder_creation(api_key: &SecUtf8, last_master_key: &SecUtf8) -> DirCreateRequestPayload {
-        let mut payload = DirCreateRequestPayload::new(FILEN_SYNC_FOLDER_NAME, api_key, last_master_key);
+    pub fn payload_for_sync_folder_creation(api_key: SecUtf8, last_master_key: &SecUtf8) -> DirCreateRequestPayload {
+        let mut payload = DirCreateRequestPayload::new(api_key, FILEN_SYNC_FOLDER_NAME, last_master_key);
         payload.dir_type = LocationType::Sync;
         payload
     }
 
     /// Payload to create a new folder with the specified name.
-    pub fn new(name: &str, api_key: &SecUtf8, last_master_key: &SecUtf8) -> DirCreateRequestPayload {
+    pub fn new(api_key: SecUtf8, name: &str, last_master_key: &SecUtf8) -> DirCreateRequestPayload {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(name, last_master_key);
         let name_hashed = LocationNameMetadata::name_hashed(name);
         DirCreateRequestPayload {
-            api_key: api_key.clone(),
+            api_key,
             uuid: Uuid::new_v4().to_hyphenated().to_string(),
             name_metadata,
             name_hashed,
@@ -446,9 +446,9 @@ pub struct DirRenameRequestPayload {
 utils::display_from_json!(DirRenameRequestPayload);
 
 impl DirRenameRequestPayload {
-    pub fn new(
+    pub fn new<S: Into<String>>(
         api_key: SecUtf8,
-        folder_uuid: String,
+        folder_uuid: S,
         new_folder_name: &str,
         last_master_key: &SecUtf8,
     ) -> DirRenameRequestPayload {
@@ -456,7 +456,7 @@ impl DirRenameRequestPayload {
         let name_hashed = LocationNameMetadata::name_hashed(new_folder_name);
         DirRenameRequestPayload {
             api_key,
-            uuid: folder_uuid,
+            uuid: folder_uuid.into(),
             name_metadata,
             name_hashed,
         }
@@ -673,7 +673,7 @@ mod tests {
     #[test]
     fn dir_create_request_payload_should_be_created_correctly_from_name() {
         let m_key = SecUtf8::from("b49cadfb92e1d7d54e9dd9d33ba9feb2af1f10ae");
-        let payload = DirCreateRequestPayload::new(NAME, &API_KEY.clone(), &m_key);
+        let payload = DirCreateRequestPayload::new(API_KEY.clone(), NAME, &m_key);
         let decrypted_name = LocationNameMetadata::decrypt_name_from_metadata(&payload.name_metadata, &m_key).unwrap();
         let parsed_uuid = Uuid::parse_str(&payload.uuid);
 

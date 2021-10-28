@@ -233,9 +233,9 @@ pub struct FileRenameRequestPayload {
 utils::display_from_json!(FileRenameRequestPayload);
 
 impl FileRenameRequestPayload {
-    pub fn new(
+    pub fn new<S: Into<String>>(
         api_key: SecUtf8,
-        uuid: String,
+        uuid: S,
         new_file_name: &str,
         file_metadata: &FileProperties,
         last_master_key: &SecUtf8,
@@ -245,7 +245,7 @@ impl FileRenameRequestPayload {
         let metadata = file_metadata.to_metadata_string(last_master_key).unwrap(); // Should never panic...
         FileRenameRequestPayload {
             api_key,
-            uuid,
+            uuid: uuid.into(),
             name_metadata,
             name_hashed,
             metadata,

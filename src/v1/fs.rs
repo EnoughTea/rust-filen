@@ -101,8 +101,8 @@ pub(crate) struct LocationNameMetadata {
 
 impl LocationNameMetadata {
     /// Puts the given name into Filen-expected JSON and encrypts it into metadata.
-    pub fn encrypt_name_to_metadata(name: &str, last_master_key: &SecUtf8) -> String {
-        let name_json = json!(LocationNameMetadata { name: name.to_owned() }).to_string();
+    pub fn encrypt_name_to_metadata<S: Into<String>>(name: S, last_master_key: &SecUtf8) -> String {
+        let name_json = json!(LocationNameMetadata { name: name.into() }).to_string();
         crypto::encrypt_metadata_str(&name_json, last_master_key.unsecure(), super::METADATA_VERSION).unwrap()
     }
 
@@ -166,11 +166,11 @@ pub struct LocationExistsRequestPayload {
 utils::display_from_json!(LocationExistsRequestPayload);
 
 impl LocationExistsRequestPayload {
-    pub fn new(api_key: SecUtf8, target_parent: String, target_name: &str) -> LocationExistsRequestPayload {
+    pub fn new<S: Into<String>>(api_key: SecUtf8, target_parent: S, target_name: &str) -> LocationExistsRequestPayload {
         let name_hashed = LocationNameMetadata::name_hashed(target_name);
         LocationExistsRequestPayload {
             api_key,
-            parent: target_parent,
+            parent: target_parent.into(),
             name_hashed,
         }
     }

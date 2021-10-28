@@ -115,7 +115,7 @@ impl DirLinkAddRequestPayload {
         api_key: SecUtf8,
         linked_folder_uuid: S,
         linked_folder_metadata: S,
-        linked_folder_parent: Option<S>,
+        linked_folder_parent_uuid: Option<S>,
         last_master_key: &SecUtf8,
     ) -> DirLinkAddRequestPayload {
         let link_uuid = Uuid::new_v4().to_hyphenated().to_string();
@@ -129,7 +129,7 @@ impl DirLinkAddRequestPayload {
             key_metadata,
             link_uuid,
             metadata: linked_folder_metadata.into(),
-            parent: LocationType::parent_or_base(linked_folder_parent),
+            parent: LocationType::parent_or_base(linked_folder_parent_uuid),
             password: PasswordState::Empty,
             password_hashed: EMPTY_PASSWORD_HASH.clone(),
             link_type: LocationType::Folder,
@@ -191,7 +191,7 @@ impl DirLinkEditRequestPayload {
         link_key_metadata: S,
         linked_folder_uuid: S,
         linked_folder_metadata: S,
-        linked_folder_parent: Option<S>,
+        linked_folder_parent_uuid: Option<S>,
     ) -> DirLinkEditRequestPayload {
         DirLinkEditRequestPayload {
             api_key,
@@ -200,7 +200,7 @@ impl DirLinkEditRequestPayload {
             key_metadata: link_key_metadata.into(),
             link_uuid: link_uuid.into(),
             metadata: linked_folder_metadata.into(),
-            parent: LocationType::parent_or_base(linked_folder_parent),
+            parent: LocationType::parent_or_base(linked_folder_parent_uuid),
             password: PasswordState::Empty,
             password_hashed: EMPTY_PASSWORD_HASH.clone(),
             target_type: LocationType::Folder,

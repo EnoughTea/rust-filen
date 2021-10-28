@@ -160,7 +160,7 @@ impl UserKeyPairUpdateRequestPayload {
     /// Creates [UserKeyPairUpdateRequestPayload] with Filen-compatible private and public key strings,
     /// given original keys bytes in PKCS#8 ASN.1 DER format.
     pub fn new(
-        api_key: &SecUtf8,
+        api_key: SecUtf8,
         private_key_bytes: &SecVec<u8>,
         public_key_bytes: &[u8],
         last_master_key: &SecUtf8,
@@ -176,7 +176,7 @@ impl UserKeyPairUpdateRequestPayload {
 
         let public_key = base64::encode(public_key_bytes);
         Ok(UserKeyPairUpdateRequestPayload {
-            api_key: api_key.clone(),
+            api_key,
             private_key,
             public_key,
         })
@@ -199,8 +199,8 @@ utils::display_from_json!(MasterKeysFetchRequestPayload);
 
 impl MasterKeysFetchRequestPayload {
     /// Creates [MasterKeysFetchRequestPayload] from user's API key and user's master keys.
-    /// Assumes last user's master key is the last element of master keys vec.
-    fn new(api_key: SecUtf8, raw_master_keys: Vec<SecUtf8>) -> Result<MasterKeysFetchRequestPayload> {
+    /// Assumes user's last master key is the last element of given master keys slice.
+    fn new(api_key: SecUtf8, raw_master_keys: &[SecUtf8]) -> Result<MasterKeysFetchRequestPayload> {
         ensure!(
             !raw_master_keys.is_empty(),
             BadArgument {
@@ -209,7 +209,7 @@ impl MasterKeysFetchRequestPayload {
         );
 
         let master_keys_metadata = crypto::encrypt_master_keys_metadata(
-            &raw_master_keys,
+            raw_master_keys,
             raw_master_keys.last().unwrap(),
             super::METADATA_VERSION,
         )

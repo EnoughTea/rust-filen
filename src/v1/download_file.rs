@@ -51,11 +51,11 @@ pub struct FileLocation {
 }
 
 impl FileLocation {
-    pub fn new(region: &str, bucket: &str, file_uuid: &str, chunk_count: u32) -> FileLocation {
+    pub fn new<S: Into<String>>(region: S, bucket: S, file_uuid: S, chunk_count: u32) -> FileLocation {
         FileLocation {
-            region: region.to_owned(),
-            bucket: bucket.to_owned(),
-            file_uuid: file_uuid.to_owned(),
+            region: region.into(),
+            bucket: bucket.into(),
+            file_uuid: file_uuid.into(),
             chunk_count,
         }
     }
@@ -85,11 +85,11 @@ pub struct FileChunkLocation {
 }
 
 impl FileChunkLocation {
-    pub fn new(region: &str, bucket: &str, file_uuid: &str, chunk_index: u32) -> FileChunkLocation {
+    pub fn new<S: Into<String>>(region: S, bucket: S, file_uuid: S, chunk_index: u32) -> FileChunkLocation {
         FileChunkLocation {
-            region: region.to_owned(),
-            bucket: bucket.to_owned(),
-            file_uuid: file_uuid.to_owned(),
+            region: region.into(),
+            bucket: bucket.into(),
+            file_uuid: file_uuid.into(),
             chunk_index,
         }
     }
