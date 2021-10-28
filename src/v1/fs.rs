@@ -7,10 +7,6 @@ use snafu::{ResultExt, Snafu};
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-const BASE_TYPE: &str = "base";
-const FILE_TYPE: &str = "file";
-const FOLDER_TYPE: &str = "folder";
-
 #[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display("Failed to deserialize location name: {}", source))]
@@ -18,6 +14,18 @@ pub enum Error {
 
     #[snafu(display("Failed to decrypt location name {}: {}", metadata, source))]
     DecryptLocationNameFailed { metadata: String, source: crypto::Error },
+}
+
+/// Identifies location color set by user. Default yellow color is represented by the absence of specifically set
+/// `LocationColor`.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LocationColor {
+    Blue,
+    Gray,
+    Green,
+    Purple,
+    Red,
 }
 
 /// Identifies location type.
@@ -30,12 +38,14 @@ pub enum LocationType {
     File,
     /// Location is a folder.
     Folder,
+    /// Location is a special Filen Sync folder.
+    Sync,
 }
 
 impl LocationType {
-    pub fn parent_or_base(parent: Option<&str>) -> String {
+    pub fn parent_or_base<T: Into<String>>(parent: Option<T>) -> String {
         match parent {
-            Some(parent) => parent.to_owned(),
+            Some(parent) => parent.into(),
             None => LocationType::Base.to_string(),
         }
     }
@@ -44,9 +54,10 @@ impl LocationType {
 impl std::fmt::Display for LocationType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
-            LocationType::Base => write!(f, "{}", BASE_TYPE),
-            LocationType::File => write!(f, "{}", FILE_TYPE),
-            LocationType::Folder => write!(f, "{}", FOLDER_TYPE),
+            LocationType::Base => write!(f, "base"),
+            LocationType::File => write!(f, "file"),
+            LocationType::Folder => write!(f, "folder"),
+            LocationType::Sync => write!(f, "sync"),
         }
     }
 }

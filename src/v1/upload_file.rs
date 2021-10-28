@@ -135,7 +135,7 @@ pub struct FileUploadProperties {
     /// Random alphanumeric key associated with entire file upload.
     pub upload_key: String,
 
-    /// Expire marker.
+    /// Expire marker. Always set to "expire".
     pub expire: String,
 
     /// Parent folder ID, UUID V4 in hyphenated lowercase format.

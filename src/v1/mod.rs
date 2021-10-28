@@ -26,10 +26,8 @@ mod upload_file;
 mod usage;
 
 const METADATA_VERSION: u32 = 1;
-const EMPTY_PASSWORD_MARK: &str = "empty";
-const PRESENT_PASSWORD_MARK: &str = "notempty";
 
-pub static EMPTY_PASSWORD_HASH: Lazy<String> = Lazy::new(|| crypto::hash_fn(EMPTY_PASSWORD_MARK));
+pub static EMPTY_PASSWORD_HASH: Lazy<String> = Lazy::new(|| crypto::hash_fn(&PasswordState::Empty.to_string()));
 
 /// Contains just the response status and corresponding message.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -55,9 +53,53 @@ pub enum PasswordState {
 impl std::fmt::Display for PasswordState {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
-            PasswordState::Empty => write!(f, "{}", EMPTY_PASSWORD_MARK),
-            PasswordState::NotEmpty => write!(f, "{}", PRESENT_PASSWORD_MARK),
+            PasswordState::Empty => write!(f, "empty"),
+            PasswordState::NotEmpty => write!(f, "notempty"),
         }
+    }
+}
+
+pub(crate) fn bool_from_string<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match String::deserialize(deserializer)?.to_lowercase().trim() {
+        "true" => Ok(true),
+        "false" => Ok(false),
+        other => Err(de::Error::invalid_value(de::Unexpected::Str(other), &"true or false")),
+    }
+}
+
+pub(crate) fn bool_to_string<S>(value: &bool, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match value {
+        true => serializer.serialize_str("true"),
+        false => serializer.serialize_str("false"),
+    }
+}
+
+pub(crate) fn bool_from_int<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = i32::deserialize(deserializer)?;
+    if value == 0 {
+        Ok(false)
+    } else {
+        Ok(true)
+    }
+}
+
+pub(crate) fn bool_to_int<S>(value: &bool, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    if *value {
+        serializer.serialize_i32(1)
+    } else {
+        serializer.serialize_i32(0)
     }
 }
 

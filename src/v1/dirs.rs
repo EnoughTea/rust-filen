@@ -8,7 +8,6 @@ use uuid::Uuid;
 #[allow(dead_code)]
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-pub const FILEN_FOLDER_TYPE: &str = "folder";
 pub const FILEN_SYNC_FOLDER_NAME: &str = "Filen Sync";
 
 const USER_BASE_FOLDERS_PATH: &str = "/v1/user/baseFolders";
@@ -75,9 +74,13 @@ pub struct UserBaseFoldersRequestPayload {
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 
-    /// Boolean string. This field seems not to do anything, but Filen web manager sets it to "true".
-    #[serde(rename = "includeDefault")]
-    pub include_default: String,
+    /// This field seems not to do anything, but Filen web manager sets it to "true".
+    #[serde(
+        rename = "includeDefault",
+        deserialize_with = "bool_from_string",
+        serialize_with = "bool_to_string"
+    )]
+    pub include_default: bool,
 }
 utils::display_from_json!(UserBaseFoldersRequestPayload);
 
@@ -92,25 +95,28 @@ pub struct UserBaseFolder {
     #[serde(rename = "name")]
     pub name_metadata: String,
 
-    /// Folder color name; None means default yellow color. Possible colors: "blue", "green", "purple", "red", "gray".
-    pub color: Option<String>,
+    /// Folder color name; None means default yellow color.
+    pub color: Option<LocationColor>,
 
     /// Folder creation time, as Unix timestamp in seconds.
     pub timestamp: u64,
 
-    /// 1 if user has marked folder as favorite; 0 otherwise.
-    pub favorited: u32,
+    /// true if user has marked folder as favorite; false otherwise.
+    #[serde(deserialize_with = "bool_from_int", serialize_with = "bool_to_int")]
+    pub favorited: bool,
 
-    /// 1 if this is a default Filen folder; 0 otherwise.
-    pub is_default: u32,
+    /// true if this is a default Filen folder; false otherwise.
+    #[serde(deserialize_with = "bool_from_int", serialize_with = "bool_to_int")]
+    pub is_default: bool,
 
-    /// 1 if this is a Filen sync folder; false otherwise.
+    /// true if this is a Filen sync folder; false otherwise.
     ///
     /// Filen sync folder is a special unique folder that is created by Filen client to store all synced files.
     /// If user never used Filen client, no sync folder would exist.
     ///
     /// Filen sync folder is always named "Filen Sync" and created with a special type: "sync".
-    pub is_sync: u32,
+    #[serde(deserialize_with = "bool_from_int", serialize_with = "bool_to_int")]
+    pub is_sync: bool,
 }
 utils::display_from_json!(UserBaseFolder);
 
@@ -165,14 +171,14 @@ pub struct UserDirData {
     /// Filen sync folder is always named "Filen Sync" and created with a special type: "sync".
     pub sync: bool,
 
-    /// Seems like [UserDirData::default] field double, only with integer type instead of bool.
+    /// Seems like `default` field double, only with numeric type.
     pub is_default: u32,
 
-    /// Seems like [UserDirData::sync] field double, only with integer type instead of bool.
+    /// Seems like `sync` field double, only with numeric type.
     pub is_sync: u32,
 
-    /// Folder color name; None means default yellow color. Possible colors: "blue", "green", "purple", "red", "gray".
-    pub color: Option<String>,
+    /// Folder color name; None means default yellow color.
+    pub color: Option<LocationColor>,
 }
 utils::display_from_json!(UserDirData);
 
@@ -212,7 +218,8 @@ pub struct DirContentRequestPayload {
     pub page: i32,
 
     /// Boolean string. TODO: What is this?
-    pub app: String,
+    #[serde(deserialize_with = "bool_from_string", serialize_with = "bool_to_string")]
+    pub app: bool,
 }
 utils::display_from_json!(DirContentRequestPayload);
 
@@ -238,14 +245,18 @@ pub struct DirContentFile {
     pub region: String,
 
     /// 1 if expire was set when uploading file; 0 otherwise.
-    #[serde(rename = "expireSet")]
-    pub expire_set: u32,
+    #[serde(
+        rename = "expireSet",
+        deserialize_with = "bool_from_int",
+        serialize_with = "bool_to_int"
+    )]
+    pub expire_set: bool,
 
-    /// Timestanp when file will be considired expired.
+    /// Timestamp when file will be considired expired.
     #[serde(rename = "expireTimestamp")]
     pub expire_timestamp: u64,
 
-    /// Timestanp when file will be deleted.
+    /// Timestamp when file will be deleted.
     #[serde(rename = "deleteTimestamp")]
     pub delete_timestamp: u64,
 
@@ -260,8 +271,9 @@ pub struct DirContentFile {
     /// use [crypto::encrypt_file_data] and [crypto::decrypt_file_data] for the task.
     pub version: u32,
 
-    /// 1 if user has marked file as favorite; 0 otherwise.
-    pub favorited: u32,
+    /// True if user has marked file as favorite; false otherwise.
+    #[serde(deserialize_with = "bool_from_int", serialize_with = "bool_to_int")]
+    pub favorited: bool,
 }
 utils::display_from_json!(DirContentFile);
 
@@ -279,25 +291,28 @@ pub struct DirContentFolder {
     /// Parent folder; always present, since base folders are returned in separate `folders_info` array.
     pub parent: String,
 
-    /// Folder color name; None means default yellow color. Possible colors: "blue", "green", "purple", "red", "gray".
-    pub color: Option<String>,
+    /// Folder color name; None means default yellow color.
+    pub color: Option<LocationColor>,
 
     /// Folder creation time, as Unix timestamp in seconds.
     pub timestamp: u64,
 
-    /// 1 if user has marked folder as favorite; 0 otherwise.
-    pub favorited: u32,
+    /// True if user has marked folder as favorite; false otherwise.
+    #[serde(deserialize_with = "bool_from_int", serialize_with = "bool_to_int")]
+    pub favorited: bool,
 
-    /// 1 if this is a default Filen folder; 0 otherwise.
-    pub is_default: u32,
+    /// True if this is a default Filen folder; false otherwise.
+    #[serde(deserialize_with = "bool_from_int", serialize_with = "bool_to_int")]
+    pub is_default: bool,
 
-    /// 1 if this is a Filen sync folder; false otherwise.
+    /// True if this is a Filen sync folder; false otherwise.
     ///
     /// Filen sync folder is a special unique folder that is created by Filen client to store all synced files.
     /// If user never used Filen client, no sync folder would exist.
     ///
     /// Filen sync folder is always named "Filen Sync" and created with a special type: "sync".
-    pub is_sync: u32,
+    #[serde(deserialize_with = "bool_from_int", serialize_with = "bool_to_int")]
+    pub is_sync: bool,
 }
 utils::display_from_json!(DirContentFolder);
 
@@ -312,8 +327,8 @@ pub struct DirContentFolderInfo {
     #[serde(rename = "name")]
     pub name_metadata: String,
 
-    /// Folder color name; None means default yellow color. Possible colors: "blue", "green", "purple", "red", "gray".
-    pub color: Option<String>,
+    /// Folder color name; None means default yellow color.
+    pub color: Option<LocationColor>,
 }
 utils::display_from_json!(DirContentFolderInfo);
 
@@ -366,16 +381,17 @@ pub struct DirCreateRequestPayload {
 
     /// Should always be "folder", with "sync" reserved for Filen client sync folder.
     #[serde(rename = "type")]
-    pub dir_type: String,
+    pub dir_type: LocationType,
 }
 utils::display_from_json!(DirCreateRequestPayload);
 
 impl DirCreateRequestPayload {
-    /// Payload used for creation of the special Filen sync folder that is created by Filen client to store all synced files.
+    /// Payload used for creation of the special Filen sync folder that is created by Filen client
+    /// to store all synced files.
     /// You should only use this if you are writing your own replacement client.
     pub fn payload_for_sync_folder_creation(api_key: &SecUtf8, last_master_key: &SecUtf8) -> DirCreateRequestPayload {
         let mut payload = DirCreateRequestPayload::new(FILEN_SYNC_FOLDER_NAME, api_key, last_master_key);
-        payload.dir_type = FILEN_SYNC_FOLDER_TYPE.to_owned();
+        payload.dir_type = LocationType::Sync;
         payload
     }
 
@@ -388,7 +404,7 @@ impl DirCreateRequestPayload {
             uuid: Uuid::new_v4().to_hyphenated().to_string(),
             name_metadata,
             name_hashed,
-            dir_type: FILEN_FOLDER_TYPE.to_owned(),
+            dir_type: LocationType::Folder,
         }
     }
 }
@@ -665,7 +681,7 @@ mod tests {
         assert!(parsed_uuid.is_ok());
         assert_eq!(decrypted_name, NAME);
         assert_eq!(payload.name_hashed, NAME_HASHED);
-        assert_eq!(payload.dir_type, "folder");
+        assert_eq!(payload.dir_type, LocationType::Folder);
     }
 
     #[tokio::test]
@@ -700,7 +716,7 @@ mod tests {
             uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
             name_metadata: NAME_METADATA.to_owned(),
             name_hashed: NAME_HASHED.to_owned(),
-            dir_type: "folder".to_owned(),
+            dir_type: LocationType::Folder,
         };
         let expected_response: PlainApiResponse = deserialize_from_file("tests/resources/responses/dir_create.json");
         let mock = setup_json_mock(DIR_CREATE_PATH, &request_payload, &expected_response, &server);

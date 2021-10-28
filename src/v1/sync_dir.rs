@@ -5,8 +5,6 @@ use snafu::{ResultExt, Snafu};
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-pub const FILEN_SYNC_FOLDER_TYPE: &str = "sync";
-
 const GET_DIR_PATH: &str = "/v1/get/dir";
 
 #[derive(Snafu, Debug)]
@@ -35,11 +33,15 @@ pub struct GetDirRequestPayload {
     #[serde(rename = "uuid")]
     pub sync_folder_uuid: String,
 
-    /// If set to "true", will fetch entire sync folder contents, which can be quite a heavy operation.
-    /// If set to "false", server will check if sync folder contents changed. If synced content has not been changed,
+    /// If set to true, will fetch entire sync folder contents, which can be quite a heavy operation.
+    /// If set to false, server will check if sync folder contents changed. If synced content has not been changed,
     /// empty folder and file data will be returned; otherwise, full retrieve will be performed.
-    #[serde(rename = "firstRequest")]
-    pub first_request: String,
+    #[serde(
+        rename = "firstRequest",
+        deserialize_with = "bool_from_string",
+        serialize_with = "bool_to_string"
+    )]
+    pub first_request: bool,
 }
 utils::display_from_json!(GetDirRequestPayload);
 
@@ -135,7 +137,7 @@ mod tests {
         let request_payload = GetDirRequestPayload {
             api_key: API_KEY.clone(),
             sync_folder_uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
-            first_request: "false".to_owned(),
+            first_request: false,
         };
         let expected_response: GetDirResponsePayload =
             deserialize_from_file("tests/resources/responses/get_dir_same_data.json");
