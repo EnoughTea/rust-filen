@@ -88,11 +88,11 @@ pub struct DirLinkAddRequestPayload {
     #[serde(rename = "linkUUID")]
     pub link_uuid: String,
 
-    /// Linked folder metadata.
+    /// Linked item metadata.
     pub metadata: String,
 
-    /// ID of the parent of the linked folder, hyphenated lowercased UUID V4.
-    /// Use "base" if the linked folder is located in the root folder.
+    /// ID of the parent of the linked item, hyphenated lowercased UUID V4.
+    /// Use "base" if the linked item is located in the root folder.
     pub parent: String,
 
     /// Filen always uses "empty" when adding links.
@@ -101,11 +101,11 @@ pub struct DirLinkAddRequestPayload {
     /// Output of hash_fn for the password.
     pub password_hashed: String,
 
-    /// Should be "folder".
+    /// Determines whether a file or a folder is being linked.
     #[serde(rename = "type")]
-    pub link_type: LocationType,
+    pub link_type: LinkTarget,
 
-    /// Linked folder ID; hyphenated lowercased UUID V4.
+    /// Linked item ID; hyphenated lowercased UUID V4.
     pub uuid: String,
 }
 utils::display_from_json!(DirLinkAddRequestPayload);
@@ -116,6 +116,7 @@ impl DirLinkAddRequestPayload {
         linked_folder_uuid: S,
         linked_folder_metadata: S,
         linked_folder_parent_uuid: Option<S>,
+        link_type: LinkTarget,
         last_master_key: &SecUtf8,
     ) -> DirLinkAddRequestPayload {
         let link_uuid = Uuid::new_v4().to_hyphenated().to_string();
@@ -129,10 +130,10 @@ impl DirLinkAddRequestPayload {
             key_metadata,
             link_uuid,
             metadata: linked_folder_metadata.into(),
-            parent: LocationType::parent_or_base(linked_folder_parent_uuid),
+            parent: parent_or_base(linked_folder_parent_uuid),
             password: PasswordState::Empty,
             password_hashed: EMPTY_PASSWORD_HASH.clone(),
-            link_type: LocationType::Folder,
+            link_type: link_type,
             uuid: linked_folder_uuid.into(),
         }
     }
@@ -160,11 +161,11 @@ pub struct DirLinkEditRequestPayload {
     #[serde(rename = "linkUUID")]
     pub link_uuid: String,
 
-    /// Folder metadata.
+    /// Item metadata.
     pub metadata: String,
 
-    /// ID of the parent of the linked folder, hyphenated lowercased UUID V4.
-    /// Use "base" if linked folder is located in the root folder.
+    /// ID of the parent of the linked item, hyphenated lowercased UUID V4.
+    /// Use "base" if linked item is located in the root folder.
     pub parent: String,
 
     /// "empty" means no password protection, "notempty" means password is present.
@@ -174,11 +175,11 @@ pub struct DirLinkEditRequestPayload {
     /// converted to a hex string.
     pub password_hashed: String,
 
-    /// Should be "folder".
+    /// Determines whether a file or a folder link is being edited.
     #[serde(rename = "type")]
-    pub target_type: LocationType,
+    pub target_type: LinkTarget,
 
-    /// Linked folder ID; hyphenated lowercased UUID V4.
+    /// Linked item ID; hyphenated lowercased UUID V4.
     pub uuid: String,
 }
 utils::display_from_json!(DirLinkEditRequestPayload);
@@ -189,9 +190,10 @@ impl DirLinkEditRequestPayload {
         download_btn: DownloadBtnState,
         link_uuid: S,
         link_key_metadata: S,
-        linked_folder_uuid: S,
-        linked_folder_metadata: S,
-        linked_folder_parent_uuid: Option<S>,
+        linked_item_uuid: S,
+        linked_item_metadata: S,
+        linked_item_parent_uuid: Option<S>,
+        link_type: LinkTarget,
     ) -> DirLinkEditRequestPayload {
         DirLinkEditRequestPayload {
             api_key,
@@ -199,12 +201,12 @@ impl DirLinkEditRequestPayload {
             expiration: DEFAULT_EXPIRE.to_owned(),
             key_metadata: link_key_metadata.into(),
             link_uuid: link_uuid.into(),
-            metadata: linked_folder_metadata.into(),
-            parent: LocationType::parent_or_base(linked_folder_parent_uuid),
+            metadata: linked_item_metadata.into(),
+            parent: parent_or_base(linked_item_parent_uuid),
             password: PasswordState::Empty,
             password_hashed: EMPTY_PASSWORD_HASH.clone(),
-            target_type: LocationType::Folder,
-            uuid: linked_folder_uuid.into(),
+            target_type: link_type,
+            uuid: linked_item_uuid.into(),
         }
     }
 
@@ -216,9 +218,9 @@ impl DirLinkEditRequestPayload {
         linked_folder_uuid: S,
         linked_folder_metadata: S,
         linked_folder_parent: Option<S>,
+        link_type: LinkTarget,
         plain_text_password: &SecUtf8,
     ) -> DirLinkEditRequestPayload {
-        let password = PasswordState::NotEmpty;
         let salt = utils::random_alphanumeric_string(32);
         let password_hashed = utils::bytes_to_hex_string(&crypto::derive_key_from_password_512(
             plain_text_password.unsecure().as_bytes(),
@@ -233,10 +235,10 @@ impl DirLinkEditRequestPayload {
             key_metadata: link_key_metadata.into(),
             link_uuid: link_uuid.into(),
             metadata: linked_folder_metadata.into(),
-            parent: LocationType::parent_or_base(linked_folder_parent),
-            password,
+            parent: parent_or_base(linked_folder_parent),
+            password: PasswordState::NotEmpty,
             password_hashed,
-            target_type: LocationType::Folder,
+            target_type: link_type,
             uuid: linked_folder_uuid.into(),
         }
     }
@@ -261,7 +263,7 @@ pub struct DirLinkStatusRequestPayload {
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 
-    /// ID of the folder having link on; hyphenated lowercased UUID V4.
+    /// ID of the item whose link should be checked; hyphenated lowercased UUID V4.
     pub uuid: String,
 }
 utils::display_from_json!(DirLinkStatusRequestPayload);
@@ -270,7 +272,7 @@ utils::display_from_json!(DirLinkStatusRequestPayload);
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirLinkStatusResponseData {
-    /// True if link exists; false if link for the given folder UUID cannot be found.
+    /// True if link exists; false if link for the given item ID cannot be found.
     pub exists: bool,
 
     /// Found link ID; hyphenated lowercased UUID V4. None if no link was found.
@@ -297,11 +299,11 @@ pub struct DirLinkStatusResponseData {
 utils::display_from_json!(DirLinkStatusResponseData);
 
 api_response_struct!(
-    /// Response for [AUTH_INFO_PATH] endpoint.
+    /// Response for [DIR_LINK_STATUS_PATH] endpoint.
     DirLinkStatusResponsePayload<Option<DirLinkStatusResponseData>>
 );
 
-/// Calls [DIR_LINK_ADD_PATH] endpoint. Used to create public link for a folder.
+/// Calls [DIR_LINK_ADD_PATH] endpoint. Used to create public link for a folder or a file.
 /// Filen always creates a link without password first, and optionally sets password later using [dir_link_edit].
 pub fn dir_link_add_request(
     payload: &DirLinkAddRequestPayload,
@@ -312,7 +314,7 @@ pub fn dir_link_add_request(
     })
 }
 
-/// Calls [DIR_LINK_ADD_PATH] endpoint asynchronously. Used to create public link for a folder.
+/// Calls [DIR_LINK_ADD_PATH] endpoint asynchronously. Used to create public link for a folder or a file.
 /// Filen always creates a link without password first, and optionally sets password later using [dir_link_edit].
 pub async fn dir_link_add_request_async(
     payload: &DirLinkAddRequestPayload,
@@ -349,7 +351,7 @@ pub async fn dir_link_edit_request_async(
         })
 }
 
-/// Calls [DIR_LINK_REMOVE_PATH] endpoint. Used to delete public link for a folder.
+/// Calls [DIR_LINK_REMOVE_PATH] endpoint. Used to remove given link.
 pub fn dir_link_remove_request(
     payload: &DirLinkRemoveRequestPayload,
     filen_settings: &FilenSettings,
@@ -359,7 +361,7 @@ pub fn dir_link_remove_request(
     })
 }
 
-/// Calls [DIR_LINK_REMOVE_PATH] endpoint asynchronously. Used to create public link for a folder.
+/// Calls [DIR_LINK_REMOVE_PATH] endpoint asynchronously. Used to remove given link.
 pub async fn dir_link_remove_request_async(
     payload: &DirLinkRemoveRequestPayload,
     filen_settings: &FilenSettings,
@@ -371,7 +373,7 @@ pub async fn dir_link_remove_request_async(
         })
 }
 
-/// Calls [DIR_LINK_STATUS_PATH] endpoint. Used to delete public link for a folder.
+/// Calls [DIR_LINK_STATUS_PATH] endpoint. Used to check link properties.
 pub fn dir_link_status_request(
     payload: &DirLinkStatusRequestPayload,
     filen_settings: &FilenSettings,
@@ -381,7 +383,7 @@ pub fn dir_link_status_request(
     })
 }
 
-/// Calls [DIR_LINK_STATUS_PATH] endpoint asynchronously. Used to create public link for a folder.
+/// Calls [DIR_LINK_STATUS_PATH] endpoint asynchronously. Used to check link properties.
 pub async fn dir_link_status_request_async(
     payload: &DirLinkStatusRequestPayload,
     filen_settings: &FilenSettings,

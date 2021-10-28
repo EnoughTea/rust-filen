@@ -16,6 +16,25 @@ pub enum Error {
     DecryptLocationNameFailed { metadata: String, source: crypto::Error },
 }
 
+/// Identifies linked item.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LinkTarget {
+    /// Linked item is a file.
+    File,
+    /// Linked item is a folder.
+    Folder,
+}
+
+impl std::fmt::Display for LinkTarget {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            LinkTarget::File => write!(f, "file"),
+            LinkTarget::Folder => write!(f, "folder"),
+        }
+    }
+}
+
 /// Identifies location color set by user. Default yellow color is represented by the absence of specifically set
 /// `LocationColor`.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -32,30 +51,15 @@ pub enum LocationColor {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LocationType {
-    /// Location is a base folder.
-    Base,
-    /// Location is a file.
-    File,
     /// Location is a folder.
     Folder,
     /// Location is a special Filen Sync folder.
     Sync,
 }
 
-impl LocationType {
-    pub fn parent_or_base<T: Into<String>>(parent: Option<T>) -> String {
-        match parent {
-            Some(parent) => parent.into(),
-            None => LocationType::Base.to_string(),
-        }
-    }
-}
-
 impl std::fmt::Display for LocationType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
-            LocationType::Base => write!(f, "base"),
-            LocationType::File => write!(f, "file"),
             LocationType::Folder => write!(f, "folder"),
             LocationType::Sync => write!(f, "sync"),
         }
@@ -81,6 +85,13 @@ impl HasLocationName for FolderData {
     /// Decrypts name metadata into a folder name.
     fn name_metadata_ref(&self) -> &str {
         &self.name_metadata
+    }
+}
+
+pub(crate) fn parent_or_base<T: Into<String>>(parent: Option<T>) -> String {
+    match parent {
+        Some(parent) => parent.into(),
+        None => "base".to_owned(),
     }
 }
 
