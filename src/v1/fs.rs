@@ -1,6 +1,4 @@
 //! Contains structures common for Filen file&folder API.
-use std::borrow::Cow;
-
 use crate::{crypto, utils, v1::api_response_struct};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
@@ -45,13 +43,6 @@ pub enum LocationType {
 }
 
 impl LocationType {
-    pub fn parent_or_base_cow<'a, T: Into<Cow<'a, str>>>(parent: Option<T>) -> String {
-        match parent {
-            Some(parent) => parent.into().into_owned(),
-            None => LocationType::Base.to_string(),
-        }
-    }
-
     pub fn parent_or_base<T: Into<String>>(parent: Option<T>) -> String {
         match parent {
             Some(parent) => parent.into(),

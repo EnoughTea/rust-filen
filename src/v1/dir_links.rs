@@ -276,7 +276,7 @@ pub struct DirLinkStatusResponseData {
     /// Found link ID; hyphenated lowercased UUID V4. None if no link was found.
     pub uuid: Option<String>,
 
-    /// Link key. None if no link was found.
+    /// Link key metadata. None if no link was found.
     pub key: Option<String>,
 
     /// Link expiration time, as Unix timestamp in seconds. None if no link was found.

@@ -546,16 +546,16 @@ async fn upload_chunks_async<R: Read + Seek>(
     futures::future::try_join_all(future_chunk_responses?).await
 }
 
-fn read_into_chunks_and_process<'a, R, ProcType, ProcResult>(
+fn read_into_chunks_and_process<'reader, R, ProcType, ProcResult>(
     file_chunk_size: u32,
     file_size: u64,
-    reader: &'a mut BufReader<R>,
+    reader: &'reader mut BufReader<R>,
     chunk_processor: ProcType,
-) -> impl Iterator<Item = Result<ProcResult>> + 'a
+) -> impl Iterator<Item = Result<ProcResult>> + 'reader
 where
     R: Read + Seek,
     ProcType: Fn(FileChunkPosition, Vec<u8>) -> ProcResult,
-    ProcType: 'a,
+    ProcType: 'reader,
 {
     let file_chunk_positions = FileChunkPositions::new(file_chunk_size, file_size);
     file_chunk_positions.map(move |chunk_pos| {

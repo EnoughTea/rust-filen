@@ -88,12 +88,12 @@ pub(crate) fn read_project_file(file_path: &str) -> Vec<u8> {
     read_file(&target_path).expect(&format!("Cannot read file: {}", target_path))
 }
 
-pub(crate) fn setup_json_mock<'a, T: Serialize, U: Serialize>(
+pub(crate) fn setup_json_mock<'server, T: Serialize, U: Serialize>(
     api_path: &str,
     request_payload: &T,
     response_payload: &U,
-    server: &'a MockServer,
-) -> Mock<'a> {
+    server: &'server MockServer,
+) -> Mock<'server> {
     server.mock(|when, then| {
         when.method(POST)
             .path(api_path)
