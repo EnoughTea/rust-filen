@@ -37,19 +37,19 @@ pub enum Error {
     DirLinkStatusQueryFailed { link_uuid: String, source: queries::Error },
 }
 
-/// 'Download' state represented as a string.
-/// TODO: Probably controls the availability of "Download" action in Filen web manager?
+/// State of the 'Enable download button' GUI checkbox represented as a string.
+/// It is the checkbox you see at the bottom of modal popup when creating or sharing an item.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DownloadBtnState {
-    /// 'Download' is disabled.
+    /// 'Enable download button' checkbox is disabled.
     Disable,
-    /// 'Download' is enabled.
+    /// 'Enable download button' checkbox is enabled.
     Enable,
 }
 
-/// 'Download' state represented as a 0|1 flag.
-/// TODO: Probably controls the availability of "Download" action in Filen web manager?
+/// State of the 'Enable download button' GUI checkbox represented as a 0|1 flag.
+/// It is the checkbox you see at the bottom of modal popup when creating or sharing an item.
 #[derive(Clone, Debug, Deserialize_repr, Eq, PartialEq, Serialize_repr)]
 #[repr(u8)]
 pub enum DownloadBtnStateByte {
@@ -73,7 +73,7 @@ pub struct DirLinkAddRequestPayload {
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 
-    /// Usually has "enable" value for links without passwords, and "disable" for password-protected links.
+    /// Filen sets this to "enable" by default.
     #[serde(rename = "downloadBtn")]
     pub download_btn: DownloadBtnState,
 
@@ -113,9 +113,9 @@ utils::display_from_json!(DirLinkAddRequestPayload);
 impl DirLinkAddRequestPayload {
     pub fn new<S: Into<String>>(
         api_key: SecUtf8,
-        linked_folder_uuid: S,
-        linked_folder_metadata: S,
-        linked_folder_parent_uuid: Option<S>,
+        linked_item_uuid: S,
+        linked_item_metadata: S,
+        linked_item_parent_uuid: Option<S>,
         link_type: LinkTarget,
         last_master_key: &SecUtf8,
     ) -> DirLinkAddRequestPayload {
@@ -129,12 +129,12 @@ impl DirLinkAddRequestPayload {
             expiration: DEFAULT_EXPIRE.to_owned(),
             key_metadata,
             link_uuid,
-            metadata: linked_folder_metadata.into(),
-            parent: parent_or_base(linked_folder_parent_uuid),
+            metadata: linked_item_metadata.into(),
+            parent: parent_or_base(linked_item_parent_uuid),
             password: PasswordState::Empty,
             password_hashed: EMPTY_PASSWORD_HASH.clone(),
             link_type: link_type,
-            uuid: linked_folder_uuid.into(),
+            uuid: linked_item_uuid.into(),
         }
     }
 }
@@ -146,7 +146,8 @@ pub struct DirLinkEditRequestPayload {
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 
-    /// Usually has "enable" value for links without passwords, and "disable" for password-protected links.
+    /// Filen sets this to "enable" by default. If user toggled off the 'Enable download button' checkbox,
+    /// then this is set to "disable".
     #[serde(rename = "downloadBtn")]
     pub download_btn: DownloadBtnState,
 
@@ -303,7 +304,8 @@ api_response_struct!(
     DirLinkStatusResponsePayload<Option<DirLinkStatusResponseData>>
 );
 
-/// Calls [DIR_LINK_ADD_PATH] endpoint. Used to create public link for a folder or a file.
+/// Calls [DIR_LINK_ADD_PATH] endpoint. Used to add a folder or a file to a folder link.
+///
 /// Filen always creates a link without password first, and optionally sets password later using [dir_link_edit].
 pub fn dir_link_add_request(
     payload: &DirLinkAddRequestPayload,
@@ -314,7 +316,8 @@ pub fn dir_link_add_request(
     })
 }
 
-/// Calls [DIR_LINK_ADD_PATH] endpoint asynchronously. Used to create public link for a folder or a file.
+/// Calls [DIR_LINK_ADD_PATH] endpoint asynchronously. Used to add a folder or a file to a folder link.
+///
 /// Filen always creates a link without password first, and optionally sets password later using [dir_link_edit].
 pub async fn dir_link_add_request_async(
     payload: &DirLinkAddRequestPayload,
@@ -327,7 +330,8 @@ pub async fn dir_link_add_request_async(
         })
 }
 
-/// Calls [DIR_LINK_EDIT_PATH] endpoint. Used to edit public link properties.
+/// Calls [DIR_LINK_EDIT_PATH] endpoint. Used to edit given folder link.
+///
 /// Filen always creates a link without password first, and optionally sets password later using [dir_link_edit].
 pub fn dir_link_edit_request(
     payload: &DirLinkEditRequestPayload,
@@ -338,7 +342,8 @@ pub fn dir_link_edit_request(
     })
 }
 
-/// Calls [DIR_LINK_EDIT_PATH] endpoint asynchronously. Used to edit public link properties.
+/// Calls [DIR_LINK_EDIT_PATH] endpoint asynchronously. Used to edit given folder link.
+///
 /// Filen always creates a link without password first, and optionally sets password later using [dir_link_edit].
 pub async fn dir_link_edit_request_async(
     payload: &DirLinkEditRequestPayload,
@@ -351,7 +356,7 @@ pub async fn dir_link_edit_request_async(
         })
 }
 
-/// Calls [DIR_LINK_REMOVE_PATH] endpoint. Used to remove given link.
+/// Calls [DIR_LINK_REMOVE_PATH] endpoint. Used to remove given folder link.
 pub fn dir_link_remove_request(
     payload: &DirLinkRemoveRequestPayload,
     filen_settings: &FilenSettings,
@@ -361,7 +366,7 @@ pub fn dir_link_remove_request(
     })
 }
 
-/// Calls [DIR_LINK_REMOVE_PATH] endpoint asynchronously. Used to remove given link.
+/// Calls [DIR_LINK_REMOVE_PATH] endpoint asynchronously. Used to remove given folder link.
 pub async fn dir_link_remove_request_async(
     payload: &DirLinkRemoveRequestPayload,
     filen_settings: &FilenSettings,
@@ -373,7 +378,7 @@ pub async fn dir_link_remove_request_async(
         })
 }
 
-/// Calls [DIR_LINK_STATUS_PATH] endpoint. Used to check link properties.
+/// Calls [DIR_LINK_STATUS_PATH] endpoint. Used to check folder link status.
 pub fn dir_link_status_request(
     payload: &DirLinkStatusRequestPayload,
     filen_settings: &FilenSettings,
@@ -383,7 +388,7 @@ pub fn dir_link_status_request(
     })
 }
 
-/// Calls [DIR_LINK_STATUS_PATH] endpoint asynchronously. Used to check link properties.
+/// Calls [DIR_LINK_STATUS_PATH] endpoint asynchronously. Used to check folder link status.
 pub async fn dir_link_status_request_async(
     payload: &DirLinkStatusRequestPayload,
     filen_settings: &FilenSettings,
