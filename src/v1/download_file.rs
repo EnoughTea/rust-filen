@@ -36,9 +36,6 @@ pub enum Error {
 
     #[snafu(display("File key is not 32 bytes long: {}", source))]
     InvalidFileKeySize { source: std::array::TryFromSliceError },
-
-    #[snafu(display("Cannot deserialize response body JSON: {}", source))]
-    CannotDeserializeResponseBodyJson { source: reqwest::Error },
 }
 
 /// Represents file's address on Filen servers, assuming all this file's chunks use the same region and bucket.
@@ -120,6 +117,7 @@ pub fn download_file_chunk(file_chunk_location: &FileChunkLocation, filen_settin
 /// Resulting bytes can be decrypted with file key from file metadata.
 ///
 /// Download server endpoint is <filen download server>/<region>/<bucket>/<file uuid>/<chunk index>
+#[cfg(feature = "async")]
 pub async fn download_file_chunk_async(
     file_chunk_location: &FileChunkLocation,
     filen_settings: &FilenSettings,
@@ -164,6 +162,7 @@ pub fn download_and_decrypt_file_from_data_and_key<W: Write>(
 /// Note that file download is explicitly retriable and requires RetrySettings as an argument.
 /// You can pass [crate::NO_RETRIES] if you really want to fail the entire file download even if a single chunk
 /// download request fails temporarily, otherwise [crate::STANDARD_RETRIES] is a better fit.
+#[cfg(feature = "async")]
 pub async fn download_and_decrypt_file_from_data_and_key_async<W: Write>(
     file_data: &DownloadedFileData,
     file_key: &SecUtf8,
@@ -184,7 +183,8 @@ pub async fn download_and_decrypt_file_from_data_and_key_async<W: Write>(
 
 /// Synchronously downloads and decrypts the specified file from Filen download server defined by a region and a bucket.
 /// Returns total size of downloaded encrypted chunks.
-/// All file chunks are downloaded and decrypted sequentially one by one, with each decrypted chunk immediately written to the provided writer.
+/// All file chunks are downloaded and decrypted sequentially one by one, with each decrypted chunk
+/// immediately written to the provided writer.
 pub fn download_and_decrypt_file<W: Write>(
     file_location: &FileLocation,
     version: u32,
@@ -225,6 +225,7 @@ pub fn download_and_decrypt_file<W: Write>(
 /// Asynchronously downloads the specified file from Filen download server defined by a region and a bucket.
 /// Returns total size of downloaded encrypted file chunks.
 /// All file chunks are downloaded and decrypted concurrently first, and then written to the provided writer.
+#[cfg(feature = "async")]
 pub async fn download_and_decrypt_file_async<W: Write>(
     file_location: &FileLocation,
     version: u32,
@@ -321,7 +322,9 @@ fn decrypt_batch(
     Ok((encrypted_bytes, encrypted_total))
 }
 
-/// Asynchronously downloads Filen file data chunks with given indices. If one download in the batch fails, entire batch fails.
+/// Asynchronously downloads Filen file data chunks with given indices.
+/// If one download in the batch fails, entire batch fails.
+#[cfg(feature = "async")]
 async fn download_batch_async(
     file_location: &FileLocation,
     batch_indices: &[u32],

@@ -106,6 +106,7 @@ pub fn get_dir_request(
 
 /// Calls [GET_DIR_PATH] endpoint asynchronously. It fetches the entire Filen sync folder contents, with option
 /// to return empty data if nothing has been changed since the last call.
+#[cfg(feature = "async")]
 pub async fn get_dir_request_async(
     payload: &GetDirRequestPayload,
     filen_settings: &FilenSettings,
@@ -119,18 +120,35 @@ pub async fn get_dir_request_async(
 
 #[cfg(test)]
 mod tests {
-    use closure::closure;
-    use once_cell::sync::Lazy;
-    use secstr::SecUtf8;
-    use tokio::task::spawn_blocking;
-
-    use crate::test_utils::*;
-
     use super::*;
+    use crate::test_utils::*;
+    use once_cell::sync::Lazy;
+    use pretty_assertions::assert_eq;
+    use secstr::SecUtf8;
 
     static API_KEY: Lazy<SecUtf8> =
         Lazy::new(|| SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"));
 
+    #[test]
+    fn get_dir_request_should_work_for_unchanged_data() -> Result<()> {
+        let (server, filen_settings) = init_server();
+        let request_payload = GetDirRequestPayload {
+            api_key: API_KEY.clone(),
+            sync_folder_uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
+            first_request: false,
+        };
+        let expected_response: GetDirResponsePayload =
+            deserialize_from_file("tests/resources/responses/get_dir_same_data.json");
+        let mock = setup_json_mock(GET_DIR_PATH, &request_payload, &expected_response, &server);
+
+        let response = get_dir_request(&request_payload, &filen_settings)?;
+
+        mock.assert_hits(1);
+        assert_eq!(response, expected_response);
+        Ok(())
+    }
+
+    #[cfg(feature = "async")]
     #[tokio::test]
     async fn get_dir_request_and_async_should_work_for_unchanged_data() -> Result<()> {
         let (server, filen_settings) = init_server();
@@ -143,14 +161,9 @@ mod tests {
             deserialize_from_file("tests/resources/responses/get_dir_same_data.json");
         let mock = setup_json_mock(GET_DIR_PATH, &request_payload, &expected_response, &server);
 
-        let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { get_dir_request(&request_payload, &filen_settings) }),
-        ).await.unwrap()?;
-        mock.assert_hits(1);
-        assert_eq!(response, expected_response);
-
         let async_response = get_dir_request_async(&request_payload, &filen_settings).await?;
-        mock.assert_hits(2);
+
+        mock.assert_hits(1);
         assert_eq!(async_response, expected_response);
         Ok(())
     }

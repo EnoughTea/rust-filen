@@ -199,6 +199,7 @@ pub fn auth_info_request(
 }
 
 /// Calls [AUTH_INFO_PATH] endpoint asynchronously. Used to get used auth version and Filen salt.
+#[cfg(feature = "async")]
 pub async fn auth_info_request_async(
     payload: &AuthInfoRequestPayload,
     filen_settings: &FilenSettings,
@@ -216,6 +217,7 @@ pub fn login_request(payload: &LoginRequestPayload, filen_settings: &FilenSettin
 }
 
 /// Calls [LOGIN_PATH] endpoint asynchronously. Used to get API key, master keys and private key.
+#[cfg(feature = "async")]
 pub async fn login_request_async(
     payload: &LoginRequestPayload,
     filen_settings: &FilenSettings,
@@ -233,9 +235,7 @@ mod tests {
         test_utils::{self, *},
         v1::auth::*,
     };
-    use closure::closure;
     use pretty_assertions::assert_eq;
-    use tokio::task::spawn_blocking;
 
     #[test]
     fn derived_key_to_sent_password_should_return_valid_mkey_and_password() {
@@ -288,8 +288,8 @@ mod tests {
         assert_eq!(decrypted_private_key.unsecure().len(), expected_rsa_key_length);
     }
 
-    #[tokio::test]
-    async fn auth_info_request_and_async_should_work_with_v1() -> Result<()> {
+    #[test]
+    fn auth_info_request_should_work_with_v1() -> Result<()> {
         let (server, filen_settings) = init_server();
         let request_payload = AuthInfoRequestPayload {
             email: SecUtf8::from("test@email.com"),
@@ -299,24 +299,34 @@ mod tests {
             deserialize_from_file("tests/resources/responses/auth_info_v1.json");
         let mock = setup_json_mock(AUTH_INFO_PATH, &request_payload, &expected_response, &server);
 
-        let response = spawn_blocking(closure!(clone request_payload, clone filen_settings, || {
-            auth_info_request(&request_payload, &filen_settings)
-        }))
-        .await
-        .unwrap()?;
+        let response = auth_info_request(&request_payload, &filen_settings)?;
 
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
+        Ok(())
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn auth_info_request_async_should_work_with_v1() -> Result<()> {
+        let (server, filen_settings) = init_server();
+        let request_payload = AuthInfoRequestPayload {
+            email: SecUtf8::from("test@email.com"),
+            two_factor_key: SecUtf8::from("XXXXXX"),
+        };
+        let expected_response: AuthInfoResponsePayload =
+            deserialize_from_file("tests/resources/responses/auth_info_v1.json");
+        let mock = setup_json_mock(AUTH_INFO_PATH, &request_payload, &expected_response, &server);
 
         let async_response = auth_info_request_async(&request_payload, &filen_settings).await?;
 
-        mock.assert_hits(2);
+        mock.assert_hits(1);
         assert_eq!(async_response, expected_response);
         Ok(())
     }
 
-    #[tokio::test]
-    async fn auth_info_request_and_async_should_work_with_v2() -> Result<()> {
+    #[test]
+    fn auth_info_request_should_work_with_v2() -> Result<()> {
         let (server, filen_settings) = init_server();
         let request_payload = AuthInfoRequestPayload {
             email: SecUtf8::from("test@email.com"),
@@ -326,21 +336,34 @@ mod tests {
             deserialize_from_file("tests/resources/responses/auth_info_v2.json");
         let mock = setup_json_mock(AUTH_INFO_PATH, &request_payload, &expected_response, &server);
 
-        let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || auth_info_request(&request_payload, &filen_settings)),
-        )
-        .await.unwrap()?;
+        let response = auth_info_request(&request_payload, &filen_settings)?;
+
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
+        Ok(())
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn auth_info_request_async_should_work_with_v2() -> Result<()> {
+        let (server, filen_settings) = init_server();
+        let request_payload = AuthInfoRequestPayload {
+            email: SecUtf8::from("test@email.com"),
+            two_factor_key: SecUtf8::from("XXXXXX"),
+        };
+        let expected_response: AuthInfoResponsePayload =
+            deserialize_from_file("tests/resources/responses/auth_info_v2.json");
+        let mock = setup_json_mock(AUTH_INFO_PATH, &request_payload, &expected_response, &server);
 
         let async_response = auth_info_request_async(&request_payload, &filen_settings).await?;
-        mock.assert_hits(2);
+
+        mock.assert_hits(1);
         assert_eq!(async_response, expected_response);
         Ok(())
     }
 
-    #[tokio::test]
-    async fn login_request_and_async_should_work_with_v1() -> Result<()> {
+    #[test]
+    fn login_request_should_work_with_v2() -> Result<()> {
         let (server, filen_settings) = init_server();
         let request_payload = LoginRequestPayload {
             email: SecUtf8::from("test@email.com"),
@@ -351,16 +374,27 @@ mod tests {
         let expected_response: LoginResponsePayload = deserialize_from_file("tests/resources/responses/login_v1.json");
         let mock = setup_json_mock(LOGIN_PATH, &request_payload, &expected_response, &server);
 
-        let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || login_request(&request_payload, &filen_settings)),
-        )
-        .await
-        .unwrap()?;
+        let response = login_request(&request_payload, &filen_settings)?;
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
+        Ok(())
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn login_request_async_should_work_with_v1() -> Result<()> {
+        let (server, filen_settings) = init_server();
+        let request_payload = LoginRequestPayload {
+            email: SecUtf8::from("test@email.com"),
+            password: SecUtf8::from("test"),
+            two_factor_key: SecUtf8::from("XXXXXX"),
+            auth_version: 1,
+        };
+        let expected_response: LoginResponsePayload = deserialize_from_file("tests/resources/responses/login_v1.json");
+        let mock = setup_json_mock(LOGIN_PATH, &request_payload, &expected_response, &server);
 
         let async_response = login_request_async(&request_payload, &filen_settings).await?;
-        mock.assert_hits(2);
+        mock.assert_hits(1);
         assert_eq!(async_response, expected_response);
         Ok(())
     }

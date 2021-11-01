@@ -102,6 +102,7 @@ pub fn user_sync_get_data_request(
 }
 
 /// Calls [USER_SYNC_GET_DATA] endpoint asynchronously. Used to fetch user sync storage stats.
+#[cfg(feature = "async")]
 pub async fn user_sync_get_data_request_async(
     payload: &UserSyncGetDataRequestPayload,
     filen_settings: &FilenSettings,
@@ -120,6 +121,7 @@ pub fn user_usage_request(
 }
 
 /// Calls [USER_USAGE_PATH] endpoint asynchronously. Used to fetch user general usage stats.
+#[cfg(feature = "async")]
 pub async fn user_usage_request_async(
     payload: &UserUsageRequestPayload,
     filen_settings: &FilenSettings,

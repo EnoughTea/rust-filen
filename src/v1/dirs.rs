@@ -484,6 +484,7 @@ pub fn user_base_folders_request(
 /// Used to get a list of user's *base* folders, also known as 'cloud drives'.
 /// Note the difference from [user_dirs_request], which returns a set of all user folders, cloud drives or not.
 /// Includes Filen "Default" folder.
+#[cfg(feature = "async")]
 pub async fn user_base_folders_request_async(
     payload: &UserBaseFoldersRequestPayload,
     filen_settings: &FilenSettings,
@@ -506,6 +507,7 @@ pub fn user_dirs_request(
 /// Calls [USER_DIRS_PATH] endpoint asynchronously. Used to get a list of user's folders.
 /// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder,
 /// created by Filen's client.
+#[cfg(feature = "async")]
 pub async fn user_dirs_request_async(
     payload: &UserDirsRequestPayload,
     filen_settings: &FilenSettings,
@@ -528,6 +530,7 @@ pub fn dir_content_request(
 
 /// Calls [DIR_CONTENT_PATH] endpoint asynchronously. Used to get a paginated set of user's files and folders in a way
 /// suited for presentation.
+#[cfg(feature = "async")]
 pub async fn dir_content_request_async(
     payload: &DirContentRequestPayload,
     filen_settings: &FilenSettings,
@@ -550,6 +553,7 @@ pub fn dir_create_request(
 }
 
 /// Calls [DIR_CREATE_PATH] endpoint asynchronously. Creates parentless folder that you need to move yourself later.
+#[cfg(feature = "async")]
 pub async fn dir_create_request_async(
     payload: &DirCreateRequestPayload,
     filen_settings: &FilenSettings,
@@ -574,6 +578,7 @@ pub fn dir_exists_request(
 
 /// Calls [DIR_EXISTS_PATH] endpoint asynchronously.
 /// Checks if folder with the given name exists within the specified parent folder.
+#[cfg(feature = "async")]
 pub async fn dir_exists_request_async(
     payload: &LocationExistsRequestPayload,
     filen_settings: &FilenSettings,
@@ -603,6 +608,7 @@ pub fn dir_move_request(payload: &DirMoveRequestPayload, filen_settings: &FilenS
 ///
 /// If folder is moved into a linked and/or shared folder, don't forget to call [dir_link_add_request]
 /// and/or [share_request] after a successfull move.
+#[cfg(feature = "async")]
 pub async fn dir_move_request_async(
     payload: &DirMoveRequestPayload,
     filen_settings: &FilenSettings,
@@ -629,6 +635,7 @@ pub fn dir_rename_request(
 /// Calls [DIR_RENAME_PATH] endpoint asynchronously.
 /// Changes name of the folder with given UUID to the specified name. It is a good idea to check first if folder
 /// with the new name already exists within the parent folder.
+#[cfg(feature = "async")]
 pub async fn dir_rename_request_async(
     payload: &DirRenameRequestPayload,
     filen_settings: &FilenSettings,
@@ -655,6 +662,7 @@ pub fn dir_trash_request(
 /// Calls [DIR_TRASH_PATH] endpoint asynchronously.
 /// Moves folder with given UUID to trash. Note that folder's UUID will still be considired existing,
 /// so you cannot create a new folder with it.
+#[cfg(feature = "async")]
 pub async fn dir_trash_request_async(
     payload: &LocationTrashRequestPayload,
     filen_settings: &FilenSettings,
@@ -668,14 +676,11 @@ pub async fn dir_trash_request_async(
 
 #[cfg(test)]
 mod tests {
-    use closure::closure;
-    use once_cell::sync::Lazy;
-    use secstr::SecUtf8;
-    use tokio::task::spawn_blocking;
-
-    use crate::test_utils::*;
-
     use super::*;
+    use crate::test_utils::*;
+    use once_cell::sync::Lazy;
+    use pretty_assertions::assert_eq;
+    use secstr::SecUtf8;
 
     static API_KEY: Lazy<SecUtf8> =
         Lazy::new(|| SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"));
@@ -697,33 +702,38 @@ mod tests {
         assert_eq!(payload.dir_type, LocationType::Folder);
     }
 
-    #[tokio::test]
-    async fn user_dirs_request_and_async_should_work() -> Result<()> {
-        let (server, filen_settings) = init_server();
+    #[test]
+    fn user_dirs_request_should_have_proper_contract() {
         let request_payload = UserDirsRequestPayload {
             api_key: API_KEY.clone(),
         };
-        let expected_response: UserDirsResponsePayload =
-            deserialize_from_file("tests/resources/responses/user_dirs_default.json");
-        let mock = setup_json_mock(USER_DIRS_PATH, &request_payload, &expected_response, &server);
-
-        let response = spawn_blocking(closure!(clone request_payload, clone filen_settings, || {
-           user_dirs_request(&request_payload, &filen_settings)
-        }))
-        .await
-        .unwrap()?;
-        mock.assert_hits(1);
-        assert_eq!(response, expected_response);
-
-        let async_response = user_dirs_request_async(&request_payload, &filen_settings).await?;
-        mock.assert_hits(2);
-        assert_eq!(async_response, expected_response);
-        Ok(())
+        validate_contract(
+            USER_DIRS_PATH,
+            request_payload,
+            "tests/resources/responses/user_dirs_default.json",
+            |request_payload, filen_settings| user_dirs_request(&request_payload, &filen_settings),
+        );
     }
 
+    #[cfg(feature = "async")]
     #[tokio::test]
-    async fn dir_create_request_and_async_should_work() -> Result<()> {
-        let (server, filen_settings) = init_server();
+    async fn user_dirs_request_async_should_have_proper_contract() {
+        let request_payload = UserDirsRequestPayload {
+            api_key: API_KEY.clone(),
+        };
+        validate_contract_async(
+            USER_DIRS_PATH,
+            request_payload,
+            "tests/resources/responses/user_dirs_default.json",
+            |request_payload, filen_settings| async move {
+                user_dirs_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
+    }
+
+    #[test]
+    fn dir_create_request_should_have_proper_contract() {
         let request_payload = DirCreateRequestPayload {
             api_key: API_KEY.clone(),
             uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
@@ -731,95 +741,133 @@ mod tests {
             name_hashed: NAME_HASHED.to_owned(),
             dir_type: LocationType::Folder,
         };
-        let expected_response: PlainApiResponse = deserialize_from_file("tests/resources/responses/dir_create.json");
-        let mock = setup_json_mock(DIR_CREATE_PATH, &request_payload, &expected_response, &server);
-
-        let response = spawn_blocking(closure!(clone request_payload, clone filen_settings, || {
-            dir_create_request(&request_payload, &filen_settings)
-        }))
-        .await
-        .unwrap()?;
-        mock.assert_hits(1);
-        assert_eq!(response, expected_response);
-
-        let async_response = dir_create_request_async(&request_payload, &filen_settings).await?;
-        mock.assert_hits(2);
-        assert_eq!(async_response, expected_response);
-        Ok(())
+        validate_contract(
+            DIR_CREATE_PATH,
+            request_payload,
+            "tests/resources/responses/dir_create.json",
+            |request_payload, filen_settings| dir_create_request(&request_payload, &filen_settings),
+        );
     }
 
+    #[cfg(feature = "async")]
     #[tokio::test]
-    async fn dir_exists_request_and_async_should_work() -> Result<()> {
-        let (server, filen_settings) = init_server();
+    async fn dir_create_request_async_should_have_proper_contract() {
+        let request_payload = DirCreateRequestPayload {
+            api_key: API_KEY.clone(),
+            uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
+            name_metadata: NAME_METADATA.to_owned(),
+            name_hashed: NAME_HASHED.to_owned(),
+            dir_type: LocationType::Folder,
+        };
+        validate_contract_async(
+            DIR_CREATE_PATH,
+            request_payload,
+            "tests/resources/responses/dir_create.json",
+            |request_payload, filen_settings| async move {
+                dir_create_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
+    }
+
+    #[test]
+    fn dir_exists_request_should_have_proper_contract() {
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
             parent: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
             name_hashed: NAME_HASHED.to_owned(),
         };
-        let expected_response: LocationExistsResponsePayload =
-            deserialize_from_file("tests/resources/responses/dir_exists.json");
-        let mock = setup_json_mock(DIR_EXISTS_PATH, &request_payload, &expected_response, &server);
-
-        let response = spawn_blocking(
-            closure!(clone request_payload, clone filen_settings, || { dir_exists_request(&request_payload, &filen_settings) }),
-        ).await.unwrap()?;
-        mock.assert_hits(1);
-        assert_eq!(response, expected_response);
-
-        let async_response = dir_exists_request_async(&request_payload, &filen_settings).await?;
-        mock.assert_hits(2);
-        assert_eq!(async_response, expected_response);
-        Ok(())
+        validate_contract(
+            DIR_EXISTS_PATH,
+            request_payload,
+            "tests/resources/responses/dir_exists.json",
+            |request_payload, filen_settings| dir_exists_request(&request_payload, &filen_settings),
+        );
     }
 
+    #[cfg(feature = "async")]
     #[tokio::test]
-    async fn dir_move_request_and_async_should_work() -> Result<()> {
-        let (server, filen_settings) = init_server();
+    async fn dir_exists_request_async_should_have_proper_contract() {
+        let request_payload = LocationExistsRequestPayload {
+            api_key: API_KEY.clone(),
+            parent: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
+            name_hashed: NAME_HASHED.to_owned(),
+        };
+        validate_contract_async(
+            DIR_EXISTS_PATH,
+            request_payload,
+            "tests/resources/responses/dir_exists.json",
+            |request_payload, filen_settings| async move {
+                dir_exists_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
+    }
+
+    #[test]
+    fn dir_move_request_should_have_proper_contract() {
         let request_payload = DirMoveRequestPayload {
             api_key: API_KEY.clone(),
             folder_uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
             uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
         };
-        let expected_response: PlainApiResponse = deserialize_from_file("tests/resources/responses/dir_move.json");
-        let mock = setup_json_mock(DIR_MOVE_PATH, &request_payload, &expected_response, &server);
-
-        let response = spawn_blocking(closure!(clone request_payload, clone filen_settings, || {
-            dir_move_request(&request_payload, &filen_settings)
-        }))
-        .await
-        .unwrap()?;
-        mock.assert_hits(1);
-        assert_eq!(response, expected_response);
-
-        let async_response = dir_move_request_async(&request_payload, &filen_settings).await?;
-        mock.assert_hits(2);
-        assert_eq!(async_response, expected_response);
-        Ok(())
+        validate_contract(
+            DIR_MOVE_PATH,
+            request_payload,
+            "tests/resources/responses/dir_move.json",
+            |request_payload, filen_settings| dir_move_request(&request_payload, &filen_settings),
+        );
     }
 
+    #[cfg(feature = "async")]
     #[tokio::test]
-    async fn dir_rename_request_and_async_should_work() -> Result<()> {
-        let (server, filen_settings) = init_server();
+    async fn dir_move_request_async_should_have_proper_contract() {
+        let request_payload = DirMoveRequestPayload {
+            api_key: API_KEY.clone(),
+            folder_uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
+            uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
+        };
+        validate_contract_async(
+            DIR_MOVE_PATH,
+            request_payload,
+            "tests/resources/responses/dir_move.json",
+            |request_payload, filen_settings| async move { dir_move_request_async(&request_payload, &filen_settings).await },
+        ).await;
+    }
+
+    #[test]
+    fn dir_rename_request_should_have_proper_contract() {
         let request_payload = DirRenameRequestPayload {
             api_key: API_KEY.clone(),
             uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
             name_metadata: NAME_METADATA.to_owned(),
             name_hashed: NAME_HASHED.to_owned(),
         };
-        let expected_response: PlainApiResponse = deserialize_from_file("tests/resources/responses/dir_rename.json");
-        let mock = setup_json_mock(DIR_RENAME_PATH, &request_payload, &expected_response, &server);
+        validate_contract(
+            DIR_RENAME_PATH,
+            request_payload,
+            "tests/resources/responses/dir_rename.json",
+            |request_payload, filen_settings| dir_rename_request(&request_payload, &filen_settings),
+        );
+    }
 
-        let response = spawn_blocking(closure!(clone request_payload, clone filen_settings, || {
-            dir_rename_request(&request_payload, &filen_settings)
-        }))
-        .await
-        .unwrap()?;
-        mock.assert_hits(1);
-        assert_eq!(response, expected_response);
-
-        let async_response = dir_rename_request_async(&request_payload, &filen_settings).await?;
-        mock.assert_hits(2);
-        assert_eq!(async_response, expected_response);
-        Ok(())
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn dir_rename_request_async_should_have_proper_contract() {
+        let request_payload = DirRenameRequestPayload {
+            api_key: API_KEY.clone(),
+            uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
+            name_metadata: NAME_METADATA.to_owned(),
+            name_hashed: NAME_HASHED.to_owned(),
+        };
+        validate_contract_async(
+            DIR_RENAME_PATH,
+            request_payload,
+            "tests/resources/responses/dir_rename.json",
+            |request_payload, filen_settings| async move {
+                dir_rename_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
     }
 }

@@ -2,20 +2,32 @@
 //! You can use it to add some missing API query or re-implement some of them to your liking.
 use once_cell::sync::Lazy;
 use rand::{thread_rng, Rng};
-use reqwest::header;
-use reqwest::Url;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use snafu::{ResultExt, Snafu};
+#[cfg(not(feature = "async"))]
+use std::io::Read;
 use std::time::Duration;
+use url::Url;
 
 use crate::filen_settings::FilenSettings;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-static ASYNC_CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
-static BLOCKING_CLIENT: Lazy<reqwest::blocking::Client> = Lazy::new(reqwest::blocking::Client::new);
-static CRATE_USER_AGENT: &str = "Rust-Filen API (+https://github.com/EnoughTea/rust-filen)";
+#[cfg(feature = "async")]
+static ASYNC_CLIENT: Lazy<reqwest::Client> =
+    Lazy::new(|| reqwest::Client::builder().user_agent(CRATE_USER_AGENT).build().unwrap());
+#[cfg(feature = "async")]
+static BLOCKING_CLIENT: Lazy<reqwest::blocking::Client> = Lazy::new(|| {
+    reqwest::blocking::Client::builder()
+        .user_agent(CRATE_USER_AGENT)
+        .build()
+        .unwrap()
+});
+#[cfg(not(feature = "async"))]
+static AGENT: Lazy<ureq::Agent> = Lazy::new(|| ureq::AgentBuilder::new().user_agent(CRATE_USER_AGENT).build());
+
+const CRATE_USER_AGENT: &str = "Rust-Filen API (+https://github.com/EnoughTea/rust-filen)";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -31,11 +43,21 @@ pub enum Error {
         source: url::ParseError,
     },
 
+    #[cfg(feature = "async")]
     #[snafu(display("Cannot deserialize response body JSON: {}", source))]
-    CannotDeserializeResponseBodyJson { source: reqwest::Error },
+    ReqwestCannotDeserializeResponseBodyJson { source: reqwest::Error },
 
+    #[cfg(not(feature = "async"))]
+    #[snafu(display("Cannot deserialize response body JSON: {}", source))]
+    UreqCannotDeserializeResponseBodyJson { source: std::io::Error },
+
+    #[cfg(feature = "async")]
     #[snafu(display("{}: {}", message, source))]
-    WebRequestFailed { message: String, source: reqwest::Error },
+    ReqwestWebRequestFailed { message: String, source: reqwest::Error },
+
+    #[cfg(not(feature = "async"))]
+    #[snafu(display("{}: {}", message, source))]
+    UreqWebRequestFailed { message: String, source: ureq::Error },
 }
 
 /// Sends POST with given payload to one of Filen API servers.
@@ -58,6 +80,7 @@ pub fn query_filen_api<T: Serialize + ?Sized, U: DeserializeOwned>(
 
 /// Asynchronously sends POST with given payload to one of Filen API servers.
 /// `api_endpoint` parameter should be relative, eg `/v1/some/api`, as one of the Filen servers will be chosen randomly.
+#[cfg(feature = "async")]
 pub async fn query_filen_api_async<T: Serialize + ?Sized, U: DeserializeOwned>(
     api_endpoint: &str,
     payload: &T,
@@ -78,16 +101,27 @@ pub async fn query_filen_api_async<T: Serialize + ?Sized, U: DeserializeOwned>(
 
 pub fn download_from_filen(api_endpoint: &str, filen_settings: &FilenSettings) -> Result<Vec<u8>> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.download_servers)?;
-    get_bytes(filen_endpoint.as_str(), filen_settings.download_chunk_timeout.as_secs()).context(WebRequestFailed {
-        message: format!("Failed to download file chunk from '{}'", filen_endpoint),
-    })
+    let response = get_bytes(filen_endpoint.as_str(), filen_settings.download_chunk_timeout.as_secs());
+    #[cfg(feature = "async")]
+    {
+        response.context(ReqwestWebRequestFailed {
+            message: format!("Failed to download file chunk from '{}'", filen_endpoint),
+        })
+    }
+    #[cfg(not(feature = "async"))]
+    {
+        response.context(UreqWebRequestFailed {
+            message: format!("Failed to download file chunk from '{}'", filen_endpoint),
+        })
+    }
 }
 
+#[cfg(feature = "async")]
 pub async fn download_from_filen_async(api_endpoint: &str, filen_settings: &FilenSettings) -> Result<Vec<u8>> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.download_servers)?;
     get_bytes_async(filen_endpoint.as_str(), filen_settings.download_chunk_timeout.as_secs())
         .await
-        .context(WebRequestFailed {
+        .context(ReqwestWebRequestFailed {
             message: format!("Failed to download file chunk (async) from '{}'", filen_endpoint),
         })
 }
@@ -106,6 +140,7 @@ pub fn upload_to_filen<U: DeserializeOwned>(
 }
 
 /// Asynchronously sends POST with given data blob to one of Filen upload servers.
+#[cfg(feature = "async")]
 pub async fn upload_to_filen_async<U: DeserializeOwned>(
     api_endpoint: &str,
     blob: Vec<u8>,
@@ -126,56 +161,104 @@ fn choose_filen_server(servers: &[Url]) -> &Url {
 }
 
 /// Sends GET with the given timeout to the specified URL.
+#[cfg(not(feature = "async"))]
+fn get(url: &str, timeout_secs: u64) -> Result<ureq::Response, ureq::Error> {
+    AGENT.get(url).timeout(Duration::from_secs(timeout_secs)).call()
+}
+
+#[cfg(feature = "async")]
+/// Sends GET with the given timeout to the specified URL.
 fn get(url: &str, timeout_secs: u64) -> Result<reqwest::blocking::Response, reqwest::Error> {
     BLOCKING_CLIENT
         .get(url)
-        .header(header::USER_AGENT, CRATE_USER_AGENT)
         .timeout(Duration::from_secs(timeout_secs))
         .send()
 }
 
 /// Asynchronously sends GET with the given timeout to the specified URL.
+#[cfg(feature = "async")]
 async fn get_async(url: &str, timeout_secs: u64) -> Result<reqwest::Response, reqwest::Error> {
     ASYNC_CLIENT
         .get(url)
-        .header(header::USER_AGENT, CRATE_USER_AGENT)
         .timeout(Duration::from_secs(timeout_secs))
         .send()
         .await
 }
 
+/// Sends GET with the given timeout to the specified URL.
+#[cfg(not(feature = "async"))]
+fn get_bytes(filen_endpoint: &str, timeout_secs: u64) -> Result<Vec<u8>, ureq::Error> {
+    let response = get(filen_endpoint, timeout_secs)?;
+    let content_length = response
+        .header("Content-Length")
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(1024 * 1024);
+
+    let mut bytes: Vec<u8> = Vec::with_capacity(content_length);
+    response.into_reader().read_to_end(&mut bytes)?;
+    Ok(bytes)
+}
+
+/// Sends GET with the given timeout to the specified URL.
+#[cfg(feature = "async")]
 fn get_bytes(filen_endpoint: &str, timeout_secs: u64) -> Result<Vec<u8>, reqwest::Error> {
     let response = get(filen_endpoint, timeout_secs)?;
     response.bytes().map(|bytes| bytes.to_vec())
 }
 
+#[cfg(feature = "async")]
 async fn get_bytes_async(filen_endpoint: &str, timeout_secs: u64) -> Result<Vec<u8>, reqwest::Error> {
     let response = get_async(filen_endpoint, timeout_secs).await?;
     response.bytes().await.map(|bytes| bytes.to_vec())
 }
 
 /// Sends POST with given blob and timeout to the specified URL.
+#[cfg(not(feature = "async"))]
+fn post_blob(url: &str, blob: &[u8], timeout_secs: u64) -> Result<ureq::Response, ureq::Error> {
+    AGENT
+        .post(url)
+        .timeout(Duration::from_secs(timeout_secs))
+        .send_bytes(blob)
+}
+
+/// Sends POST with given blob and timeout to the specified URL.
+#[cfg(feature = "async")]
 fn post_blob(url: &str, blob: &[u8], timeout_secs: u64) -> Result<reqwest::blocking::Response, reqwest::Error> {
     BLOCKING_CLIENT
         .post(url)
         .body(blob.to_owned())
-        .header(header::USER_AGENT, CRATE_USER_AGENT)
         .timeout(Duration::from_secs(timeout_secs))
         .send()
 }
 
 /// Asynchronously sends POST with given blob and timeout to the specified URL.
+#[cfg(feature = "async")]
 async fn post_blob_async(url: &str, blob: &[u8], timeout_secs: u64) -> Result<reqwest::Response, reqwest::Error> {
     ASYNC_CLIENT
         .post(url)
         .body(blob.to_owned())
-        .header(header::USER_AGENT, CRATE_USER_AGENT)
         .timeout(Duration::from_secs(timeout_secs))
         .send()
         .await
 }
 
 /// Sends POST with given payload and timeout to the specified URL.
+#[cfg(not(feature = "async"))]
+pub(crate) fn post_json<T: Serialize + ?Sized>(
+    url: &str,
+    payload: &T,
+    timeout_secs: u64,
+) -> Result<ureq::Response, ureq::Error> {
+    use serde_json::json;
+
+    AGENT
+        .post(url)
+        .timeout(Duration::from_secs(timeout_secs))
+        .send_json(json!(payload))
+}
+
+/// Sends POST with given payload and timeout to the specified URL.
+#[cfg(feature = "async")]
 fn post_json<T: Serialize + ?Sized>(
     url: &str,
     payload: &T,
@@ -184,12 +267,12 @@ fn post_json<T: Serialize + ?Sized>(
     BLOCKING_CLIENT
         .post(url)
         .json(payload)
-        .header(header::USER_AGENT, CRATE_USER_AGENT)
         .timeout(Duration::from_secs(timeout_secs))
         .send()
 }
 
 /// Asynchronously sends POST with given payload and timeout to the specified URL.
+#[cfg(feature = "async")]
 async fn post_json_async<T: Serialize + ?Sized>(
     url: &str,
     payload: &T,
@@ -198,7 +281,6 @@ async fn post_json_async<T: Serialize + ?Sized>(
     ASYNC_CLIENT
         .post(url)
         .json(payload)
-        .header(header::USER_AGENT, CRATE_USER_AGENT)
         .timeout(Duration::from_secs(timeout_secs))
         .send()
         .await
@@ -213,6 +295,21 @@ fn produce_filen_endpoint(api_endpoint: &str, servers: &[Url]) -> Result<Url> {
     })
 }
 
+#[cfg(not(feature = "async"))]
+fn deserialize_response<U, F>(request_result: Result<ureq::Response, ureq::Error>, error_message: F) -> Result<U>
+where
+    U: DeserializeOwned,
+    F: FnOnce() -> String,
+{
+    let response = request_result.context(UreqWebRequestFailed {
+        message: error_message(),
+    })?;
+    response
+        .into_json::<U>()
+        .context(UreqCannotDeserializeResponseBodyJson {})
+}
+
+#[cfg(feature = "async")]
 fn deserialize_response<U, F>(
     request_result: Result<reqwest::blocking::Response, reqwest::Error>,
     error_message: F,
@@ -221,12 +318,15 @@ where
     U: DeserializeOwned,
     F: FnOnce() -> String,
 {
-    let response = request_result.context(WebRequestFailed {
+    let response = request_result.context(ReqwestWebRequestFailed {
         message: error_message(),
     })?;
-    response.json::<U>().context(CannotDeserializeResponseBodyJson {})
+    response
+        .json::<U>()
+        .context(ReqwestCannotDeserializeResponseBodyJson {})
 }
 
+#[cfg(feature = "async")]
 async fn deserialize_response_async<U, F>(
     request_result: Result<reqwest::Response, reqwest::Error>,
     error_message: F,
@@ -235,8 +335,11 @@ where
     U: DeserializeOwned,
     F: FnOnce() -> String,
 {
-    let response = request_result.context(WebRequestFailed {
+    let response = request_result.context(ReqwestWebRequestFailed {
         message: error_message(),
     })?;
-    response.json::<U>().await.context(CannotDeserializeResponseBodyJson {})
+    response
+        .json::<U>()
+        .await
+        .context(ReqwestCannotDeserializeResponseBodyJson {})
 }

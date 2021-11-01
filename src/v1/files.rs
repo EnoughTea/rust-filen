@@ -268,6 +268,7 @@ pub fn file_archive_request(
 /// Calls [FILE_ARCHIVE_PATH] endpoint asynchronously.
 /// Replaces one version of a file with another version of the same file.
 /// Used when the file you want to upload already exists, so existing file needs to be archived first.
+#[cfg(feature = "async")]
 pub async fn file_archive_request_async(
     payload: &FileArchiveRequestPayload,
     filen_settings: &FilenSettings,
@@ -292,6 +293,7 @@ pub fn file_exists_request(
 
 /// Calls [FILE_EXISTS_PATH] endpoint asynchronously.
 /// Checks if file with the given name exists within the specified parent folder.
+#[cfg(feature = "async")]
 pub async fn file_exists_request_async(
     payload: &LocationExistsRequestPayload,
     filen_settings: &FilenSettings,
@@ -321,6 +323,7 @@ pub fn file_move_request(payload: &FileMoveRequestPayload, filen_settings: &File
 ///
 /// If file is moved into a linked and/or shared folder, don't forget to call [dir_link_add_request]
 /// and/or [share_request] after a successfull move.
+#[cfg(feature = "async")]
 pub async fn file_move_request_async(
     payload: &FileMoveRequestPayload,
     filen_settings: &FilenSettings,
@@ -347,6 +350,7 @@ pub fn file_rename_request(
 /// Calls [FILE_RENAME_PATH] endpoint asynchronously.
 /// Changes name of the file with given UUID to the specified name. It is a good idea to check first if file
 /// with the new name already exists within the parent folder.
+#[cfg(feature = "async")]
 pub async fn file_rename_request_async(
     payload: &FileRenameRequestPayload,
     filen_settings: &FilenSettings,
@@ -373,6 +377,7 @@ pub fn file_trash_request(
 /// Calls [FILE_TRASH_PATH] endpoint asynchronously.
 /// Moves file with given UUID to trash. Note that file's UUID will still be considired existing,
 /// so you cannot create a new file with it.
+#[cfg(feature = "async")]
 pub async fn file_trash_request_async(
     payload: &LocationTrashRequestPayload,
     filen_settings: &FilenSettings,
@@ -386,12 +391,10 @@ pub async fn file_trash_request_async(
 
 #[cfg(test)]
 mod tests {
-    use closure::closure;
+    use super::*;
+    use crate::test_utils::*;
     use once_cell::sync::Lazy;
     use secstr::SecUtf8;
-    use tokio::task::spawn_blocking;
-
-    use crate::{test_utils::*, v1::*};
 
     static API_KEY: Lazy<SecUtf8> =
         Lazy::new(|| SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"));
@@ -399,8 +402,8 @@ mod tests {
     const NAME_METADATA: &str = "U2FsdGVkX19d09wR+Ti+qMO7o8habxXkS501US7uv96+zbHHZwDDPbnq1di1z0/S";
     const NAME_HASHED: &str = "19d24c63b1170a0b1b40520a636a25235735f39f";
 
-    #[tokio::test]
-    async fn file_exists_request_and_async_should_work() -> crate::v1::files::Result<()> {
+    #[test]
+    fn file_exists_request_should_work() -> Result<()> {
         let (server, filen_settings) = init_server();
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
@@ -411,16 +414,28 @@ mod tests {
             deserialize_from_file("tests/resources/responses/file_exists.json");
         let mock = setup_json_mock(super::FILE_EXISTS_PATH, &request_payload, &expected_response, &server);
 
-        let response = spawn_blocking(closure!(clone request_payload, clone filen_settings, || {
-            file_exists_request(&request_payload, &filen_settings)
-        }))
-        .await
-        .unwrap()?;
+        let response = file_exists_request(&request_payload, &filen_settings)?;
+
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
+        Ok(())
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn file_exists_request_async_should_work() -> Result<()> {
+        let (server, filen_settings) = init_server();
+        let request_payload = LocationExistsRequestPayload {
+            api_key: API_KEY.clone(),
+            parent: "b640414e-367e-4df6-b31a-030fd639bcff".to_owned(),
+            name_hashed: NAME_HASHED.to_owned(),
+        };
+        let expected_response: LocationExistsResponsePayload =
+            deserialize_from_file("tests/resources/responses/file_exists.json");
+        let mock = setup_json_mock(super::FILE_EXISTS_PATH, &request_payload, &expected_response, &server);
 
         let async_response = file_exists_request_async(&request_payload, &filen_settings).await?;
-        mock.assert_hits(2);
+        mock.assert_hits(1);
         assert_eq!(async_response, expected_response);
         Ok(())
     }

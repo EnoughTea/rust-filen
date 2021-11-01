@@ -2,7 +2,10 @@
 #![crate_type = "staticlib"]
 #![forbid(unsafe_code)]
 
+#[cfg(not(feature = "async"))]
+pub use ureq;
 pub use {filen_settings::*, retry_settings::*};
+#[cfg(feature = "async")]
 pub use {fure, reqwest};
 pub use {retry, secstr};
 

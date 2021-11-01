@@ -319,6 +319,7 @@ pub fn dir_link_add_request(
 /// Calls [DIR_LINK_ADD_PATH] endpoint asynchronously. Used to add a folder or a file to a folder link.
 ///
 /// Filen always creates a link without password first, and optionally sets password later using [dir_link_edit].
+#[cfg(feature = "async")]
 pub async fn dir_link_add_request_async(
     payload: &DirLinkAddRequestPayload,
     filen_settings: &FilenSettings,
@@ -345,6 +346,7 @@ pub fn dir_link_edit_request(
 /// Calls [DIR_LINK_EDIT_PATH] endpoint asynchronously. Used to edit given folder link.
 ///
 /// Filen always creates a link without password first, and optionally sets password later using [dir_link_edit].
+#[cfg(feature = "async")]
 pub async fn dir_link_edit_request_async(
     payload: &DirLinkEditRequestPayload,
     filen_settings: &FilenSettings,
@@ -367,6 +369,7 @@ pub fn dir_link_remove_request(
 }
 
 /// Calls [DIR_LINK_REMOVE_PATH] endpoint asynchronously. Used to remove given folder link.
+#[cfg(feature = "async")]
 pub async fn dir_link_remove_request_async(
     payload: &DirLinkRemoveRequestPayload,
     filen_settings: &FilenSettings,
@@ -389,6 +392,7 @@ pub fn dir_link_status_request(
 }
 
 /// Calls [DIR_LINK_STATUS_PATH] endpoint asynchronously. Used to check folder link status.
+#[cfg(feature = "async")]
 pub async fn dir_link_status_request_async(
     payload: &DirLinkStatusRequestPayload,
     filen_settings: &FilenSettings,

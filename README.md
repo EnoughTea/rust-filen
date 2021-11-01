@@ -14,8 +14,8 @@ use crate::{*, v1::*};
 // All Filen API queries and related structs are in v1::*,
 // while crate::* provides FilenSettings, RetrySettings and crypto functions 
 // to manually encrypt/decrypt Filen metadata, just in case you need them.
-use anyhow::*;  // simple error handling for demo purposes
-use secstr::SecUtf8;    // or crate::secstr::SecUtf8, it re-exports secstr just in case
+use anyhow::bail;  // bail is used for demo purposes, it's not really needed.
+use secstr::SecUtf8;    // ...or crate::secstr::SecUtf8, it re-exports secstr just in case.
 ```
 
 There are async versions of every API query, but examples will be blocking, this README is big enough as it is.

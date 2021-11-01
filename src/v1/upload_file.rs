@@ -13,10 +13,10 @@ use crate::{
     utils,
     v1::*,
 };
-use reqwest::Url;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use snafu::{Backtrace, ResultExt, Snafu};
+use url::Url;
 use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -283,6 +283,7 @@ pub fn upload_done_request(
 
 /// Calls [UPLOAD_DONE_PATH] endpoint asynchronously. Used to mark upload as done after all file chunks
 /// (+1 dummy chunk) were uploaded.
+#[cfg(feature = "async")]
 pub async fn upload_done_request_async(
     payload: &UploadDoneRequestPayload,
     filen_settings: &FilenSettings,
@@ -325,6 +326,7 @@ pub fn encrypt_and_upload_chunk(
 /// Calls [UPLOAD_PATH] endpoint asynchronously. Used to encrypt and upload a file chunk to Filen.
 /// After uploading all file chunks, upload additional empty chunk with incremented chunk index.
 /// That way Filen knows that file uploading is complete, and 'upload done' call for file's upload key will succeed.
+#[cfg(feature = "async")]
 pub async fn encrypt_and_upload_chunk_async(
     api_key: &SecUtf8,
     chunk_index: u32,
@@ -419,6 +421,7 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
 /// Note that file upload is explicitly retriable and always requires RetrySettings as an argument.
 /// You can pass [crate::NO_RETRIES] if you really want to fail the entire file upload  even if a single chunk
 /// upload request fails temporarily, otherwise [crate::STANDARD_RETRIES] is a better fit.
+#[cfg(feature = "async")]
 pub async fn encrypt_and_upload_file_async<R: Read + Seek>(
     api_key: &SecUtf8,
     parent_uuid: &str,
@@ -501,7 +504,8 @@ where
 }
 
 /// Uploads all real file chunks to Filen; do not forget to upload dummy chunk after real chunks are uploaded.
-/// Returned file chunk upload responses are in order: first upload response corresponds to the first file chunk uploaded, and so on.
+/// Returned file chunk upload responses are in order: first upload response corresponds to the
+/// first file chunk uploaded, and so on.
 fn upload_chunks<R: Read + Seek>(
     api_key: &SecUtf8,
     file_chunk_size: u32,
@@ -521,7 +525,9 @@ fn upload_chunks<R: Read + Seek>(
 }
 
 /// Uploads all real file chunks to Filen; do not forget to upload dummy chunk after real chunks are uploaded.
-/// Returned file chunk upload responses are in order: first upload response corresponds to the first file chunk uploaded, and so on.
+/// Returned file chunk upload responses are in order: first upload response corresponds to the
+/// first file chunk uploaded, and so on.
+#[cfg(feature = "async")]
 async fn upload_chunks_async<R: Read + Seek>(
     api_key: &SecUtf8,
     file_chunk_size: u32,
@@ -584,6 +590,7 @@ fn send_dummy_chunk(
         .retry(|| encrypt_and_upload_chunk(api_key, last_index + 1, &dummy_buf, upload_properties, filen_settings))
 }
 
+#[cfg(feature = "async")]
 async fn send_dummy_chunk_async(
     chunk_size: u32,
     file_size: u64,
@@ -616,9 +623,9 @@ fn calculate_chunk_count(chunk_size: u32, file_size: u64) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use std::time::SystemTime;
-
     use super::*;
+    use pretty_assertions::assert_eq;
+    use std::time::SystemTime;
 
     #[test]
     fn uploaded_file_properties_should_produce_query_string_with_expected_parts() {

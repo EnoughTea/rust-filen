@@ -253,6 +253,7 @@ pub fn key_pair_info_request(
 }
 
 /// Calls [KEY_PAIR_INFO_PATH] endpoint asynchronously. Used to get RSA public/private key pair.
+#[cfg(feature = "async")]
 pub async fn key_pair_info_request_async(
     payload: &UserKeyPairInfoRequestPayload,
     filen_settings: &FilenSettings,
@@ -271,6 +272,7 @@ pub fn key_pair_update_request(
 }
 
 /// Calls [KEY_PAIR_UPDATE_PATH] endpoint asynchronously. Used to set user's RSA public/private key pair.
+#[cfg(feature = "async")]
 pub async fn key_pair_update_request_async(
     payload: &UserKeyPairUpdateRequestPayload,
     filen_settings: &FilenSettings,
@@ -295,6 +297,7 @@ pub fn master_keys_fetch_request(
 /// Calls [MASTER_KEYS_PATH] endpoint asynchronously. Used to get/update user's master keys.
 /// My guess is via that method new user master keys, passed in request payload, get joined with current
 /// Filen-known user master keys, and resulting master keys chain is returned in response payload.
+#[cfg(feature = "async")]
 pub async fn master_keys_fetch_request_async(
     payload: &MasterKeysFetchRequestPayload,
     filen_settings: &FilenSettings,
@@ -308,11 +311,9 @@ pub async fn master_keys_fetch_request_async(
 
 #[cfg(test)]
 mod tests {
-    use closure::closure;
-    use tokio::task::spawn_blocking;
-
     use super::*;
     use crate::test_utils::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn decode_public_key_should_return_decoded_bytes() {
@@ -346,8 +347,8 @@ mod tests {
         assert_eq!(decrypted_private_key.unsecure(), expected.unsecure());
     }
 
-    #[tokio::test]
-    async fn master_keys_fetch_request_and_async_should_work() -> Result<()> {
+    #[test]
+    fn master_keys_fetch_request_should_work() -> Result<()> {
         let (server, filen_settings) = init_server();
         let request_payload = MasterKeysFetchRequestPayload {
             api_key: SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"),
@@ -358,16 +359,29 @@ mod tests {
             deserialize_from_file("tests/resources/responses/user_masterKeys.json");
         let mock = setup_json_mock(MASTER_KEYS_PATH, &request_payload, &expected_response, &server);
 
-        let response = spawn_blocking(closure!(clone request_payload, clone filen_settings, || {
-            master_keys_fetch_request(&request_payload, &filen_settings)
-        }))
-        .await
-        .unwrap()?;
+        let response = master_keys_fetch_request(&request_payload, &filen_settings)?;
+
         mock.assert_hits(1);
         assert_eq!(response, expected_response);
+        Ok(())
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn master_keys_fetch_request_async_should_work() -> Result<()> {
+        let (server, filen_settings) = init_server();
+        let request_payload = MasterKeysFetchRequestPayload {
+            api_key: SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"),
+            master_keys_metadata:
+                "U2FsdGVkX1/P4QDMaiaanx8kpL7fY+v/f3dSzC9Ajl58gQg5bffqGUbOIzROwGQn8m5NAZa0tRnVya84aJnf1w==".to_owned(),
+        };
+        let expected_response: MasterKeysFetchResponsePayload =
+            deserialize_from_file("tests/resources/responses/user_masterKeys.json");
+        let mock = setup_json_mock(MASTER_KEYS_PATH, &request_payload, &expected_response, &server);
 
         let async_response = master_keys_fetch_request_async(&request_payload, &filen_settings).await?;
-        mock.assert_hits(2);
+
+        mock.assert_hits(1);
         assert_eq!(async_response, expected_response);
         Ok(())
     }

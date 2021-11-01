@@ -51,6 +51,7 @@ impl RetrySettings {
             .take(self.max_tries)
     }
 
+    #[cfg(feature = "async")]
     pub async fn retry_async<T, CF, OpErr>(self: &RetrySettings, operation: CF) -> Result<T, OpErr>
     where
         CF: fure::CreateFuture<T, OpErr>,
