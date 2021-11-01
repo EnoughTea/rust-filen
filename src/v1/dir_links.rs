@@ -306,7 +306,7 @@ api_response_struct!(
 
 /// Calls [DIR_LINK_ADD_PATH] endpoint. Used to add a folder or a file to a folder link.
 ///
-/// Filen always creates a link without password first, and optionally sets password later using [dir_link_edit].
+/// Filen always creates a link without password first, and optionally sets password later using [dir_link_edit_request].
 pub fn dir_link_add_request(
     payload: &DirLinkAddRequestPayload,
     filen_settings: &FilenSettings,
@@ -318,7 +318,7 @@ pub fn dir_link_add_request(
 
 /// Calls [DIR_LINK_ADD_PATH] endpoint asynchronously. Used to add a folder or a file to a folder link.
 ///
-/// Filen always creates a link without password first, and optionally sets password later using [dir_link_edit].
+/// Filen always creates a link without password first, and optionally sets password later using [dir_link_edit_request].
 #[cfg(feature = "async")]
 pub async fn dir_link_add_request_async(
     payload: &DirLinkAddRequestPayload,
@@ -333,7 +333,7 @@ pub async fn dir_link_add_request_async(
 
 /// Calls [DIR_LINK_EDIT_PATH] endpoint. Used to edit given folder link.
 ///
-/// Filen always creates a link without password first, and optionally sets password later using [dir_link_edit].
+/// Filen always creates a link without password first, and optionally sets password later using this query.
 pub fn dir_link_edit_request(
     payload: &DirLinkEditRequestPayload,
     filen_settings: &FilenSettings,
@@ -345,7 +345,7 @@ pub fn dir_link_edit_request(
 
 /// Calls [DIR_LINK_EDIT_PATH] endpoint asynchronously. Used to edit given folder link.
 ///
-/// Filen always creates a link without password first, and optionally sets password later using [dir_link_edit].
+/// Filen always creates a link without password first, and optionally sets password later using this query.
 #[cfg(feature = "async")]
 pub async fn dir_link_edit_request_async(
     payload: &DirLinkEditRequestPayload,

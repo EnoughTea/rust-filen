@@ -196,7 +196,7 @@ pub fn decrypt_metadata_str(data: &str, m_key: &str) -> Result<String> {
 
 /// Encrypts file chunk for uploading to Filen. Resulting encoded chunk bytes are treated as unicode scalars,
 /// hence the resulting type. File key can be fetched from file metadata.
-/// Note that [encrypt_file_data] and [decrypt_file_data] are not symmetric.
+/// Note that [encrypt_file_chunk] and [decrypt_file_chunk] are not symmetric.
 /// You are supposed to encrypt your bytes with [encrypt_file_chunk] and send them to Filen,
 /// instead of passing them to [decrypt_file_chunk] for some reason.
 pub fn encrypt_file_chunk(chunk_data: &[u8], file_key: &[u8; AES_CBC_KEY_LENGTH], version: u32) -> Result<String> {
@@ -217,9 +217,9 @@ pub fn encrypt_file_chunk(chunk_data: &[u8], file_key: &[u8; AES_CBC_KEY_LENGTH]
 }
 
 /// Decrypts file chunk downloaded from Filen. File key can be fetched from file metadata.
-/// Note that [encrypt_file_data] and [decrypt_file_data] are not symmetric.
-/// You are supposed to call [decrypt_file_data] on file chunks received from Filen, not on strings produced by
-/// [encrypt_file_data].
+/// Note that [encrypt_file_chunk] and [decrypt_file_chunk] are not symmetric.
+/// You are supposed to call [decrypt_file_chunk] on file chunks received from Filen, not on strings produced by
+/// [encrypt_file_chunk].
 pub fn decrypt_file_chunk(
     filen_encrypted_chunk_data: &[u8],
     file_key: &[u8; AES_CBC_KEY_LENGTH],
