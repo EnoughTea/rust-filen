@@ -7,7 +7,7 @@ pub use ureq;
 pub use {filen_settings::*, retry_settings::*};
 #[cfg(feature = "async")]
 pub use {fure, reqwest};
-pub use {retry, secstr};
+pub use {retry, secstr, uuid};
 
 pub mod crypto;
 mod file_chunk_pos;
