@@ -89,7 +89,7 @@ utils::display_from_json!(UserBaseFoldersRequestPayload);
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserBaseFolder {
     /// Folder ID; hyphenated lowercased UUID V4.
-    pub uuid: String,
+    pub uuid: Uuid,
 
     /// Metadata containing JSON with folder name: { "name": <name value> }
     #[serde(rename = "name")]
@@ -151,7 +151,7 @@ utils::display_from_json!(UserDirsRequestPayload);
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserDirData {
     /// Folder ID; hyphenated lowercased UUID V4.
-    pub uuid: String,
+    pub uuid: Uuid,
 
     /// Metadata containing JSON with folder name: { "name": <name value> }
     #[serde(rename = "name")]
@@ -208,7 +208,7 @@ pub struct DirContentRequestPayload {
     pub api_key: SecUtf8,
 
     /// Folder ID; hyphenated lowercased UUID V4.
-    pub uuid: String,
+    pub uuid: Uuid,
 
     /// A string containing 'path' to the listed folder as JSON array:
     /// "[\"grand_parent_uuid\", \"parent_uuid\", \"folder_uuid\"]"
@@ -229,7 +229,7 @@ utils::display_from_json!(DirContentRequestPayload);
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirContentFile {
     /// File ID, UUID V4 in hyphenated lowercase format.
-    pub uuid: String,
+    pub uuid: Uuid,
 
     /// File metadata.
     pub metadata: String,
@@ -266,7 +266,7 @@ pub struct DirContentFile {
     pub timestamp: u64,
 
     /// ID of the folder which contains this file.
-    pub parent: String,
+    pub parent: Uuid,
 
     /// Determines how file bytes should be encrypted/decrypted.
     /// File is encrypted using roughly the same algorithm as metadata encryption,
@@ -284,14 +284,14 @@ utils::display_from_json!(DirContentFile);
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirContentFolder {
     /// Folder ID; hyphenated lowercased UUID V4.
-    pub uuid: String,
+    pub uuid: Uuid,
 
     /// Metadata containing JSON with folder name: { "name": <name value> }
     #[serde(rename = "name")]
     pub name_metadata: String,
 
     /// Parent folder; always present, since base folders are returned in separate `folders_info` array.
-    pub parent: String,
+    pub parent: Uuid,
 
     /// Folder color name; None means default yellow color.
     pub color: Option<LocationColor>,
@@ -323,7 +323,7 @@ utils::display_from_json!(DirContentFolder);
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirContentFolderInfo {
     /// Base folder ID; hyphenated lowercased UUID V4.
-    pub uuid: String,
+    pub uuid: Uuid,
 
     /// Metadata containing JSON with folder name: { "name": <name value> }
     #[serde(rename = "name")]
@@ -376,7 +376,7 @@ pub struct DirCreateRequestPayload {
     pub api_key: SecUtf8,
 
     /// Folder ID; hyphenated lowercased UUID V4.
-    pub uuid: String,
+    pub uuid: Uuid,
 
     /// Metadata containing JSON with format: { "name": <name value> }
     #[serde(rename = "name")]
@@ -408,7 +408,7 @@ impl DirCreateRequestPayload {
         let name_hashed = LocationNameMetadata::name_hashed(name);
         DirCreateRequestPayload {
             api_key,
-            uuid: Uuid::new_v4().to_hyphenated().to_string(),
+            uuid: Uuid::new_v4(),
             name_metadata,
             name_hashed,
             dir_type: LocationType::Folder,
@@ -425,10 +425,10 @@ pub struct DirMoveRequestPayload {
 
     /// ID of the parent folder where target folder will be moved; hyphenated lowercased UUID V4.
     #[serde(rename = "folderUUID")]
-    pub folder_uuid: String,
+    pub folder_uuid: Uuid,
 
     /// ID of the folder to move, hyphenated lowercased UUID V4.
-    pub uuid: String,
+    pub uuid: Uuid,
 }
 utils::display_from_json!(DirMoveRequestPayload);
 
@@ -440,7 +440,7 @@ pub struct DirRenameRequestPayload {
     pub api_key: SecUtf8,
 
     /// ID of the folder to rename, hyphenated lowercased UUID V4.
-    pub uuid: String,
+    pub uuid: Uuid,
 
     /// Metadata with a new name.
     #[serde(rename = "name")]
@@ -453,9 +453,9 @@ pub struct DirRenameRequestPayload {
 utils::display_from_json!(DirRenameRequestPayload);
 
 impl DirRenameRequestPayload {
-    pub fn new<S: Into<String>>(
+    pub fn new(
         api_key: SecUtf8,
-        folder_uuid: S,
+        folder_uuid: Uuid,
         new_folder_name: &str,
         last_master_key: &SecUtf8,
     ) -> DirRenameRequestPayload {
@@ -463,7 +463,7 @@ impl DirRenameRequestPayload {
         let name_hashed = LocationNameMetadata::name_hashed(new_folder_name);
         DirRenameRequestPayload {
             api_key,
-            uuid: folder_uuid.into(),
+            uuid: folder_uuid,
             name_metadata,
             name_hashed,
         }
@@ -692,11 +692,10 @@ mod tests {
     fn dir_create_request_payload_should_be_created_correctly_from_name() {
         let m_key = SecUtf8::from("b49cadfb92e1d7d54e9dd9d33ba9feb2af1f10ae");
         let payload = DirCreateRequestPayload::new(API_KEY.clone(), NAME, &m_key);
+
         let decrypted_name = LocationNameMetadata::decrypt_name_from_metadata(&payload.name_metadata, &m_key).unwrap();
-        let parsed_uuid = Uuid::parse_str(&payload.uuid);
 
         assert_eq!(payload.api_key, *API_KEY);
-        assert!(parsed_uuid.is_ok());
         assert_eq!(decrypted_name, NAME);
         assert_eq!(payload.name_hashed, NAME_HASHED);
         assert_eq!(payload.dir_type, LocationType::Folder);
@@ -736,7 +735,7 @@ mod tests {
     fn dir_create_request_should_have_proper_contract() {
         let request_payload = DirCreateRequestPayload {
             api_key: API_KEY.clone(),
-            uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
+            uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_metadata: NAME_METADATA.to_owned(),
             name_hashed: NAME_HASHED.to_owned(),
             dir_type: LocationType::Folder,
@@ -754,7 +753,7 @@ mod tests {
     async fn dir_create_request_async_should_have_proper_contract() {
         let request_payload = DirCreateRequestPayload {
             api_key: API_KEY.clone(),
-            uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
+            uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_metadata: NAME_METADATA.to_owned(),
             name_hashed: NAME_HASHED.to_owned(),
             dir_type: LocationType::Folder,
@@ -808,8 +807,8 @@ mod tests {
     fn dir_move_request_should_have_proper_contract() {
         let request_payload = DirMoveRequestPayload {
             api_key: API_KEY.clone(),
-            folder_uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
-            uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
+            folder_uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
+            uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
         };
         validate_contract(
             DIR_MOVE_PATH,
@@ -824,8 +823,8 @@ mod tests {
     async fn dir_move_request_async_should_have_proper_contract() {
         let request_payload = DirMoveRequestPayload {
             api_key: API_KEY.clone(),
-            folder_uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
-            uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
+            folder_uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
+            uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
         };
         validate_contract_async(
             DIR_MOVE_PATH,
@@ -839,7 +838,7 @@ mod tests {
     fn dir_rename_request_should_have_proper_contract() {
         let request_payload = DirRenameRequestPayload {
             api_key: API_KEY.clone(),
-            uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
+            uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_metadata: NAME_METADATA.to_owned(),
             name_hashed: NAME_HASHED.to_owned(),
         };
@@ -856,7 +855,7 @@ mod tests {
     async fn dir_rename_request_async_should_have_proper_contract() {
         let request_payload = DirRenameRequestPayload {
             api_key: API_KEY.clone(),
-            uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
+            uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_metadata: NAME_METADATA.to_owned(),
             name_hashed: NAME_HASHED.to_owned(),
         };

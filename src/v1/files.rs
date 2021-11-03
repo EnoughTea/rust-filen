@@ -9,6 +9,7 @@ use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use snafu::{ensure, Backtrace, ResultExt, Snafu};
+use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -183,11 +184,11 @@ pub struct FileArchiveRequestPayload {
     pub api_key: SecUtf8,
 
     /// ID of the existing file to archive.
-    pub uuid: String,
+    pub uuid: Uuid,
 
     /// Id of the file that will replace archived file.
     #[serde(rename = "updateUuid")]
-    pub update_uuid: String,
+    pub update_uuid: Uuid,
 }
 utils::display_from_json!(FileArchiveRequestPayload);
 
@@ -204,7 +205,7 @@ pub struct FileMoveRequestPayload {
 
     /// ID of the file to move, hyphenated lowercased UUID V4.
     #[serde(rename = "fileUUID")]
-    pub file_uuid: String,
+    pub file_uuid: Uuid,
 }
 utils::display_from_json!(FileMoveRequestPayload);
 
@@ -216,7 +217,7 @@ pub struct FileRenameRequestPayload {
     pub api_key: SecUtf8,
 
     /// ID of the file to rename, hyphenated lowercased UUID V4.
-    pub uuid: String,
+    pub uuid: Uuid,
 
     /// Metadata with a new name.
     #[serde(rename = "name")]
@@ -233,9 +234,9 @@ pub struct FileRenameRequestPayload {
 utils::display_from_json!(FileRenameRequestPayload);
 
 impl FileRenameRequestPayload {
-    pub fn new<S: Into<String>>(
+    pub fn new(
         api_key: SecUtf8,
-        uuid: S,
+        uuid: Uuid,
         new_file_name: &str,
         file_metadata: &FileProperties,
         last_master_key: &SecUtf8,
@@ -245,7 +246,7 @@ impl FileRenameRequestPayload {
         let metadata = file_metadata.to_metadata_string(last_master_key).unwrap(); // Should never panic...
         FileRenameRequestPayload {
             api_key,
-            uuid: uuid.into(),
+            uuid,
             name_metadata,
             name_hashed,
             metadata,

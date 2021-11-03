@@ -31,10 +31,10 @@ pub enum Error {
     },
 
     #[snafu(display("{} query failed: {}", DIR_LINK_REMOVE_PATH, source))]
-    DirLinkRemoveQueryFailed { link_uuid: String, source: queries::Error },
+    DirLinkRemoveQueryFailed { link_uuid: Uuid, source: queries::Error },
 
     #[snafu(display("{} query failed: {}", DIR_LINK_STATUS_PATH, source))]
-    DirLinkStatusQueryFailed { link_uuid: String, source: queries::Error },
+    DirLinkStatusQueryFailed { link_uuid: Uuid, source: queries::Error },
 }
 
 /// State of the 'Enable download button' GUI checkbox represented as a string.
@@ -86,12 +86,12 @@ pub struct DirLinkAddRequestPayload {
 
     /// Link ID; hyphenated lowercased UUID V4.
     #[serde(rename = "linkUUID")]
-    pub link_uuid: String,
+    pub link_uuid: Uuid,
 
     /// Linked item metadata.
     pub metadata: String,
 
-    /// ID of the parent of the linked item, hyphenated lowercased UUID V4.
+    /// ID of the parent of the linked item, hyphenated lowercased UUID V4 if non-base.
     /// Use "base" if the linked item is located in the root folder.
     pub parent: String,
 
@@ -106,20 +106,19 @@ pub struct DirLinkAddRequestPayload {
     pub link_type: LinkTarget,
 
     /// Linked item ID; hyphenated lowercased UUID V4.
-    pub uuid: String,
+    pub uuid: Uuid,
 }
 utils::display_from_json!(DirLinkAddRequestPayload);
 
 impl DirLinkAddRequestPayload {
     pub fn new<S: Into<String>>(
         api_key: SecUtf8,
-        linked_item_uuid: S,
+        linked_item_uuid: Uuid,
         linked_item_metadata: S,
         linked_item_parent_uuid: Option<S>,
         link_type: LinkTarget,
         last_master_key: &SecUtf8,
     ) -> DirLinkAddRequestPayload {
-        let link_uuid = Uuid::new_v4().to_hyphenated().to_string();
         let link_key = utils::random_alphanumeric_string(32);
         let key_metadata = // Should never panic...
             crypto::encrypt_metadata_str(&link_key, last_master_key.unsecure(), METADATA_VERSION).unwrap();
@@ -128,13 +127,13 @@ impl DirLinkAddRequestPayload {
             download_btn: DownloadBtnState::Enable,
             expiration: DEFAULT_EXPIRE.to_owned(),
             key_metadata,
-            link_uuid,
+            link_uuid: Uuid::new_v4(),
             metadata: linked_item_metadata.into(),
             parent: parent_or_base(linked_item_parent_uuid),
             password: PasswordState::Empty,
             password_hashed: EMPTY_PASSWORD_HASH.clone(),
             link_type: link_type,
-            uuid: linked_item_uuid.into(),
+            uuid: linked_item_uuid,
         }
     }
 }
@@ -160,12 +159,12 @@ pub struct DirLinkEditRequestPayload {
 
     /// Link ID; hyphenated lowercased UUID V4.
     #[serde(rename = "linkUUID")]
-    pub link_uuid: String,
+    pub link_uuid: Uuid,
 
     /// Item metadata.
     pub metadata: String,
 
-    /// ID of the parent of the linked item, hyphenated lowercased UUID V4.
+    /// ID of the parent of the linked item, hyphenated lowercased UUID V4 if non-base.
     /// Use "base" if linked item is located in the root folder.
     pub parent: String,
 
@@ -181,7 +180,7 @@ pub struct DirLinkEditRequestPayload {
     pub target_type: LinkTarget,
 
     /// Linked item ID; hyphenated lowercased UUID V4.
-    pub uuid: String,
+    pub uuid: Uuid,
 }
 utils::display_from_json!(DirLinkEditRequestPayload);
 
@@ -189,9 +188,9 @@ impl DirLinkEditRequestPayload {
     fn from_no_password<S: Into<String>>(
         api_key: SecUtf8,
         download_btn: DownloadBtnState,
-        link_uuid: S,
+        link_uuid: Uuid,
         link_key_metadata: S,
-        linked_item_uuid: S,
+        linked_item_uuid: Uuid,
         linked_item_metadata: S,
         linked_item_parent_uuid: Option<S>,
         link_type: LinkTarget,
@@ -201,22 +200,22 @@ impl DirLinkEditRequestPayload {
             download_btn,
             expiration: DEFAULT_EXPIRE.to_owned(),
             key_metadata: link_key_metadata.into(),
-            link_uuid: link_uuid.into(),
+            link_uuid,
             metadata: linked_item_metadata.into(),
             parent: parent_or_base(linked_item_parent_uuid),
             password: PasswordState::Empty,
             password_hashed: EMPTY_PASSWORD_HASH.clone(),
             target_type: link_type,
-            uuid: linked_item_uuid.into(),
+            uuid: linked_item_uuid,
         }
     }
 
     fn from_plain_text_password<S: Into<String>>(
         api_key: SecUtf8,
         download_btn: DownloadBtnState,
-        link_uuid: S,
+        link_uuid: Uuid,
         link_key_metadata: S,
-        linked_folder_uuid: S,
+        linked_folder_uuid: Uuid,
         linked_folder_metadata: S,
         linked_folder_parent: Option<S>,
         link_type: LinkTarget,
@@ -234,13 +233,13 @@ impl DirLinkEditRequestPayload {
             download_btn,
             expiration: DEFAULT_EXPIRE.to_owned(),
             key_metadata: link_key_metadata.into(),
-            link_uuid: link_uuid.into(),
+            link_uuid,
             metadata: linked_folder_metadata.into(),
             parent: parent_or_base(linked_folder_parent),
             password: PasswordState::NotEmpty,
             password_hashed,
             target_type: link_type,
-            uuid: linked_folder_uuid.into(),
+            uuid: linked_folder_uuid,
         }
     }
 }
@@ -253,7 +252,7 @@ pub struct DirLinkRemoveRequestPayload {
     pub api_key: SecUtf8,
 
     /// Link ID; hyphenated lowercased UUID V4.
-    pub uuid: String,
+    pub uuid: Uuid,
 }
 utils::display_from_json!(DirLinkRemoveRequestPayload);
 
@@ -265,7 +264,7 @@ pub struct DirLinkStatusRequestPayload {
     pub api_key: SecUtf8,
 
     /// ID of the item whose link should be checked; hyphenated lowercased UUID V4.
-    pub uuid: String,
+    pub uuid: Uuid,
 }
 utils::display_from_json!(DirLinkStatusRequestPayload);
 
@@ -277,7 +276,7 @@ pub struct DirLinkStatusResponseData {
     pub exists: bool,
 
     /// Found link ID; hyphenated lowercased UUID V4. None if no link was found.
-    pub uuid: Option<String>,
+    pub uuid: Option<Uuid>,
 
     /// Link key metadata. None if no link was found.
     pub key: Option<String>,

@@ -3,6 +3,7 @@ use std::{convert::TryInto, fmt::Display, io::Write};
 use crate::{crypto, filen_settings::FilenSettings, queries, retry_settings::RetrySettings, utils, v1::*};
 use secstr::SecUtf8;
 use snafu::{ResultExt, Snafu};
+use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -43,22 +44,22 @@ pub enum Error {
 pub struct FileLocation {
     pub region: String,
     pub bucket: String,
-    pub file_uuid: String,
+    pub file_uuid: Uuid,
     pub chunk_count: u32,
 }
 
 impl FileLocation {
-    pub fn new<S: Into<String>>(region: S, bucket: S, file_uuid: S, chunk_count: u32) -> FileLocation {
+    pub fn new<S: Into<String>>(region: S, bucket: S, file_uuid: Uuid, chunk_count: u32) -> FileLocation {
         FileLocation {
             region: region.into(),
             bucket: bucket.into(),
-            file_uuid: file_uuid.into(),
+            file_uuid,
             chunk_count,
         }
     }
 
     pub fn get_file_chunk_location(&self, chunk_index: u32) -> FileChunkLocation {
-        FileChunkLocation::new(&self.region, &self.bucket, &self.file_uuid, chunk_index)
+        FileChunkLocation::new(&self.region, &self.bucket, self.file_uuid, chunk_index)
     }
 }
 
@@ -77,16 +78,16 @@ impl Display for FileLocation {
 pub struct FileChunkLocation {
     pub region: String,
     pub bucket: String,
-    pub file_uuid: String,
+    pub file_uuid: Uuid,
     pub chunk_index: u32,
 }
 
 impl FileChunkLocation {
-    pub fn new<S: Into<String>>(region: S, bucket: S, file_uuid: S, chunk_index: u32) -> FileChunkLocation {
+    pub fn new<S: Into<String>>(region: S, bucket: S, file_uuid: Uuid, chunk_index: u32) -> FileChunkLocation {
         FileChunkLocation {
             region: region.into(),
             bucket: bucket.into(),
-            file_uuid: file_uuid.into(),
+            file_uuid,
             chunk_index,
         }
     }

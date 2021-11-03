@@ -61,7 +61,7 @@ pub enum Error {
     },
 
     #[snafu(display("{} query failed: {}", UPLOAD_DONE_PATH, source))]
-    UploadDoneQueryFailed { file_uuid: String, source: queries::Error },
+    UploadDoneQueryFailed { file_uuid: Uuid, source: queries::Error },
 }
 
 /// Response data for [UPLOAD_PATH] endpoint.
@@ -94,7 +94,7 @@ api_response_struct!(
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UploadDoneRequestPayload {
     /// Uploaded file ID, UUID V4 in hyphenated lowercase format.
-    pub uuid: String,
+    pub uuid: Uuid,
 
     /// File upload key: random alphanumeric string associated with entire file upload.
     #[serde(rename = "uploadKey")]
@@ -106,7 +106,7 @@ utils::display_from_json!(UploadDoneRequestPayload);
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FileUploadProperties {
     /// File ID, UUID V4 in hyphenated lowercase format.
-    pub uuid: String,
+    pub uuid: Uuid,
 
     /// Metadata containing file name string.
     pub name_metadata: String,
@@ -139,7 +139,7 @@ pub struct FileUploadProperties {
     pub expire: String,
 
     /// Parent folder ID, UUID V4 in hyphenated lowercase format.
-    pub parent_uuid: String,
+    pub parent_uuid: Uuid,
 
     /// Determines how file bytes should be encrypted/decrypted.
     /// File is encrypted using roughly the same algorithm as metadata encryption,
@@ -151,10 +151,9 @@ impl FileUploadProperties {
     /// Assigns file upload properties from given [FileProperties], parent folder and user's last master key.
     pub fn from_file_properties(
         file_properties: &FileProperties,
-        parent_folder_uuid: &str,
+        parent_folder_uuid: Uuid,
         last_master_key: &SecUtf8,
     ) -> Result<FileUploadProperties> {
-        let new_file_uuid = Uuid::new_v4().to_hyphenated().to_string();
         let rm = utils::random_alphanumeric_string(32);
         let upload_key = utils::random_alphanumeric_string(32);
 
@@ -168,7 +167,7 @@ impl FileUploadProperties {
 
         let file_chunks = calculate_chunk_count(FILE_CHUNK_SIZE, file_properties.size);
         Ok(FileUploadProperties {
-            uuid: new_file_uuid,
+            uuid: Uuid::new_v4(),
             name_metadata: name_metadata_encrypted,
             name_hashed,
             size_metadata: size_metadata_encrypted,
@@ -179,7 +178,7 @@ impl FileUploadProperties {
             rm,
             upload_key,
             expire: DEFAULT_EXPIRE.to_owned(),
-            parent_uuid: parent_folder_uuid.to_owned(),
+            parent_uuid: parent_folder_uuid,
             version: FILE_VERSION,
         })
     }
@@ -190,7 +189,7 @@ impl FileUploadProperties {
             "https://localhost?",
             &[
                 ("apiKey", api_key.unsecure()),
-                ("uuid", &self.uuid),
+                ("uuid", &self.uuid.to_hyphenated().to_string()),
                 ("name", &self.name_metadata),
                 ("nameHashed", &self.name_hashed),
                 ("size", &self.size_metadata),
@@ -201,7 +200,7 @@ impl FileUploadProperties {
                 ("expire", &self.expire),
                 ("uploadKey", &self.upload_key),
                 ("metaData", &self.file_metadata),
-                ("parent", &self.parent_uuid),
+                ("parent", &self.parent_uuid.to_hyphenated().to_string()),
                 ("version", &self.version.to_string()),
             ],
         )
@@ -361,7 +360,7 @@ pub async fn encrypt_and_upload_chunk_async(
 /// encrypting them and uploading each chunk with additional dummy chunk at the end.
 pub fn encrypt_and_upload_file<R: Read + Seek>(
     api_key: &SecUtf8,
-    parent_uuid: &str,
+    parent_uuid: Uuid,
     file_properties: &FileProperties,
     last_master_key: &SecUtf8,
     retry_settings: &RetrySettings,
@@ -424,7 +423,7 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
 #[cfg(feature = "async")]
 pub async fn encrypt_and_upload_file_async<R: Read + Seek>(
     api_key: &SecUtf8,
-    parent_uuid: &str,
+    parent_uuid: Uuid,
     file_properties: &FileProperties,
     last_master_key: &SecUtf8,
     retry_settings: &RetrySettings,
@@ -631,8 +630,7 @@ mod tests {
     fn uploaded_file_properties_should_produce_query_string_with_expected_parts() {
         let m_key = SecUtf8::from("b49cadfb92e1d7d54e9dd9d33ba9feb2af1f10ae");
         let file_metadata = FileProperties::from_name_size_modified("test.txt", 128, &SystemTime::now()).unwrap();
-        let properties =
-            FileUploadProperties::from_file_properties(&file_metadata, "some parent uuid", &m_key).unwrap();
+        let properties = FileUploadProperties::from_file_properties(&file_metadata, Uuid::nil(), &m_key).unwrap();
 
         let query_params = properties.to_query_params(0, &SecUtf8::from("some api key"));
         let query_params_2 = properties.to_query_params(0, &SecUtf8::from("some api key"));
@@ -650,7 +648,7 @@ mod tests {
         assert!(query_params.contains("expire=never"));
         assert!(query_params.contains("uploadKey="));
         assert!(query_params.contains("metaData="));
-        assert!(query_params.contains("parent=some+parent+uuid"));
+        assert!(query_params.contains("parent=00000000-0000-0000-0000-000000000000"));
         assert!(query_params.contains("version=1"));
     }
 }

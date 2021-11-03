@@ -1,6 +1,7 @@
 //! This module contains general purpose functions (aka dump).
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
+use uuid::Uuid;
 
 /// Generate random alphanumeric string of the specified length.
 pub(crate) fn random_alphanumeric_string(size: usize) -> String {
@@ -54,10 +55,15 @@ pub(crate) fn filen_file_location_to_api_endpoint(location: &FileChunkLocation) 
 pub(crate) fn filen_file_address_to_api_endpoint(
     region: &str,
     bucket: &str,
-    file_uuid: &str,
+    file_uuid: &Uuid,
     chunk_index: u32,
 ) -> String {
-    vec![region, bucket, file_uuid, &chunk_index.to_string()]
+    vec![
+        region,
+        bucket,
+        &file_uuid.to_hyphenated().to_string(),
+        &chunk_index.to_string(),
+    ]
         .join("/")
         .replace("//", "/")
 }
@@ -101,7 +107,12 @@ mod tests {
     #[test]
     fn filen_file_address_to_api_endpoint_should_join_parts_correctly() {
         let expected = "de-1/filen-1/b5ec90d2-957c-4481-b211-08a68accd1b2/0";
-        let file_url = filen_file_address_to_api_endpoint("de-1", "filen-1", "b5ec90d2-957c-4481-b211-08a68accd1b2", 0);
+        let file_url = filen_file_address_to_api_endpoint(
+            "de-1",
+            "filen-1",
+            &Uuid::parse_str("b5ec90d2-957c-4481-b211-08a68accd1b2").unwrap(),
+            0,
+        );
         assert_eq!(file_url, expected);
     }
 }

@@ -1,9 +1,10 @@
 //! Contains structures common for Filen file&folder API.
-use crate::{crypto, utils, v1::api_response_struct};
+use crate::{crypto, utils, v1::*};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use snafu::{ResultExt, Snafu};
+use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -70,13 +71,14 @@ impl std::fmt::Display for LocationType {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FolderData {
     /// Folder ID, UUID V4 in hyphenated lowercase format.
-    pub uuid: String,
+    pub uuid: Uuid,
 
     /// Metadata containing folder name.
     #[serde(rename = "name")]
     pub name_metadata: String,
 
-    /// Either parent folder ID or "base" when folder is located in the base folder, also known as 'cloud drive'.
+    /// Either parent folder ID (hyphenated lowercased UUID V4) or "base" when folder is located in the base folder,
+    /// also known as 'cloud drive'.
     pub parent: String,
 }
 utils::display_from_json!(FolderData);
@@ -147,7 +149,7 @@ pub struct LocationTrashRequestPayload {
     pub api_key: SecUtf8,
 
     /// ID of the folder or file to move to trash, hyphenated lowercased UUID V4.
-    pub uuid: String,
+    pub uuid: Uuid,
 }
 utils::display_from_json!(LocationTrashRequestPayload);
 
@@ -158,7 +160,8 @@ pub struct LocationExistsRequestPayload {
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 
-    /// Parent folder ID, hyphenated lowercased UUID V4.
+    /// Either parent folder ID (hyphenated lowercased UUID V4) or "base" when folder is located in the base folder,
+    /// also known as 'cloud drive'.
     pub parent: String,
 
     /// Currently hash_fn of lowercased target folder or file name.
@@ -185,7 +188,9 @@ pub struct LocationExistsResponseData {
     pub exists: bool,
 
     /// Existing folder or file ID, hyphenated lowercased UUID V4. Empty string if folder or file does not exist.
-    pub uuid: String,
+    #[serde(default)]
+    #[serde(deserialize_with = "optional_uuid_from_empty_string")]
+    pub uuid: Option<Uuid>,
 }
 utils::display_from_json!(LocationExistsResponseData);
 
@@ -193,3 +198,17 @@ api_response_struct!(
     /// Response for [DIR_EXISTS_PATH] or [FILE_TRASH_PATH] endpoint.
     LocationExistsResponsePayload<Option<LocationExistsResponseData>>
 );
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn location_should_be_deserialized_from_empty_string_uuid() {
+        let json = r#"{"exists":false, "uuid":""}"#;
+        let result = serde_json::from_str::<LocationExistsResponseData>(&json);
+
+        assert!(result.is_ok());
+        assert!(result.unwrap().uuid.is_none());
+    }
+}

@@ -3,6 +3,7 @@ use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::io::Write;
+use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -57,7 +58,7 @@ pub struct DownloadDirRequestPayload {
     pub api_key: SecUtf8,
 
     /// Folder ID; hyphenated lowercased UUID V4.
-    pub uuid: String,
+    pub uuid: Uuid,
 }
 
 /// Response data for [DOWNLOAD_DIR] endpoint.
@@ -98,7 +99,7 @@ impl DownloadDirResponseData {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DownloadedFileData {
     /// File ID, UUID V4 in hyphenated lowercase format.
-    pub uuid: String,
+    pub uuid: Uuid,
 
     /// Name of the Filen bucket where file data is stored.
     pub bucket: String,
@@ -122,7 +123,7 @@ pub struct DownloadedFileData {
     pub chunks: u32,
 
     /// Parent folder ID, UUID V4 in hyphenated lowercase format.
-    pub parent: String,
+    pub parent: Uuid,
 
     /// File metadata.
     pub metadata: String,
@@ -166,7 +167,7 @@ impl DownloadedFileData {
     }
 
     pub fn get_file_location(&self) -> FileLocation {
-        FileLocation::new(&self.region, &self.bucket, &self.uuid, self.chunks)
+        FileLocation::new(&self.region, &self.bucket, self.uuid, self.chunks)
     }
 
     /// Uses this file's properties to call [download_and_decrypt_file].
@@ -269,7 +270,7 @@ mod tests {
         let (server, filen_settings) = init_server();
         let request_payload = DownloadDirRequestPayload {
             api_key: API_KEY.clone(),
-            uuid: "cf2af9a0-6f4e-485d-862c-0459f4662cf1".to_owned(),
+            uuid: Uuid::parse_str("cf2af9a0-6f4e-485d-862c-0459f4662cf1").unwrap(),
         };
         let expected_response: DownloadDirResponsePayload =
             deserialize_from_file("tests/resources/responses/download_dir.json");
@@ -288,7 +289,7 @@ mod tests {
         let (server, filen_settings) = init_server();
         let request_payload = DownloadDirRequestPayload {
             api_key: API_KEY.clone(),
-            uuid: "cf2af9a0-6f4e-485d-862c-0459f4662cf1".to_owned(),
+            uuid: Uuid::parse_str("cf2af9a0-6f4e-485d-862c-0459f4662cf1").unwrap(),
         };
         let expected_response: DownloadDirResponsePayload =
             deserialize_from_file("tests/resources/responses/download_dir.json");

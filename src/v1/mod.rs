@@ -103,6 +103,24 @@ where
     }
 }
 
+pub(crate) fn optional_uuid_from_empty_string<'de, D>(deserializer: D) -> Result<Option<Uuid>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<String>::deserialize(deserializer)?.unwrap_or("".to_owned());
+    if value.is_empty() {
+        Ok(None)
+    } else {
+        match Uuid::parse_str(&value) {
+            Ok(uuid) => Ok(Some(uuid)),
+            Err(_) => Err(de::Error::invalid_value(
+                de::Unexpected::Str(&value),
+                &"hyphenated lowercased UUID V4 or empty string",
+            )),
+        }
+    }
+}
+
 /// This macro generates a struct to parse Filen API response into.
 ///
 /// Filen API uses mostly the same format for all its responses, successfull or not.
@@ -139,3 +157,4 @@ macro_rules! api_response_struct {
     }
 }
 pub(crate) use api_response_struct;
+use uuid::Uuid;

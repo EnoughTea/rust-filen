@@ -2,6 +2,7 @@ use crate::{filen_settings::FilenSettings, queries, utils, v1::*};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
+use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -31,7 +32,7 @@ pub struct GetDirRequestPayload {
 
     /// Sync folder ID, UUID V4 in hyphenated lowercase format.
     #[serde(rename = "uuid")]
-    pub sync_folder_uuid: String,
+    pub sync_folder_uuid: Uuid,
 
     /// If set to true, will fetch entire sync folder contents, which can be quite a heavy operation.
     /// If set to false, server will check if sync folder contents changed. If synced content has not been changed,
@@ -58,7 +59,7 @@ utils::display_from_json!(GetDirResponseData);
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct SyncedFileData {
     /// File ID, UUID V4 in hyphenated lowercase format.
-    pub uuid: String,
+    pub uuid: Uuid,
 
     /// Name of the Filen bucket where file data is stored.
     pub bucket: String,
@@ -67,7 +68,7 @@ pub struct SyncedFileData {
     pub region: String,
 
     /// ID of the folder which contains this file.
-    pub parent: String,
+    pub parent: Uuid,
 
     /// File metadata.
     pub metadata: String,
@@ -134,7 +135,7 @@ mod tests {
         let (server, filen_settings) = init_server();
         let request_payload = GetDirRequestPayload {
             api_key: API_KEY.clone(),
-            sync_folder_uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
+            sync_folder_uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             first_request: false,
         };
         let expected_response: GetDirResponsePayload =
@@ -154,7 +155,7 @@ mod tests {
         let (server, filen_settings) = init_server();
         let request_payload = GetDirRequestPayload {
             api_key: API_KEY.clone(),
-            sync_folder_uuid: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
+            sync_folder_uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             first_request: false,
         };
         let expected_response: GetDirResponsePayload =
