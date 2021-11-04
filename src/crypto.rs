@@ -6,12 +6,11 @@ use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Cbc};
-use crypto::hmac::Hmac;
-use crypto::mac::Mac;
-use crypto::pbkdf2::pbkdf2;
 use easy_hasher::easy_hasher::*;
 use evpkdf::evpkdf;
+use hmac::{Hmac, Mac, NewMac};
 use md5::Md5;
+use pbkdf2::pbkdf2;
 use rand::{thread_rng, Rng};
 use rsa::pkcs8::{FromPrivateKey, FromPublicKey};
 use rsa::PublicKey;
@@ -23,6 +22,7 @@ use crate::utils;
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
+type HmacSha512 = Hmac<sha2::Sha512>;
 
 const OPENSSL_SALT_PREFIX: &[u8] = b"Salted__";
 const OPENSSL_SALT_PREFIX_BASE64: &[u8] = b"U2FsdGVk";
@@ -109,17 +109,15 @@ pub fn hash_password(password: &str) -> String {
 
 /// Calculates login key from the given user password and service-provided salt using SHA512 with 64 bytes output.
 pub fn derive_key_from_password_512(password: &[u8], salt: &[u8], iterations: u32) -> [u8; 64] {
-    let mut mac = Hmac::new(crypto::sha2::Sha512::new(), password);
     let mut pbkdf2_hash = [0u8; 64];
-    derive_key_from_password_generic(salt, iterations, &mut mac, &mut pbkdf2_hash);
+    derive_key_from_password_generic::<HmacSha512>(password, salt, iterations, &mut pbkdf2_hash);
     pbkdf2_hash
 }
 
 /// Calculates login key from the given user password and service-provided salt using SHA512 with 32 bytes output.
 pub fn derive_key_from_password_256(password: &[u8], salt: &[u8], iterations: u32) -> [u8; 32] {
-    let mut mac = Hmac::new(crypto::sha2::Sha512::new(), password);
     let mut pbkdf2_hash = [0u8; 32];
-    derive_key_from_password_generic(salt, iterations, &mut mac, &mut pbkdf2_hash);
+    derive_key_from_password_generic::<HmacSha512>(password, salt, iterations, &mut pbkdf2_hash);
     pbkdf2_hash
 }
 
@@ -444,9 +442,12 @@ fn salt_and_message_from_aes_openssl_encrypted_data(
 }
 
 /// Calculates login key from the given user password and service-provided salt.
-fn derive_key_from_password_generic<M: Mac>(salt: &[u8], iterations: u32, mac: &mut M, pbkdf2_hash: &mut [u8]) {
+fn derive_key_from_password_generic<M>(password: &[u8], salt: &[u8], iterations: u32, pbkdf2_hash: &mut [u8])
+where
+    M: Mac + NewMac + Sync,
+{
     let iterations_or_default = if iterations == 0 { 200_000 } else { iterations };
-    pbkdf2(mac, salt, iterations_or_default, pbkdf2_hash);
+    pbkdf2::<M>(password, salt, iterations_or_default, pbkdf2_hash);
 }
 
 /// OpenSSL-compatible plain AES key and IV.
