@@ -158,7 +158,7 @@ pub struct UserDirData {
     pub name_metadata: String,
 
     /// Parent folder; None means this folder is a base folder, also known as 'cloud drive'.
-    pub parent: Option<String>,
+    pub parent: Option<Uuid>,
 
     /// True if this is a default Filen folder; false otherwise.
     pub default: bool,
@@ -676,6 +676,8 @@ pub async fn dir_trash_request_async(
 
 #[cfg(test)]
 mod tests {
+    use std::convert::TryFrom;
+
     use super::*;
     use crate::test_utils::*;
     use once_cell::sync::Lazy;
@@ -773,7 +775,7 @@ mod tests {
     fn dir_exists_request_should_have_proper_contract() {
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
-            parent: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
+            parent: ParentId::try_from("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_hashed: NAME_HASHED.to_owned(),
         };
         validate_contract(
@@ -789,7 +791,7 @@ mod tests {
     async fn dir_exists_request_async_should_have_proper_contract() {
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
-            parent: "80f678c0-56ce-4b81-b4ef-f2a9c0c737c4".to_owned(),
+            parent: ParentId::try_from("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_hashed: NAME_HASHED.to_owned(),
         };
         validate_contract_async(

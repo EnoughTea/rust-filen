@@ -115,7 +115,7 @@ where
             Ok(uuid) => Ok(Some(uuid)),
             Err(_) => Err(de::Error::invalid_value(
                 de::Unexpected::Str(&value),
-                &"hyphenated lowercased UUID V4 or empty string",
+                &"hyphenated lowercased UUID or empty string",
             )),
         }
     }

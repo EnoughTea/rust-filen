@@ -93,7 +93,7 @@ pub struct DirLinkAddRequestPayload {
 
     /// ID of the parent of the linked item, hyphenated lowercased UUID V4 if non-base.
     /// Use "base" if the linked item is located in the root folder.
-    pub parent: String,
+    pub parent: ParentId,
 
     /// Filen always uses "empty" when adding links.
     pub password: PasswordState,
@@ -115,7 +115,7 @@ impl DirLinkAddRequestPayload {
         api_key: SecUtf8,
         linked_item_uuid: Uuid,
         linked_item_metadata: S,
-        linked_item_parent_uuid: Option<S>,
+        linked_item_parent_uuid: ParentId,
         link_type: LinkTarget,
         last_master_key: &SecUtf8,
     ) -> DirLinkAddRequestPayload {
@@ -129,7 +129,7 @@ impl DirLinkAddRequestPayload {
             key_metadata,
             link_uuid: Uuid::new_v4(),
             metadata: linked_item_metadata.into(),
-            parent: parent_or_base(linked_item_parent_uuid),
+            parent: linked_item_parent_uuid,
             password: PasswordState::Empty,
             password_hashed: EMPTY_PASSWORD_HASH.clone(),
             link_type: link_type,
@@ -166,7 +166,7 @@ pub struct DirLinkEditRequestPayload {
 
     /// ID of the parent of the linked item, hyphenated lowercased UUID V4 if non-base.
     /// Use "base" if linked item is located in the root folder.
-    pub parent: String,
+    pub parent: ParentId,
 
     /// "empty" means no password protection, "notempty" means password is present.
     pub password: PasswordState,
@@ -192,7 +192,7 @@ impl DirLinkEditRequestPayload {
         link_key_metadata: S,
         linked_item_uuid: Uuid,
         linked_item_metadata: S,
-        linked_item_parent_uuid: Option<S>,
+        linked_item_parent_uuid: ParentId,
         link_type: LinkTarget,
     ) -> DirLinkEditRequestPayload {
         DirLinkEditRequestPayload {
@@ -202,7 +202,7 @@ impl DirLinkEditRequestPayload {
             key_metadata: link_key_metadata.into(),
             link_uuid,
             metadata: linked_item_metadata.into(),
-            parent: parent_or_base(linked_item_parent_uuid),
+            parent: linked_item_parent_uuid,
             password: PasswordState::Empty,
             password_hashed: EMPTY_PASSWORD_HASH.clone(),
             target_type: link_type,
@@ -217,7 +217,7 @@ impl DirLinkEditRequestPayload {
         link_key_metadata: S,
         linked_folder_uuid: Uuid,
         linked_folder_metadata: S,
-        linked_folder_parent: Option<S>,
+        linked_folder_parent: ParentId,
         link_type: LinkTarget,
         plain_text_password: &SecUtf8,
     ) -> DirLinkEditRequestPayload {
@@ -235,7 +235,7 @@ impl DirLinkEditRequestPayload {
             key_metadata: link_key_metadata.into(),
             link_uuid,
             metadata: linked_folder_metadata.into(),
-            parent: parent_or_base(linked_folder_parent),
+            parent: linked_folder_parent,
             password: PasswordState::NotEmpty,
             password_hashed,
             target_type: link_type,

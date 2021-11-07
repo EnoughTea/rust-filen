@@ -392,6 +392,8 @@ pub async fn file_trash_request_async(
 
 #[cfg(test)]
 mod tests {
+    use std::convert::TryFrom;
+
     use super::*;
     use crate::test_utils::*;
     use once_cell::sync::Lazy;
@@ -408,7 +410,7 @@ mod tests {
         let (server, filen_settings) = init_server();
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
-            parent: "b640414e-367e-4df6-b31a-030fd639bcff".to_owned(),
+            parent: ParentId::try_from("b640414e-367e-4df6-b31a-030fd639bcff").unwrap(),
             name_hashed: NAME_HASHED.to_owned(),
         };
         let expected_response: LocationExistsResponsePayload =
@@ -428,7 +430,7 @@ mod tests {
         let (server, filen_settings) = init_server();
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
-            parent: "b640414e-367e-4df6-b31a-030fd639bcff".to_owned(),
+            parent: ParentId::try_from("b640414e-367e-4df6-b31a-030fd639bcff").unwrap(),
             name_hashed: NAME_HASHED.to_owned(),
         };
         let expected_response: LocationExistsResponsePayload =

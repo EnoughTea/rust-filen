@@ -3,7 +3,8 @@ use crate::{crypto, utils, v1::*};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use snafu::{ResultExt, Snafu};
+use snafu::{Backtrace, ResultExt, Snafu};
+use std::{convert::TryFrom, fmt};
 use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -15,6 +16,12 @@ pub enum Error {
 
     #[snafu(display("Failed to decrypt location name {}: {}", metadata, source))]
     DecryptLocationNameFailed { metadata: String, source: crypto::Error },
+
+    #[snafu(display(
+        "Expected \"base\" or hyphenated lowercased UUID, got unknown string of length: {}",
+        string_length
+    ))]
+    CannotParseParentIdFromString { string_length: usize, backtrace: Backtrace },
 }
 
 /// Identifies linked item.
@@ -27,12 +34,13 @@ pub enum LinkTarget {
     Folder,
 }
 
-impl std::fmt::Display for LinkTarget {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match *self {
-            LinkTarget::File => write!(f, "file"),
-            LinkTarget::Folder => write!(f, "folder"),
-        }
+impl fmt::Display for LinkTarget {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let link_target_name = match *self {
+            LinkTarget::File => "file",
+            LinkTarget::Folder => "folder",
+        };
+        write!(f, "{}", link_target_name)
     }
 }
 
@@ -48,6 +56,19 @@ pub enum LocationColor {
     Red,
 }
 
+impl fmt::Display for LocationColor {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let color_name = match *self {
+            LocationColor::Blue => "blue",
+            LocationColor::Gray => "gray",
+            LocationColor::Green => "green",
+            LocationColor::Purple => "purple",
+            LocationColor::Red => "red",
+        };
+        write!(f, "{}", color_name)
+    }
+}
+
 /// Identifies location type.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -58,11 +79,94 @@ pub enum LocationType {
     Sync,
 }
 
-impl std::fmt::Display for LocationType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl fmt::Display for LocationType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let location_type_name = match *self {
+            LocationType::Folder => "folder",
+            LocationType::Sync => "sync",
+        };
+        write!(f, "{}", location_type_name)
+    }
+}
+
+/// Identifies parent eitner by ID or by indirect reference.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ParentId {
+    /// Parent is a base folder.
+    Base,
+    /// Parent is a folder with the specified UUID.
+    Id(Uuid),
+}
+
+impl ParentId {
+    /// Tries to parse [IdRef] from given string, which must be either "base" or hyphenated lowercased UUID.
+    pub fn try_parse(base_or_id: &str) -> Result<ParentId> {
+        if base_or_id.eq_ignore_ascii_case("base") {
+            Ok(ParentId::Base)
+        } else {
+            match Uuid::parse_str(&base_or_id) {
+                Ok(uuid) => Ok(ParentId::Id(uuid)),
+                Err(_) => CannotParseParentIdFromString {
+                    string_length: base_or_id.len(),
+                }
+                .fail(),
+            }
+        }
+    }
+}
+
+impl TryFrom<String> for ParentId {
+    type Error = Error;
+    fn try_from(base_or_id: String) -> Result<Self, Self::Error> {
+        ParentId::try_parse(&base_or_id)
+    }
+}
+
+impl TryFrom<&str> for ParentId {
+    type Error = Error;
+    fn try_from(base_or_id: &str) -> Result<Self, Self::Error> {
+        ParentId::try_parse(base_or_id)
+    }
+}
+
+impl fmt::Display for ParentId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            LocationType::Folder => write!(f, "folder"),
-            LocationType::Sync => write!(f, "sync"),
+            ParentId::Base => write!(f, "base"),
+            ParentId::Id(uuid) => uuid.to_hyphenated().fmt(f),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ParentId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let base_or_id = String::deserialize(deserializer)?;
+
+        if base_or_id.eq_ignore_ascii_case("base") {
+            Ok(ParentId::Base)
+        } else {
+            match Uuid::parse_str(&base_or_id) {
+                Ok(uuid) => Ok(ParentId::Id(uuid)),
+                Err(_) => Err(de::Error::invalid_value(
+                    de::Unexpected::Str(&base_or_id),
+                    &"\"base\" or hyphenated lowercased UUID",
+                )),
+            }
+        }
+    }
+}
+
+impl Serialize for ParentId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match *self {
+            ParentId::Base => serializer.serialize_str("base"),
+            ParentId::Id(uuid) => serializer.serialize_str(&uuid.to_hyphenated().to_string()),
         }
     }
 }
@@ -79,7 +183,7 @@ pub struct FolderData {
 
     /// Either parent folder ID (hyphenated lowercased UUID V4) or "base" when folder is located in the base folder,
     /// also known as 'cloud drive'.
-    pub parent: String,
+    pub parent: ParentId,
 }
 utils::display_from_json!(FolderData);
 
@@ -87,13 +191,6 @@ impl HasLocationName for FolderData {
     /// Decrypts name metadata into a folder name.
     fn name_metadata_ref(&self) -> &str {
         &self.name_metadata
-    }
-}
-
-pub(crate) fn parent_or_base<T: Into<String>>(parent: Option<T>) -> String {
-    match parent {
-        Some(parent) => parent.into(),
-        None => "base".to_owned(),
     }
 }
 
@@ -162,7 +259,7 @@ pub struct LocationExistsRequestPayload {
 
     /// Either parent folder ID (hyphenated lowercased UUID V4) or "base" when folder is located in the base folder,
     /// also known as 'cloud drive'.
-    pub parent: String,
+    pub parent: ParentId,
 
     /// Currently hash_fn of lowercased target folder or file name.
     #[serde(rename = "nameHashed")]
@@ -171,11 +268,11 @@ pub struct LocationExistsRequestPayload {
 utils::display_from_json!(LocationExistsRequestPayload);
 
 impl LocationExistsRequestPayload {
-    pub fn new<S: Into<String>>(api_key: SecUtf8, target_parent: S, target_name: &str) -> LocationExistsRequestPayload {
+    pub fn new(api_key: SecUtf8, target_parent: ParentId, target_name: &str) -> LocationExistsRequestPayload {
         let name_hashed = LocationNameMetadata::name_hashed(target_name);
         LocationExistsRequestPayload {
             api_key,
-            parent: target_parent.into(),
+            parent: target_parent,
             name_hashed,
         }
     }
