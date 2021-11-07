@@ -14,6 +14,7 @@ const USER_BASE_FOLDERS_PATH: &str = "/v1/user/baseFolders";
 const USER_DIRS_PATH: &str = "/v1/user/dirs";
 const DIR_CONTENT_PATH: &str = "/v1/dir/content";
 const DIR_CREATE_PATH: &str = "/v1/dir/create";
+const DIR_SUB_CREATE_PATH: &str = "/v1/dir/sub/create";
 const DIR_EXISTS_PATH: &str = "/v1/dir/exists";
 const DIR_MOVE_PATH: &str = "/v1/dir/move";
 const DIR_RENAME_PATH: &str = "/v1/dir/rename";
@@ -39,6 +40,12 @@ pub enum Error {
     #[snafu(display("{} query failed: {}", DIR_CREATE_PATH, source))]
     DirCreateQueryFailed {
         payload: DirCreateRequestPayload,
+        source: queries::Error,
+    },
+
+    #[snafu(display("{} query failed: {}", DIR_CREATE_PATH, source))]
+    DirSubCreateQueryFailed {
+        payload: DirSubCreateRequestPayload,
         source: queries::Error,
     },
 
@@ -375,9 +382,6 @@ pub struct DirCreateRequestPayload {
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 
-    /// Folder ID; hyphenated lowercased UUID V4.
-    pub uuid: Uuid,
-
     /// Metadata containing JSON with format: { "name": <name value> }
     #[serde(rename = "name")]
     pub name_metadata: String,
@@ -389,8 +393,35 @@ pub struct DirCreateRequestPayload {
     /// Should always be "folder", with "sync" reserved for Filen client sync folder.
     #[serde(rename = "type")]
     pub dir_type: LocationType,
+
+    /// Folder ID; hyphenated lowercased UUID V4.
+    pub uuid: Uuid,
 }
 utils::display_from_json!(DirCreateRequestPayload);
+
+// Used for requests to [DIR_SUB_CREATE_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DirSubCreateRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+
+    /// Metadata containing JSON with format: { "name": <name value> }
+    #[serde(rename = "name")]
+    pub name_metadata: String,
+
+    /// Currently hash_fn of lowercased folder name.
+    #[serde(rename = "nameHashed")]
+    pub name_hashed: String,
+
+    /// Parent folder ID.
+    #[serde(rename = "type")]
+    pub parent: Uuid,
+
+    /// Folder ID; hyphenated lowercased UUID V4.
+    pub uuid: Uuid,
+}
+utils::display_from_json!(DirSubCreateRequestPayload);
 
 impl DirCreateRequestPayload {
     /// Payload used for creation of the special Filen sync folder that is created by Filen client
@@ -561,6 +592,29 @@ pub async fn dir_create_request_async(
     queries::query_filen_api_async(DIR_CREATE_PATH, payload, filen_settings)
         .await
         .context(DirCreateQueryFailed {
+            payload: payload.clone(),
+        })
+}
+
+/// Calls [DIR_SUB_CREATE_PATH] endpoint. Creates a new folder within the given parent folder.
+pub fn dir_sub_create_request(
+    payload: &DirSubCreateRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api(DIR_SUB_CREATE_PATH, payload, filen_settings).context(DirSubCreateQueryFailed {
+        payload: payload.clone(),
+    })
+}
+
+/// Calls [DIR_SUB_CREATE_PATH] endpoint asynchronously. Creates a new folder within the given parent folder.
+#[cfg(feature = "async")]
+pub async fn dir_sub_create_request_async(
+    payload: &DirSubCreateRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api_async(DIR_SUB_CREATE_PATH, payload, filen_settings)
+        .await
+        .context(DirSubCreateQueryFailed {
             payload: payload.clone(),
         })
 }
@@ -766,6 +820,44 @@ mod tests {
             "tests/resources/responses/dir_create.json",
             |request_payload, filen_settings| async move {
                 dir_create_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
+    }
+
+    #[test]
+    fn dir_sub_create_request_should_have_proper_contract() {
+        let request_payload = DirSubCreateRequestPayload {
+            api_key: API_KEY.clone(),
+            uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
+            name_metadata: NAME_METADATA.to_owned(),
+            name_hashed: NAME_HASHED.to_owned(),
+            parent: Uuid::parse_str("14fab199-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
+        };
+        validate_contract(
+            DIR_SUB_CREATE_PATH,
+            request_payload,
+            "tests/resources/responses/dir_sub_create.json",
+            |request_payload, filen_settings| dir_sub_create_request(&request_payload, &filen_settings),
+        );
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn dir_sub_create_request_async_should_have_proper_contract() {
+        let request_payload = DirSubCreateRequestPayload {
+            api_key: API_KEY.clone(),
+            uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
+            name_metadata: NAME_METADATA.to_owned(),
+            name_hashed: NAME_HASHED.to_owned(),
+            parent: Uuid::parse_str("14fab199-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
+        };
+        validate_contract_async(
+            DIR_SUB_CREATE_PATH,
+            request_payload,
+            "tests/resources/responses/dir_sub_create.json",
+            |request_payload, filen_settings| async move {
+                dir_sub_create_request_async(&request_payload, &filen_settings).await
             },
         )
         .await;
