@@ -406,40 +406,36 @@ mod tests {
     const NAME_HASHED: &str = "19d24c63b1170a0b1b40520a636a25235735f39f";
 
     #[test]
-    fn file_exists_request_should_work() -> Result<()> {
-        let (server, filen_settings) = init_server();
+    fn file_exists_request_should_be_correctly_typed() {
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
             parent: ParentId::try_from("b640414e-367e-4df6-b31a-030fd639bcff").unwrap(),
             name_hashed: NAME_HASHED.to_owned(),
         };
-        let expected_response: LocationExistsResponsePayload =
-            deserialize_from_file("tests/resources/responses/file_exists.json");
-        let mock = setup_json_mock(super::FILE_EXISTS_PATH, &request_payload, &expected_response, &server);
-
-        let response = file_exists_request(&request_payload, &filen_settings)?;
-
-        mock.assert_hits(1);
-        assert_eq!(response, expected_response);
-        Ok(())
+        validate_contract(
+            FILE_EXISTS_PATH,
+            request_payload,
+            "tests/resources/responses/file_exists.json",
+            |request_payload, filen_settings| file_exists_request(&request_payload, &filen_settings),
+        );
     }
 
     #[cfg(feature = "async")]
     #[tokio::test]
-    async fn file_exists_request_async_should_work() -> Result<()> {
-        let (server, filen_settings) = init_server();
+    async fn file_exists_request_async_should_be_correctly_typed() {
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
             parent: ParentId::try_from("b640414e-367e-4df6-b31a-030fd639bcff").unwrap(),
             name_hashed: NAME_HASHED.to_owned(),
         };
-        let expected_response: LocationExistsResponsePayload =
-            deserialize_from_file("tests/resources/responses/file_exists.json");
-        let mock = setup_json_mock(super::FILE_EXISTS_PATH, &request_payload, &expected_response, &server);
-
-        let async_response = file_exists_request_async(&request_payload, &filen_settings).await?;
-        mock.assert_hits(1);
-        assert_eq!(async_response, expected_response);
-        Ok(())
+        validate_contract_async(
+            FILE_EXISTS_PATH,
+            request_payload,
+            "tests/resources/responses/file_exists.json",
+            |request_payload, filen_settings| async move {
+                file_exists_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
     }
 }

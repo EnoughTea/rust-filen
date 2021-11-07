@@ -348,41 +348,36 @@ mod tests {
     }
 
     #[test]
-    fn master_keys_fetch_request_should_work() -> Result<()> {
-        let (server, filen_settings) = init_server();
+    fn master_keys_fetch_request_should_be_correctly_typed() {
         let request_payload = MasterKeysFetchRequestPayload {
             api_key: SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"),
             master_keys_metadata:
                 "U2FsdGVkX1/P4QDMaiaanx8kpL7fY+v/f3dSzC9Ajl58gQg5bffqGUbOIzROwGQn8m5NAZa0tRnVya84aJnf1w==".to_owned(),
         };
-        let expected_response: MasterKeysFetchResponsePayload =
-            deserialize_from_file("tests/resources/responses/user_masterKeys.json");
-        let mock = setup_json_mock(MASTER_KEYS_PATH, &request_payload, &expected_response, &server);
-
-        let response = master_keys_fetch_request(&request_payload, &filen_settings)?;
-
-        mock.assert_hits(1);
-        assert_eq!(response, expected_response);
-        Ok(())
+        validate_contract(
+            MASTER_KEYS_PATH,
+            request_payload,
+            "tests/resources/responses/user_masterKeys.json",
+            |request_payload, filen_settings| master_keys_fetch_request(&request_payload, &filen_settings),
+        );
     }
 
     #[cfg(feature = "async")]
     #[tokio::test]
-    async fn master_keys_fetch_request_async_should_work() -> Result<()> {
-        let (server, filen_settings) = init_server();
+    async fn master_keys_fetch_request_async_should_be_correctly_typed() {
         let request_payload = MasterKeysFetchRequestPayload {
             api_key: SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"),
             master_keys_metadata:
                 "U2FsdGVkX1/P4QDMaiaanx8kpL7fY+v/f3dSzC9Ajl58gQg5bffqGUbOIzROwGQn8m5NAZa0tRnVya84aJnf1w==".to_owned(),
         };
-        let expected_response: MasterKeysFetchResponsePayload =
-            deserialize_from_file("tests/resources/responses/user_masterKeys.json");
-        let mock = setup_json_mock(MASTER_KEYS_PATH, &request_payload, &expected_response, &server);
-
-        let async_response = master_keys_fetch_request_async(&request_payload, &filen_settings).await?;
-
-        mock.assert_hits(1);
-        assert_eq!(async_response, expected_response);
-        Ok(())
+        validate_contract_async(
+            MASTER_KEYS_PATH,
+            request_payload,
+            "tests/resources/responses/user_masterKeys.json",
+            |request_payload, filen_settings| async move {
+                master_keys_fetch_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
     }
 }

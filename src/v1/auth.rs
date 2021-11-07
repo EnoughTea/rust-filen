@@ -289,113 +289,102 @@ mod tests {
     }
 
     #[test]
-    fn auth_info_request_should_work_with_v1() -> Result<()> {
-        let (server, filen_settings) = init_server();
+    fn auth_info_request_should_be_correctly_typed_for_v1() {
         let request_payload = AuthInfoRequestPayload {
             email: SecUtf8::from("test@email.com"),
             two_factor_key: SecUtf8::from("XXXXXX"),
         };
-        let expected_response: AuthInfoResponsePayload =
-            deserialize_from_file("tests/resources/responses/auth_info_v1.json");
-        let mock = setup_json_mock(AUTH_INFO_PATH, &request_payload, &expected_response, &server);
-
-        let response = auth_info_request(&request_payload, &filen_settings)?;
-
-        mock.assert_hits(1);
-        assert_eq!(response, expected_response);
-        Ok(())
+        validate_contract(
+            AUTH_INFO_PATH,
+            request_payload,
+            "tests/resources/responses/auth_info_v1.json",
+            |request_payload, filen_settings| auth_info_request(&request_payload, &filen_settings),
+        );
     }
 
     #[cfg(feature = "async")]
     #[tokio::test]
-    async fn auth_info_request_async_should_work_with_v1() -> Result<()> {
-        let (server, filen_settings) = init_server();
+    async fn auth_info_request_async_should_be_correctly_typed_for_v1() {
         let request_payload = AuthInfoRequestPayload {
             email: SecUtf8::from("test@email.com"),
             two_factor_key: SecUtf8::from("XXXXXX"),
         };
-        let expected_response: AuthInfoResponsePayload =
-            deserialize_from_file("tests/resources/responses/auth_info_v1.json");
-        let mock = setup_json_mock(AUTH_INFO_PATH, &request_payload, &expected_response, &server);
-
-        let async_response = auth_info_request_async(&request_payload, &filen_settings).await?;
-
-        mock.assert_hits(1);
-        assert_eq!(async_response, expected_response);
-        Ok(())
+        validate_contract_async(
+            AUTH_INFO_PATH,
+            request_payload,
+            "tests/resources/responses/auth_info_v1.json",
+            |request_payload, filen_settings| async move {
+                auth_info_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
     }
 
     #[test]
-    fn auth_info_request_should_work_with_v2() -> Result<()> {
-        let (server, filen_settings) = init_server();
+    fn auth_info_request_should_be_correctly_typed_for_v2() {
         let request_payload = AuthInfoRequestPayload {
             email: SecUtf8::from("test@email.com"),
             two_factor_key: SecUtf8::from("XXXXXX"),
         };
-        let expected_response: AuthInfoResponsePayload =
-            deserialize_from_file("tests/resources/responses/auth_info_v2.json");
-        let mock = setup_json_mock(AUTH_INFO_PATH, &request_payload, &expected_response, &server);
-
-        let response = auth_info_request(&request_payload, &filen_settings)?;
-
-        mock.assert_hits(1);
-        assert_eq!(response, expected_response);
-        Ok(())
+        validate_contract(
+            AUTH_INFO_PATH,
+            request_payload,
+            "tests/resources/responses/auth_info_v2.json",
+            |request_payload, filen_settings| auth_info_request(&request_payload, &filen_settings),
+        );
     }
 
     #[cfg(feature = "async")]
     #[tokio::test]
-    async fn auth_info_request_async_should_work_with_v2() -> Result<()> {
-        let (server, filen_settings) = init_server();
+    async fn auth_info_request_async_should_be_correctly_typed_for_v2() {
         let request_payload = AuthInfoRequestPayload {
             email: SecUtf8::from("test@email.com"),
             two_factor_key: SecUtf8::from("XXXXXX"),
         };
-        let expected_response: AuthInfoResponsePayload =
-            deserialize_from_file("tests/resources/responses/auth_info_v2.json");
-        let mock = setup_json_mock(AUTH_INFO_PATH, &request_payload, &expected_response, &server);
-
-        let async_response = auth_info_request_async(&request_payload, &filen_settings).await?;
-
-        mock.assert_hits(1);
-        assert_eq!(async_response, expected_response);
-        Ok(())
+        validate_contract_async(
+            AUTH_INFO_PATH,
+            request_payload,
+            "tests/resources/responses/auth_info_v2.json",
+            |request_payload, filen_settings| async move {
+                auth_info_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
     }
 
     #[test]
-    fn login_request_should_work_with_v2() -> Result<()> {
-        let (server, filen_settings) = init_server();
+    fn login_request_should_be_correctly_typed_for_v1() {
         let request_payload = LoginRequestPayload {
             email: SecUtf8::from("test@email.com"),
             password: SecUtf8::from("test"),
             two_factor_key: SecUtf8::from("XXXXXX"),
             auth_version: 1,
         };
-        let expected_response: LoginResponsePayload = deserialize_from_file("tests/resources/responses/login_v1.json");
-        let mock = setup_json_mock(LOGIN_PATH, &request_payload, &expected_response, &server);
-
-        let response = login_request(&request_payload, &filen_settings)?;
-        mock.assert_hits(1);
-        assert_eq!(response, expected_response);
-        Ok(())
+        validate_contract(
+            LOGIN_PATH,
+            request_payload,
+            "tests/resources/responses/login_v1.json",
+            |request_payload, filen_settings| login_request(&request_payload, &filen_settings),
+        );
     }
 
     #[cfg(feature = "async")]
     #[tokio::test]
-    async fn login_request_async_should_work_with_v1() -> Result<()> {
-        let (server, filen_settings) = init_server();
+    async fn login_request_async_should_be_correctly_typed_for_v1() {
         let request_payload = LoginRequestPayload {
             email: SecUtf8::from("test@email.com"),
             password: SecUtf8::from("test"),
             two_factor_key: SecUtf8::from("XXXXXX"),
             auth_version: 1,
         };
-        let expected_response: LoginResponsePayload = deserialize_from_file("tests/resources/responses/login_v1.json");
-        let mock = setup_json_mock(LOGIN_PATH, &request_payload, &expected_response, &server);
-
-        let async_response = login_request_async(&request_payload, &filen_settings).await?;
-        mock.assert_hits(1);
-        assert_eq!(async_response, expected_response);
-        Ok(())
+        validate_contract_async(
+            LOGIN_PATH,
+            request_payload,
+            "tests/resources/responses/login_v1.json",
+            |request_payload, filen_settings| async move {
+                login_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
     }
 }

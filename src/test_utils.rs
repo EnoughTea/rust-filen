@@ -1,7 +1,9 @@
 //! This module contains helper functions for tests (aka test dump).
+use crate::filen_settings::FilenSettings;
 use camino::Utf8PathBuf;
 use httpmock::Method::POST;
 use httpmock::{Mock, MockServer};
+use pretty_assertions::assert_eq;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::json;
@@ -14,8 +16,6 @@ use std::io::Read;
 use std::path::Path;
 use std::time::Duration;
 use url::Url;
-
-use crate::filen_settings::FilenSettings;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 

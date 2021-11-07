@@ -266,40 +266,35 @@ mod tests {
         Lazy::new(|| SecUtf8::from("aYZmrwdVEbHJSqeA0RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM10CDnklpFq6"));
 
     #[test]
-    fn download_dir_request_should_be_correctly_typed() -> Result<()> {
-        let (server, filen_settings) = init_server();
+    fn download_dir_request_should_be_correctly_typed() {
         let request_payload = DownloadDirRequestPayload {
             api_key: API_KEY.clone(),
             uuid: Uuid::parse_str("cf2af9a0-6f4e-485d-862c-0459f4662cf1").unwrap(),
         };
-        let expected_response: DownloadDirResponsePayload =
-            deserialize_from_file("tests/resources/responses/download_dir.json");
-        let mock = setup_json_mock(DOWNLOAD_DIR, &request_payload, &expected_response, &server);
-
-        let response = download_dir_request(&request_payload, &filen_settings)?;
-
-        mock.assert_hits(1);
-        assert_eq!(response, expected_response);
-        Ok(())
+        validate_contract(
+            DOWNLOAD_DIR,
+            request_payload,
+            "tests/resources/responses/download_dir.json",
+            |request_payload, filen_settings| download_dir_request(&request_payload, &filen_settings),
+        );
     }
 
     #[cfg(feature = "async")]
     #[tokio::test]
-    async fn download_dir_request_async_should_be_correctly_typed() -> Result<()> {
-        let (server, filen_settings) = init_server();
+    async fn download_dir_request_async_should_be_correctly_typed() {
         let request_payload = DownloadDirRequestPayload {
             api_key: API_KEY.clone(),
             uuid: Uuid::parse_str("cf2af9a0-6f4e-485d-862c-0459f4662cf1").unwrap(),
         };
-        let expected_response: DownloadDirResponsePayload =
-            deserialize_from_file("tests/resources/responses/download_dir.json");
-        let mock = setup_json_mock(DOWNLOAD_DIR, &request_payload, &expected_response, &server);
-
-        let async_response = download_dir_request_async(&request_payload, &filen_settings).await?;
-
-        mock.assert_hits(1);
-        assert_eq!(async_response, expected_response);
-        Ok(())
+        validate_contract_async(
+            DOWNLOAD_DIR,
+            request_payload,
+            "tests/resources/responses/download_dir.json",
+            |request_payload, filen_settings| async move {
+                download_dir_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
     }
 
     #[test]
