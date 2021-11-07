@@ -130,6 +130,40 @@ mod tests {
         Lazy::new(|| SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"));
 
     #[test]
+    fn get_dir_request_should_be_correctly_typed_for_changed_data() {
+        let request_payload = GetDirRequestPayload {
+            api_key: API_KEY.clone(),
+            sync_folder_uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
+            first_request: true,
+        };
+        validate_contract(
+            GET_DIR_PATH,
+            request_payload,
+            "tests/resources/responses/get_dir_changed_data.json",
+            |request_payload, filen_settings| get_dir_request(&request_payload, &filen_settings),
+        );
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn get_dir_request_and_async_should_be_correctly_typed_for_changed_data() {
+        let request_payload = GetDirRequestPayload {
+            api_key: API_KEY.clone(),
+            sync_folder_uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
+            first_request: true,
+        };
+        validate_contract_async(
+            GET_DIR_PATH,
+            request_payload,
+            "tests/resources/responses/get_dir_changed_data.json",
+            |request_payload, filen_settings| async move {
+                get_dir_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
+    }
+
+    #[test]
     fn get_dir_request_should_be_correctly_typed_for_unchanged_data() {
         let request_payload = GetDirRequestPayload {
             api_key: API_KEY.clone(),
