@@ -18,6 +18,7 @@ const FILE_EXISTS_PATH: &str = "/v1/file/exists";
 const FILE_MOVE_PATH: &str = "/v1/file/move";
 const FILE_RENAME_PATH: &str = "/v1/file/rename";
 const FILE_TRASH_PATH: &str = "/v1/file/trash";
+const RM_PATH: &str = "/v1/rm";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -86,6 +87,12 @@ pub enum Error {
 
     #[snafu(display("File system failed to get metadata for a file: {}", source))]
     FileSystemMetadataError { source: std::io::Error },
+
+    #[snafu(display("{} query failed: {}", RM_PATH, source))]
+    RmQueryFailed {
+        payload: RmRequestPayload,
+        source: queries::Error,
+    },
 
     #[snafu(display("Unknown system time error: {}", source))]
     SystemTimeError { source: std::time::SystemTimeError },
@@ -213,7 +220,7 @@ impl FileProperties {
     }
 }
 
-// Used for requests to [FILE_ARCHIVE_PATH] endpoint.
+/// Used for requests to [FILE_ARCHIVE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FileArchiveRequestPayload {
     /// User-associated Filen API key.
@@ -229,7 +236,7 @@ pub struct FileArchiveRequestPayload {
 }
 utils::display_from_json!(FileArchiveRequestPayload);
 
-// Used for requests to [FILE_MOVE_PATH] endpoint.
+/// Used for requests to [FILE_MOVE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FileMoveRequestPayload {
     /// User-associated Filen API key.
@@ -246,7 +253,7 @@ pub struct FileMoveRequestPayload {
 }
 utils::display_from_json!(FileMoveRequestPayload);
 
-// Used for requests to [FILE_RENAME_PATH] endpoint.
+/// Used for requests to [FILE_RENAME_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FileRenameRequestPayload {
     /// User-associated Filen API key.
@@ -290,6 +297,18 @@ impl FileRenameRequestPayload {
         }
     }
 }
+
+/// Used for requests to [RM_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct RmRequestPayload {
+    /// ID of the file to delete; hyphenated lowercased UUID V4.
+    pub uuid: Uuid,
+
+    /// Random alphanumeric string associated with the file. After file uploading, 'rm' can be accessed with
+    /// [file_versions_request].
+    pub rm: String,
+}
+utils::display_from_json!(RmRequestPayload);
 
 /// Calls [FILE_ARCHIVE_PATH] endpoint.
 /// Replaces one version of a file with another version of the same file.
@@ -423,6 +442,23 @@ pub async fn file_trash_request_async(
     queries::query_filen_api_async(FILE_TRASH_PATH, payload, filen_settings)
         .await
         .context(FileTrashQueryFailed {
+            payload: payload.clone(),
+        })
+}
+
+/// Calls [RM_PATH] endpoint. Used to delete file.
+pub fn rm_request(payload: &RmRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
+    queries::query_filen_api(RM_PATH, payload, filen_settings).context(RmQueryFailed {
+        payload: payload.clone(),
+    })
+}
+
+/// Calls [RM_PATH] endpoint asynchronously. Used to delete file.
+#[cfg(feature = "async")]
+pub async fn rm_request_async(payload: &RmRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
+    queries::query_filen_api_async(RM_PATH, payload, filen_settings)
+        .await
+        .context(RmQueryFailed {
             payload: payload.clone(),
         })
 }
