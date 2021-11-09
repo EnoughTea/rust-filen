@@ -11,6 +11,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 const USER_KEY_PAIR_INFO_PATH: &str = "/v1/user/keyPair/info";
 const USER_KEY_PAIR_UPDATE_PATH: &str = "/v1/user/keyPair/update";
 const USER_MASTER_KEYS_PATH: &str = "/v1/user/masterKeys";
+const USER_PUBLIC_KEY_GET_PATH: &str = "/v1/user/publicKey/get";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -43,6 +44,9 @@ pub enum Error {
         payload: MasterKeysFetchRequestPayload,
         source: queries::Error,
     },
+
+    #[snafu(display("{} query failed: {}", USER_PUBLIC_KEY_GET_PATH, source))]
+    UserPublicKeyGetQueryFailed { email: String, source: queries::Error },
 }
 
 /// Implement this trait to add decryption of a master keys metadata.
@@ -254,6 +258,38 @@ api_response_struct!(
     MasterKeysFetchResponsePayload<Option<MasterKeysFetchResponseData>>
 );
 
+/// Used for requests to [USER_PUBLIC_KEY_GET_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct UserPublicKeyGetRequestPayload {
+    /// Email of the user whose public key Filen should fetch.
+    pub email: String,
+}
+utils::display_from_json!(UserPublicKeyGetRequestPayload);
+
+/// Response data for [USER_PUBLIC_KEY_GET_PATH] endpoint.
+#[skip_serializing_none]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct UserPublicKeyGetResponseData {
+    /// User's public key bytes in PKCS#8 ASN.1 DER format, base64-encoded. Currently used for encrypting name and
+    /// metadata of the shared download folders.
+    ///
+    /// Empty when no keys were set (currently before the first login).
+    #[serde(rename = "publicKey")]
+    pub public_key: Option<String>,
+}
+utils::display_from_json!(UserPublicKeyGetResponseData);
+
+impl HasPublicKey for UserPublicKeyGetResponseData {
+    fn public_key_ref(&self) -> Option<&str> {
+        self.public_key.as_deref()
+    }
+}
+
+api_response_struct!(
+    /// Response for [USER_PUBLIC_KEY_GET_PATH] endpoint.
+    UserPublicKeyGetResponsePayload<Option<UserPublicKeyGetResponseData>>
+);
+
 /// Calls [USER_KEY_PAIR_INFO_PATH] endpoint. Used to get RSA public/private key pair.
 pub fn user_key_pair_info_request(
     payload: &UserKeyPairInfoRequestPayload,
@@ -296,7 +332,7 @@ pub async fn key_pair_update_request_async(
 /// Calls [MASTER_KEYS_PATH] endpoint. Used to get/update user's master keys.
 /// My guess is via that method new user master keys, passed in request payload, get joined with current
 /// Filen-known user master keys, and resulting master keys chain is returned in response payload.
-pub fn user_master_keys_fetch_request(
+pub fn user_master_keys_request(
     payload: &MasterKeysFetchRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<MasterKeysFetchResponsePayload> {
@@ -309,7 +345,7 @@ pub fn user_master_keys_fetch_request(
 /// My guess is via that method new user master keys, passed in request payload, get joined with current
 /// Filen-known user master keys, and resulting master keys chain is returned in response payload.
 #[cfg(feature = "async")]
-pub async fn user_master_keys_fetch_request_async(
+pub async fn user_master_keys_request_async(
     payload: &MasterKeysFetchRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<MasterKeysFetchResponsePayload> {
@@ -317,6 +353,29 @@ pub async fn user_master_keys_fetch_request_async(
         .await
         .context(UserMasterKeysQueryFailed {
             payload: payload.clone(),
+        })
+}
+
+/// Calls [USER_PUBLIC_KEY_GET_PATH] endpoint. Used to get any user's RSA public key.
+pub fn user_public_key_get_request(
+    payload: &UserPublicKeyGetRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<UserPublicKeyGetResponsePayload> {
+    queries::query_filen_api(USER_PUBLIC_KEY_GET_PATH, payload, filen_settings).context(UserPublicKeyGetQueryFailed {
+        email: payload.email.clone(),
+    })
+}
+
+/// Calls [USER_PUBLIC_KEY_GET_PATH] endpoint asynchronously. Used to get any user's RSA public key.
+#[cfg(feature = "async")]
+pub async fn user_public_key_get_request_async(
+    payload: &UserPublicKeyGetRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<UserPublicKeyGetResponsePayload> {
+    queries::query_filen_api_async(USER_PUBLIC_KEY_GET_PATH, payload, filen_settings)
+        .await
+        .context(UserPublicKeyGetQueryFailed {
+            email: payload.email.clone(),
         })
 }
 
@@ -389,7 +448,7 @@ mod tests {
     }
 
     #[test]
-    fn master_keys_fetch_request_should_be_correctly_typed() {
+    fn master_keys_request_should_be_correctly_typed() {
         let request_payload = MasterKeysFetchRequestPayload {
             api_key: SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"),
             master_keys_metadata:
@@ -399,13 +458,13 @@ mod tests {
             USER_MASTER_KEYS_PATH,
             request_payload,
             "tests/resources/responses/user_masterKeys.json",
-            |request_payload, filen_settings| user_master_keys_fetch_request(&request_payload, &filen_settings),
+            |request_payload, filen_settings| user_master_keys_request(&request_payload, &filen_settings),
         );
     }
 
     #[cfg(feature = "async")]
     #[tokio::test]
-    async fn master_keys_fetch_request_async_should_be_correctly_typed() {
+    async fn master_keys_request_async_should_be_correctly_typed() {
         let request_payload = MasterKeysFetchRequestPayload {
             api_key: SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"),
             master_keys_metadata:
@@ -416,7 +475,37 @@ mod tests {
             request_payload,
             "tests/resources/responses/user_masterKeys.json",
             |request_payload, filen_settings| async move {
-                user_master_keys_fetch_request_async(&request_payload, &filen_settings).await
+                user_master_keys_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
+    }
+
+    #[test]
+    fn user_public_key_get_request_should_be_correctly_typed() {
+        let request_payload = UserPublicKeyGetRequestPayload {
+            email: "test@test.com".to_owned(),
+        };
+        validate_contract(
+            USER_PUBLIC_KEY_GET_PATH,
+            request_payload,
+            "tests/resources/responses/user_public_key_get.json",
+            |request_payload, filen_settings| user_public_key_get_request(&request_payload, &filen_settings),
+        );
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn user_public_key_get_request_async_should_be_correctly_typed() {
+        let request_payload = UserPublicKeyGetRequestPayload {
+            email: "test@test.com".to_owned(),
+        };
+        validate_contract_async(
+            USER_PUBLIC_KEY_GET_PATH,
+            request_payload,
+            "tests/resources/responses/user_public_key_get.json",
+            |request_payload, filen_settings| async move {
+                user_public_key_get_request_async(&request_payload, &filen_settings).await
             },
         )
         .await;
