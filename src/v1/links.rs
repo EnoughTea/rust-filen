@@ -64,8 +64,9 @@ pub struct LinkDirItemStatusResponseData {
     /// True if at least one link for the specified item exists; false otherwise.
     pub link: bool,
 
-    /// Found links. None if given item is not linked.
-    pub links: Option<Vec<LinkIdWithKey>>,
+    /// Found links. Empty if given item is not linked.
+    #[serde(default)]
+    pub links: Vec<LinkIdWithKey>,
 }
 utils::display_from_json!(LinkDirItemStatusResponseData);
 
@@ -97,6 +98,7 @@ pub struct LinkIdWithKey {
     #[serde(rename = "linkUUID")]
     pub link_uuid: Uuid,
 }
+utils::display_from_json!(LinkIdWithKey);
 
 /// Response data for [LINK_DIR_STATUS_PATH] endpoint.
 #[skip_serializing_none]
@@ -105,8 +107,9 @@ pub struct LinkDirStatusResponseData {
     /// True if at least one link for the specified folder exists; false otherwise.
     pub link: bool,
 
-    /// Found links. None if given folder is not linked.
-    pub links: Option<Vec<LinkIdWithKey>>,
+    /// Found links. Empty if given folder is not linked.
+    #[serde(default)]
+    pub links: Vec<LinkIdWithKey>,
 }
 utils::display_from_json!(LinkDirStatusResponseData);
 

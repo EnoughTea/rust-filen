@@ -263,7 +263,7 @@ mod tests {
     use super::*;
 
     static API_KEY: Lazy<SecUtf8> =
-        Lazy::new(|| SecUtf8::from("aYZmrwdVEbHJSqeA0RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM10CDnklpFq6"));
+        Lazy::new(|| SecUtf8::from("bYZmrwdVEbHJSqeA0RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM10CDnklpFq6"));
 
     #[test]
     fn download_dir_request_should_be_correctly_typed() {
