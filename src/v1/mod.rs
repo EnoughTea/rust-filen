@@ -9,9 +9,10 @@ pub use {
     usage::*,
 };
 
-use crate::crypto;
+use crate::{crypto, utils};
 use once_cell::sync::Lazy;
 use serde::*;
+use uuid::Uuid;
 
 mod auth;
 mod dir_links;
@@ -38,7 +39,7 @@ pub struct PlainApiResponse {
     /// Filen reason for success or failure.
     pub message: Option<String>,
 }
-crate::utils::display_from_json!(PlainApiResponse);
+utils::display_from_json!(PlainApiResponse);
 
 /// Serves as a flag for password-protection.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -49,15 +50,7 @@ pub enum PasswordState {
     /// "notempty" means password is present.
     NotEmpty,
 }
-
-impl std::fmt::Display for PasswordState {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match *self {
-            PasswordState::Empty => write!(f, "empty"),
-            PasswordState::NotEmpty => write!(f, "notempty"),
-        }
-    }
-}
+utils::display_from_json!(PasswordState);
 
 pub(crate) fn bool_from_string<'de, D>(deserializer: D) -> Result<bool, D::Error>
 where
@@ -157,4 +150,3 @@ macro_rules! api_response_struct {
     }
 }
 pub(crate) use api_response_struct;
-use uuid::Uuid;

@@ -64,8 +64,8 @@ pub(crate) fn filen_file_address_to_api_endpoint(
         &file_uuid.to_hyphenated().to_string(),
         &chunk_index.to_string(),
     ]
-        .join("/")
-        .replace("//", "/")
+    .join("/")
+    .replace("//", "/")
 }
 
 /// This macro generates a simple [std::fmt::Display] implementation using Serde's json! on self.
@@ -75,8 +75,9 @@ macro_rules! display_from_json {
     ) => {
         impl std::fmt::Display for $target_data_type {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                match *self {
-                    _ => write!(f, "{}", serde_json::json!(self)),
+                match serde_json::to_string(self) {
+                    Ok(repr) => write!(f, "{}", repr.trim_matches('"')),
+                    Err(serde_err) => write!(f, "{}", serde_err),
                 }
             }
         }

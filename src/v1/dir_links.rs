@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_repr::*;
 use serde_with::*;
 use snafu::{ResultExt, Snafu};
+use std::fmt;
 use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -38,7 +39,8 @@ pub enum Error {
 }
 
 /// State of the 'Enable download button' GUI checkbox represented as a string.
-/// It is the checkbox you see at the bottom of modal popup when creating or sharing an item.
+/// It is the checkbox you could have seen at the bottom of modal popup when creating or sharing an item.
+/// Now it seems to be obsolete.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DownloadBtnState {
@@ -49,7 +51,8 @@ pub enum DownloadBtnState {
 }
 
 /// State of the 'Enable download button' GUI checkbox represented as a 0|1 flag.
-/// It is the checkbox you see at the bottom of modal popup when creating or sharing an item.
+/// It is the checkbox you could have seen at the bottom of modal popup when creating or sharing an item.
+/// Now it seems to be obsolete.
 #[derive(Clone, Debug, Deserialize_repr, Eq, PartialEq, Serialize_repr)]
 #[repr(u8)]
 pub enum DownloadBtnStateByte {
@@ -57,8 +60,8 @@ pub enum DownloadBtnStateByte {
     Enable = 1,
 }
 
-impl std::fmt::Display for DownloadBtnStateByte {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl fmt::Display for DownloadBtnStateByte {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             DownloadBtnStateByte::Disable => write!(f, "disable"),
             DownloadBtnStateByte::Enable => write!(f, "enable"),

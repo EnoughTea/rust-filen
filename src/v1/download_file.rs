@@ -1,8 +1,7 @@
-use std::{convert::TryInto, fmt::Display, io::Write};
-
 use crate::{crypto, filen_settings::FilenSettings, queries, retry_settings::RetrySettings, utils, v1::*};
 use secstr::SecUtf8;
 use snafu::{ResultExt, Snafu};
+use std::{convert::TryInto, fmt, io::Write};
 use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -63,8 +62,8 @@ impl FileLocation {
     }
 }
 
-impl Display for FileLocation {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for FileLocation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{}/{}/{} [{} chunks]",
@@ -93,8 +92,8 @@ impl FileChunkLocation {
     }
 }
 
-impl Display for FileChunkLocation {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for FileChunkLocation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{}/{}/{}/{}",

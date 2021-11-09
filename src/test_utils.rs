@@ -10,7 +10,7 @@ use serde_json::json;
 use snafu::{ResultExt, Snafu};
 use std::convert::TryFrom;
 use std::env;
-use std::fmt::Debug;
+use std::fmt;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -113,9 +113,9 @@ pub(crate) fn validate_contract<P, A, R, E>(
 ) -> MockServer
 where
     P: Serialize,
-    R: Debug + DeserializeOwned + PartialEq + Serialize,
+    R: fmt::Debug + DeserializeOwned + PartialEq + Serialize,
     A: Fn(P, FilenSettings) -> Result<R, E>,
-    E: Debug,
+    E: fmt::Debug,
 {
     let (server, filen_settings) = init_server();
     let expected_response: R = deserialize_from_file(expected_response_path);
@@ -137,9 +137,9 @@ pub(crate) async fn validate_contract_async<P, A, R, E, F>(
 ) -> MockServer
 where
     P: Serialize,
-    R: Debug + DeserializeOwned + PartialEq + Serialize,
+    R: fmt::Debug + DeserializeOwned + PartialEq + Serialize,
     A: Fn(P, FilenSettings) -> F,
-    E: Debug,
+    E: fmt::Debug,
     F: futures::Future<Output = Result<R, E>>,
 {
     let (server, filen_settings) = init_server();
