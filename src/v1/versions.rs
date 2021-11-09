@@ -64,7 +64,7 @@ pub struct FileArchiveRestoreResponseData {
     /// Parent folder ID; hyphenated lowercased UUID V4.
     pub parent: Uuid,
 
-    /// Random alphanumeric string associated with the file. Used for versioning.
+    /// Random alphanumeric string associated with the file. Used for deleting and versioning.
     pub rm: String,
 
     /// File creation time, as Unix timestamp in seconds.
@@ -104,7 +104,7 @@ pub struct FileVersion {
     /// Amount of chunks file is split into.
     pub chunks: u32,
 
-    /// Random alphanumeric string associated with the file. Used for versioning.
+    /// Random alphanumeric string associated with the file. Used for deleting and versioning.
     pub rm: String,
 
     /// File creation time, as Unix timestamp in seconds.

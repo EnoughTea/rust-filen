@@ -241,7 +241,7 @@ pub struct DirContentFile {
     /// File metadata.
     pub metadata: String,
 
-    /// Random alphanumeric string associated with the file. Used for versioning.
+    /// Random alphanumeric string associated with the file. Used for deleting and versioning.
     pub rm: String,
 
     /// Amount of chunks file is split into.
