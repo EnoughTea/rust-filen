@@ -23,6 +23,7 @@ mod file_links;
 mod files;
 mod fs;
 mod keys;
+mod links;
 mod share;
 mod sync_dir;
 mod upload_file;
