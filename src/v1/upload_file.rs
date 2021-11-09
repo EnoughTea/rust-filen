@@ -150,7 +150,7 @@ pub struct FileUploadProperties {
     /// Random alphanumeric key.
     pub file_key: SecUtf8,
 
-    /// Random alphanumeric key associated with the file.
+    /// Random alphanumeric key associated with the file. Used for versioning.
     pub rm: String,
 
     /// Random alphanumeric key associated with entire file upload.
