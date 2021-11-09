@@ -1,0 +1,17 @@
+{
+    "status": true,
+    "message": "File restored from version archive.",
+    "data": {
+        "uuid": "b5ec90d2-957c-4481-b211-08a68accd1b2",
+        "currentUUID": "0d9e14cd-69be-4f44-8390-b493eaba3468",
+        "metadata": "U2FsdGVkX19wZ0qnk+d52Yz+zJDPF6qQL2Dyu0efKmZ52V782d/xUz8eXaBDDhGefelk3Fcysutm2h+lFzsBOrmZJM1KPVkaxfUaj04HMiQbXe1+J2zpeTvWqfaeye8LBi4KU167A5dSyxk0Ct5H13RZwc6tXEq2GN2+HiqvTcdHs1S59XEJHPW17NmrYBoT",
+        "bucket": "filen-1",
+        "region": "de-1",
+        "chunks": 1,
+        "parent": "cf2af9a0-6f4e-485d-862c-0459f4662cf1",
+        "rm": "tHaILGxTGTxjbvaaAXnRCPQ8JB9nIyoV",
+        "timestamp": 1634504310,
+        "version": 1,
+        "favorited": 0
+    }
+}
