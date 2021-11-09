@@ -21,7 +21,6 @@ use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-const DEFAULT_EXPIRE: &str = "never";
 const FILE_CHUNK_SIZE: u32 = 1024 * 1024; // Hardcoded mostly because Filen also hardcoded chunk size
 const FILE_VERSION: u32 = 1;
 const UPLOAD_PATH: &str = "/v1/upload";
@@ -135,8 +134,8 @@ pub struct FileUploadProperties {
     /// Random alphanumeric key associated with entire file upload.
     pub upload_key: String,
 
-    /// Expire marker. Always set to "expire".
-    pub expire: String,
+    /// Expire marker. Always set to "never".
+    pub expire: Expire,
 
     /// Parent folder ID, UUID V4 in hyphenated lowercase format.
     pub parent_uuid: Uuid,
@@ -177,7 +176,7 @@ impl FileUploadProperties {
             file_key: file_properties.key.clone(),
             rm,
             upload_key,
-            expire: DEFAULT_EXPIRE.to_owned(),
+            expire: Expire::Never,
             parent_uuid: parent_folder_uuid,
             version: FILE_VERSION,
         })
@@ -197,7 +196,7 @@ impl FileUploadProperties {
                 ("mime", &self.mime_metadata),
                 ("index", &chunk_index.to_string()),
                 ("rm", &self.rm),
-                ("expire", &self.expire),
+                ("expire", &self.expire.to_string()),
                 ("uploadKey", &self.upload_key),
                 ("metaData", &self.file_metadata),
                 ("parent", &self.parent_uuid.to_hyphenated().to_string()),

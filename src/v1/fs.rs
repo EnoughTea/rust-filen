@@ -33,16 +33,7 @@ pub enum LinkTarget {
     /// Linked item is a folder.
     Folder,
 }
-
-impl fmt::Display for LinkTarget {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let link_target_name = match *self {
-            LinkTarget::File => "file",
-            LinkTarget::Folder => "folder",
-        };
-        write!(f, "{}", link_target_name)
-    }
-}
+utils::display_from_json!(LinkTarget);
 
 /// Identifies location color set by user. Default yellow color is represented by the absence of specifically set
 /// `LocationColor`.
@@ -55,19 +46,7 @@ pub enum LocationColor {
     Purple,
     Red,
 }
-
-impl fmt::Display for LocationColor {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let color_name = match *self {
-            LocationColor::Blue => "blue",
-            LocationColor::Gray => "gray",
-            LocationColor::Green => "green",
-            LocationColor::Purple => "purple",
-            LocationColor::Red => "red",
-        };
-        write!(f, "{}", color_name)
-    }
-}
+utils::display_from_json!(LocationColor);
 
 /// Identifies location type.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -78,16 +57,29 @@ pub enum LocationType {
     /// Location is a special Filen Sync folder.
     Sync,
 }
+utils::display_from_json!(LocationType);
 
-impl fmt::Display for LocationType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let location_type_name = match *self {
-            LocationType::Folder => "folder",
-            LocationType::Sync => "sync",
-        };
-        write!(f, "{}", location_type_name)
-    }
+/// Expiration time period.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub enum Expire {
+    #[serde(rename = "never")]
+    Never,
+    #[serde(rename = "1h")]
+    OneHour,
+    #[serde(rename = "6h")]
+    SixHours,
+    #[serde(rename = "1d")]
+    OneDay,
+    #[serde(rename = "3d")]
+    ThreeDays,
+    #[serde(rename = "7d")]
+    SevenDays,
+    #[serde(rename = "14d")]
+    FourteenDays,
+    #[serde(rename = "30d")]
+    ThirtyDays,
 }
+utils::display_from_json!(Expire);
 
 /// Identifies parent eitner by ID or by indirect reference.
 #[derive(Clone, Debug, Eq, PartialEq)]

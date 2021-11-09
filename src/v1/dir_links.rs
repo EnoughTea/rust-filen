@@ -14,8 +14,6 @@ const DIR_LINK_EDIT_PATH: &str = "/v1/dir/link/edit";
 const DIR_LINK_REMOVE_PATH: &str = "/v1/dir/link/remove";
 const DIR_LINK_STATUS_PATH: &str = "/v1/dir/link/status";
 
-const DEFAULT_EXPIRE: &str = "never";
-
 #[allow(clippy::enum_variant_names)]
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -81,7 +79,7 @@ pub struct DirLinkAddRequestPayload {
     pub download_btn: DownloadBtnState,
 
     /// Link expiration time in text form. Usually has value "never".
-    pub expiration: String,
+    pub expiration: Expire,
 
     /// Link key, encrypted.
     #[serde(rename = "key")]
@@ -128,7 +126,7 @@ impl DirLinkAddRequestPayload {
         DirLinkAddRequestPayload {
             api_key,
             download_btn: DownloadBtnState::Enable,
-            expiration: DEFAULT_EXPIRE.to_owned(),
+            expiration: Expire::Never,
             key_metadata,
             link_uuid: Uuid::new_v4(),
             metadata: linked_item_metadata.into(),
@@ -154,7 +152,7 @@ pub struct DirLinkEditRequestPayload {
     pub download_btn: DownloadBtnState,
 
     /// Link expiration time in text form. Usually has value "never".
-    pub expiration: String,
+    pub expiration: Expire,
 
     /// Link key, encrypted.
     #[serde(rename = "key")]
@@ -197,11 +195,12 @@ impl DirLinkEditRequestPayload {
         linked_item_metadata: S,
         linked_item_parent_uuid: ParentId,
         link_type: LinkTarget,
+        link_expiration: Expire,
     ) -> DirLinkEditRequestPayload {
         DirLinkEditRequestPayload {
             api_key,
             download_btn,
-            expiration: DEFAULT_EXPIRE.to_owned(),
+            expiration: link_expiration,
             key_metadata: link_key_metadata.into(),
             link_uuid,
             metadata: linked_item_metadata.into(),
@@ -222,6 +221,7 @@ impl DirLinkEditRequestPayload {
         linked_folder_metadata: S,
         linked_folder_parent: ParentId,
         link_type: LinkTarget,
+        link_expiration: Expire,
         plain_text_password: &SecUtf8,
     ) -> DirLinkEditRequestPayload {
         let salt = utils::random_alphanumeric_string(32);
@@ -234,7 +234,7 @@ impl DirLinkEditRequestPayload {
         DirLinkEditRequestPayload {
             api_key,
             download_btn,
-            expiration: DEFAULT_EXPIRE.to_owned(),
+            expiration: link_expiration,
             key_metadata: link_key_metadata.into(),
             link_uuid,
             metadata: linked_folder_metadata.into(),
