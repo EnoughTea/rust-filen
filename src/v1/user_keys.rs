@@ -8,9 +8,9 @@ use super::{api_response_struct, PlainApiResponse, METADATA_VERSION};
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-const KEY_PAIR_INFO_PATH: &str = "/v1/user/keyPair/info";
-const KEY_PAIR_UPDATE_PATH: &str = "/v1/user/keyPair/update";
-const MASTER_KEYS_PATH: &str = "/v1/user/masterKeys";
+const USER_KEY_PAIR_INFO_PATH: &str = "/v1/user/keyPair/info";
+const USER_KEY_PAIR_UPDATE_PATH: &str = "/v1/user/keyPair/update";
+const USER_MASTER_KEYS_PATH: &str = "/v1/user/masterKeys";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -32,14 +32,14 @@ pub enum Error {
     #[snafu(display("Failed to encrypt private key: {}", source))]
     EncryptPrivateKeyFailed { source: crypto::Error },
 
-    #[snafu(display("{} query failed: {}", KEY_PAIR_INFO_PATH, source))]
-    KeyPairInfoQueryFailed { source: queries::Error },
+    #[snafu(display("{} query failed: {}", USER_KEY_PAIR_INFO_PATH, source))]
+    UserKeyPairInfoQueryFailed { source: queries::Error },
 
-    #[snafu(display("{} query failed: {}", KEY_PAIR_UPDATE_PATH, source))]
-    KeyPairUpdateQueryFailed { source: queries::Error },
+    #[snafu(display("{} query failed: {}", USER_KEY_PAIR_UPDATE_PATH, source))]
+    UserKeyPairUpdateQueryFailed { source: queries::Error },
 
-    #[snafu(display("{} query failed: {}", MASTER_KEYS_PATH, source))]
-    MasterKeysQueryFailed {
+    #[snafu(display("{} query failed: {}", USER_MASTER_KEYS_PATH, source))]
+    UserMasterKeysQueryFailed {
         payload: MasterKeysFetchRequestPayload,
         source: queries::Error,
     },
@@ -83,7 +83,7 @@ pub trait HasPrivateKey {
     }
 }
 
-/// Used for requests to [KEY_PAIR_INFO_PATH] endpoint.
+/// Used for requests to [USER_KEY_PAIR_INFO_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserKeyPairInfoRequestPayload {
     /// User-associated Filen API key.
@@ -92,7 +92,7 @@ pub struct UserKeyPairInfoRequestPayload {
 }
 utils::display_from_json!(UserKeyPairInfoRequestPayload);
 
-/// Response data for [KEY_PAIR_INFO_PATH] endpoint.
+/// Response data for [USER_KEY_PAIR_INFO_PATH] endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserKeyPairInfoResponseData {
@@ -133,11 +133,11 @@ impl HasPrivateKey for UserKeyPairInfoResponseData {
 }
 
 api_response_struct!(
-    /// Response for [KEY_PAIR_INFO_PATH] endpoint.
+    /// Response for [USER_KEY_PAIR_INFO_PATH] endpoint.
     UserKeyPairInfoResponsePayload<Option<UserKeyPairInfoResponseData>>
 );
 
-/// Used for requests to [KEY_PAIR_UPDATE_PATH] endpoint.
+/// Used for requests to [USER_KEY_PAIR_UPDATE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserKeyPairUpdateRequestPayload {
     /// User-associated Filen API key.
@@ -183,7 +183,7 @@ impl UserKeyPairUpdateRequestPayload {
     }
 }
 
-/// Used for requests to [MASTER_KEYS_PATH] endpoint.
+/// Used for requests to [USER_MASTER_KEYS_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct MasterKeysFetchRequestPayload {
     /// User-associated Filen API key.
@@ -222,7 +222,7 @@ impl MasterKeysFetchRequestPayload {
     }
 }
 
-/// Response data for [MASTER_KEYS_PATH] endpoint.
+/// Response data for [USER_MASTER_KEYS_PATH] endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct MasterKeysFetchResponseData {
@@ -240,35 +240,35 @@ impl HasMasterKeys for MasterKeysFetchResponseData {
 }
 
 api_response_struct!(
-    /// Response for [KEY_PAIR_PATH] endpoint.
+    /// Response for [USER_MASTER_KEYS_PATH] endpoint.
     MasterKeysFetchResponsePayload<Option<MasterKeysFetchResponseData>>
 );
 
-/// Calls [KEY_PAIR_INFO_PATH] endpoint. Used to get RSA public/private key pair.
-pub fn key_pair_info_request(
+/// Calls [USER_KEY_PAIR_INFO_PATH] endpoint. Used to get RSA public/private key pair.
+pub fn user_key_pair_info_request(
     payload: &UserKeyPairInfoRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserKeyPairInfoResponsePayload> {
-    queries::query_filen_api(KEY_PAIR_INFO_PATH, payload, filen_settings).context(KeyPairInfoQueryFailed {})
+    queries::query_filen_api(USER_KEY_PAIR_INFO_PATH, payload, filen_settings).context(UserKeyPairInfoQueryFailed {})
 }
 
-/// Calls [KEY_PAIR_INFO_PATH] endpoint asynchronously. Used to get RSA public/private key pair.
+/// Calls [USER_KEY_PAIR_INFO_PATH] endpoint asynchronously. Used to get RSA public/private key pair.
 #[cfg(feature = "async")]
 pub async fn key_pair_info_request_async(
     payload: &UserKeyPairInfoRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserKeyPairInfoResponsePayload> {
-    queries::query_filen_api_async(KEY_PAIR_INFO_PATH, payload, filen_settings)
+    queries::query_filen_api_async(USER_KEY_PAIR_INFO_PATH, payload, filen_settings)
         .await
-        .context(KeyPairInfoQueryFailed {})
+        .context(UserKeyPairInfoQueryFailed {})
 }
 
 /// Calls [KEY_PAIR_UPDATE_PATH] endpoint. Used to set user's RSA public/private key pair.
-pub fn key_pair_update_request(
+pub fn user_key_pair_update_request(
     payload: &UserKeyPairUpdateRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(KEY_PAIR_INFO_PATH, payload, filen_settings).context(KeyPairUpdateQueryFailed {})
+    queries::query_filen_api(USER_KEY_PAIR_INFO_PATH, payload, filen_settings).context(UserKeyPairUpdateQueryFailed {})
 }
 
 /// Calls [KEY_PAIR_UPDATE_PATH] endpoint asynchronously. Used to set user's RSA public/private key pair.
@@ -277,19 +277,19 @@ pub async fn key_pair_update_request_async(
     payload: &UserKeyPairUpdateRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(KEY_PAIR_INFO_PATH, payload, filen_settings)
+    queries::query_filen_api_async(USER_KEY_PAIR_INFO_PATH, payload, filen_settings)
         .await
-        .context(KeyPairUpdateQueryFailed {})
+        .context(UserKeyPairUpdateQueryFailed {})
 }
 
 /// Calls [MASTER_KEYS_PATH] endpoint. Used to get/update user's master keys.
 /// My guess is via that method new user master keys, passed in request payload, get joined with current
 /// Filen-known user master keys, and resulting master keys chain is returned in response payload.
-pub fn master_keys_fetch_request(
+pub fn user_master_keys_fetch_request(
     payload: &MasterKeysFetchRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<MasterKeysFetchResponsePayload> {
-    queries::query_filen_api(MASTER_KEYS_PATH, payload, filen_settings).context(MasterKeysQueryFailed {
+    queries::query_filen_api(USER_MASTER_KEYS_PATH, payload, filen_settings).context(UserMasterKeysQueryFailed {
         payload: payload.clone(),
     })
 }
@@ -298,13 +298,13 @@ pub fn master_keys_fetch_request(
 /// My guess is via that method new user master keys, passed in request payload, get joined with current
 /// Filen-known user master keys, and resulting master keys chain is returned in response payload.
 #[cfg(feature = "async")]
-pub async fn master_keys_fetch_request_async(
+pub async fn user_master_keys_fetch_request_async(
     payload: &MasterKeysFetchRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<MasterKeysFetchResponsePayload> {
-    queries::query_filen_api_async(MASTER_KEYS_PATH, payload, filen_settings)
+    queries::query_filen_api_async(USER_MASTER_KEYS_PATH, payload, filen_settings)
         .await
-        .context(MasterKeysQueryFailed {
+        .context(UserMasterKeysQueryFailed {
             payload: payload.clone(),
         })
 }
@@ -348,6 +348,36 @@ mod tests {
     }
 
     #[test]
+    fn user_key_pair_info_request_should_be_correctly_typed() {
+        let request_payload = UserKeyPairInfoRequestPayload {
+            api_key: SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"),
+        };
+        validate_contract(
+            USER_KEY_PAIR_INFO_PATH,
+            request_payload,
+            "tests/resources/responses/user_keyPair_info.json",
+            |request_payload, filen_settings| user_key_pair_info_request(&request_payload, &filen_settings),
+        );
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn user_key_pair_info_request_async_should_be_correctly_typed() {
+        let request_payload = UserKeyPairInfoRequestPayload {
+            api_key: SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"),
+        };
+        validate_contract_async(
+            USER_KEY_PAIR_INFO_PATH,
+            request_payload,
+            "tests/resources/responses/user_keyPair_info.json",
+            |request_payload, filen_settings| async move {
+                key_pair_info_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
+    }
+
+    #[test]
     fn master_keys_fetch_request_should_be_correctly_typed() {
         let request_payload = MasterKeysFetchRequestPayload {
             api_key: SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"),
@@ -355,10 +385,10 @@ mod tests {
                 "U2FsdGVkX1/P4QDMaiaanx8kpL7fY+v/f3dSzC9Ajl58gQg5bffqGUbOIzROwGQn8m5NAZa0tRnVya84aJnf1w==".to_owned(),
         };
         validate_contract(
-            MASTER_KEYS_PATH,
+            USER_MASTER_KEYS_PATH,
             request_payload,
             "tests/resources/responses/user_masterKeys.json",
-            |request_payload, filen_settings| master_keys_fetch_request(&request_payload, &filen_settings),
+            |request_payload, filen_settings| user_master_keys_fetch_request(&request_payload, &filen_settings),
         );
     }
 
@@ -371,11 +401,11 @@ mod tests {
                 "U2FsdGVkX1/P4QDMaiaanx8kpL7fY+v/f3dSzC9Ajl58gQg5bffqGUbOIzROwGQn8m5NAZa0tRnVya84aJnf1w==".to_owned(),
         };
         validate_contract_async(
-            MASTER_KEYS_PATH,
+            USER_MASTER_KEYS_PATH,
             request_payload,
             "tests/resources/responses/user_masterKeys.json",
             |request_payload, filen_settings| async move {
-                master_keys_fetch_request_async(&request_payload, &filen_settings).await
+                user_master_keys_fetch_request_async(&request_payload, &filen_settings).await
             },
         )
         .await;

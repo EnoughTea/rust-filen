@@ -5,8 +5,8 @@ pub use {
 };
 
 pub use {
-    auth::*, dir_links::*, download_dir::*, download_file::*, files::*, fs::*, keys::*, sync_dir::*, upload_file::*,
-    usage::*,
+    auth::*, dir_links::*, download_dir::*, download_file::*, files::*, fs::*, sync_dir::*, upload_file::*, usage::*,
+    user_keys::*,
 };
 
 use crate::{crypto, utils};
@@ -22,12 +22,12 @@ mod download_file;
 mod file_links;
 mod files;
 mod fs;
-mod keys;
 mod links;
 mod share;
 mod sync_dir;
 mod upload_file;
 mod usage;
+mod user_keys;
 
 const METADATA_VERSION: u32 = 1;
 
