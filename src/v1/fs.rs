@@ -59,27 +59,62 @@ pub enum LocationType {
 }
 utils::display_from_json!(LocationType);
 
-/// Expiration time period.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+/// Public link or file chunk expiration time.
+///
+/// For defined expiration period, Filen currently uses values "1h", "6h", "1d", "3d", "7d", "14d" and "30d".
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Expire {
-    #[serde(rename = "never")]
     Never,
-    #[serde(rename = "1h")]
-    OneHour,
-    #[serde(rename = "6h")]
-    SixHours,
-    #[serde(rename = "1d")]
-    OneDay,
-    #[serde(rename = "3d")]
-    ThreeDays,
-    #[serde(rename = "7d")]
-    SevenDays,
-    #[serde(rename = "14d")]
-    FourteenDays,
-    #[serde(rename = "30d")]
-    ThirtyDays,
+
+    Hours(u32),
+
+    Days(u32),
 }
 utils::display_from_json!(Expire);
+
+impl<'de> Deserialize<'de> for Expire {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        fn invalid_value_error<'de, D: Deserializer<'de>>(value: &str) -> D::Error {
+            de::Error::invalid_value(
+                de::Unexpected::Str(value),
+                &"\"never\" or duration with time units, e.g. \"6h\" or \"1d\"",
+            )
+        }
+
+        let never_or_duration = String::deserialize(deserializer)?;
+        if never_or_duration.eq_ignore_ascii_case("never") {
+            Ok(Expire::Never)
+        } else {
+            if never_or_duration.len() < 2 {
+                Err(invalid_value_error::<D>(&never_or_duration))
+            } else {
+                let (raw_value, unit) = never_or_duration.split_at(never_or_duration.len() - 1);
+                let value = str::parse::<u32>(raw_value).map_err(|_| invalid_value_error::<D>(&never_or_duration))?;
+                match unit {
+                    "d" => Ok(Expire::Days(value)),
+                    "h" => Ok(Expire::Hours(value)),
+                    _ => Err(invalid_value_error::<D>(&never_or_duration)),
+                }
+            }
+        }
+    }
+}
+
+impl Serialize for Expire {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match *self {
+            Expire::Never => serializer.serialize_str("never"),
+            Expire::Hours(hours) => serializer.serialize_str(&format!("{}h", hours)),
+            Expire::Days(days) => serializer.serialize_str(&format!("{}d", days)),
+        }
+    }
+}
 
 /// Identifies parent eitner by ID or by indirect reference.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -298,7 +333,36 @@ mod tests {
         let json = r#"{"exists":false, "uuid":""}"#;
         let result = serde_json::from_str::<LocationExistsResponseData>(&json);
 
-        assert!(result.is_ok());
         assert!(result.unwrap().uuid.is_none());
+    }
+
+    #[test]
+    fn expire_time_should_be_deserialized_from_hours() {
+        let json = r#""6h""#;
+        let expected = Expire::Hours(6);
+
+        let result = serde_json::from_str::<Expire>(&json);
+
+        assert_eq!(result.unwrap(), expected);
+    }
+
+    #[test]
+    fn expire_time_should_be_deserialized_from_days() {
+        let json = r#""30d""#;
+        let expected = Expire::Days(30);
+
+        let result = serde_json::from_str::<Expire>(&json);
+
+        assert_eq!(result.unwrap(), expected);
+    }
+
+    #[test]
+    fn expire_time_should_be_deserialized_from_never() {
+        let json = r#""never""#;
+        let expected = Expire::Never;
+
+        let result = serde_json::from_str::<Expire>(&json);
+
+        assert_eq!(result.unwrap(), expected);
     }
 }

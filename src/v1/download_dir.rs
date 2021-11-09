@@ -306,7 +306,6 @@ mod tests {
         let test_file = data.files.get(0).unwrap();
 
         let test_file_metadata_result = test_file.decrypt_file_metadata(&m_key);
-        assert!(test_file_metadata_result.is_ok());
         let test_file_metadata = test_file_metadata_result.unwrap();
         assert_eq!(test_file_metadata.key.unsecure(), "sh1YRHfx22Ij40tQBbt6BgpBlqkzch8Y");
         assert_eq!(test_file_metadata.last_modified, 1383742218);
@@ -315,7 +314,6 @@ mod tests {
         assert_eq!(test_file_metadata.size, 133641);
 
         let test_file_name_size_mime_result = test_file.decrypt_name_size_mime(&test_file_metadata.key);
-        assert!(test_file_name_size_mime_result.is_ok());
         let test_file_name_size_mime = test_file_name_size_mime_result.unwrap();
         assert_eq!(test_file_name_size_mime.mime, test_file_metadata.mime);
         assert_eq!(test_file_name_size_mime.name, test_file_metadata.name);

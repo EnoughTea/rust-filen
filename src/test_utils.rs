@@ -124,7 +124,6 @@ where
     let response = action(request_payload, filen_settings);
 
     mock.assert_hits(1);
-    assert!(response.is_ok());
     assert_eq!(response.unwrap(), expected_response);
     server
 }
@@ -149,7 +148,6 @@ where
     let response = action(request_payload, filen_settings).await;
 
     mock.assert_hits(1);
-    assert!(response.is_ok());
     assert_eq!(response.unwrap(), expected_response);
     server
 }

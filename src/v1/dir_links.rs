@@ -288,9 +288,8 @@ pub struct DirLinkStatusResponseData {
     pub expiration: Option<u64>,
 
     /// Link expiration time in text form. None if no link was found.
-    /// Usually has value "never".
     #[serde(rename = "expirationText")]
-    pub expiration_text: Option<String>,
+    pub expiration_text: Option<Expire>,
 
     /// None if no link was found.
     #[serde(rename = "downloadBtn")]
