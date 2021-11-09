@@ -99,7 +99,7 @@ let default_folder_data = user_dirs_response.find_default_folder().unwrap();
 // Alright, we have our default folder, let's check out its contents.
 let download_dir_request_payload = DownloadDirRequestPayload {
     api_key: api_key.clone(),
-    uuid: default_folder_data.uuid.clone(),
+    uuid: default_folder_data.uuid,
 };
 let download_dir_response = download_dir_request(&download_dir_request_payload, &filen_settings)?;
 if !download_dir_response.status || download_dir_response.data.is_none() {

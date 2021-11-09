@@ -103,7 +103,7 @@ pub(crate) fn optional_uuid_from_empty_string<'de, D>(deserializer: D) -> Result
 where
     D: Deserializer<'de>,
 {
-    let value = Option::<String>::deserialize(deserializer)?.unwrap_or("".to_owned());
+    let value = Option::<String>::deserialize(deserializer)?.unwrap_or_else(|| "".to_owned());
     if value.is_empty() {
         Ok(None)
     } else {

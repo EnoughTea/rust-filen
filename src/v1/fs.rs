@@ -87,17 +87,15 @@ impl<'de> Deserialize<'de> for Expire {
         let never_or_duration = String::deserialize(deserializer)?;
         if never_or_duration.eq_ignore_ascii_case("never") {
             Ok(Expire::Never)
+        } else if never_or_duration.len() < 2 {
+            Err(invalid_value_error::<D>(&never_or_duration))
         } else {
-            if never_or_duration.len() < 2 {
-                Err(invalid_value_error::<D>(&never_or_duration))
-            } else {
-                let (raw_value, unit) = never_or_duration.split_at(never_or_duration.len() - 1);
-                let value = str::parse::<u32>(raw_value).map_err(|_| invalid_value_error::<D>(&never_or_duration))?;
-                match unit {
-                    "d" => Ok(Expire::Days(value)),
-                    "h" => Ok(Expire::Hours(value)),
-                    _ => Err(invalid_value_error::<D>(&never_or_duration)),
-                }
+            let (raw_value, unit) = never_or_duration.split_at(never_or_duration.len() - 1);
+            let value = str::parse::<u32>(raw_value).map_err(|_| invalid_value_error::<D>(&never_or_duration))?;
+            match unit {
+                "d" => Ok(Expire::Days(value)),
+                "h" => Ok(Expire::Hours(value)),
+                _ => Err(invalid_value_error::<D>(&never_or_duration)),
             }
         }
     }
@@ -131,7 +129,7 @@ impl ParentId {
         if base_or_id.eq_ignore_ascii_case("base") {
             Ok(ParentId::Base)
         } else {
-            match Uuid::parse_str(&base_or_id) {
+            match Uuid::parse_str(base_or_id) {
                 Ok(uuid) => Ok(ParentId::Id(uuid)),
                 Err(_) => CannotParseParentIdFromString {
                     string_length: base_or_id.len(),

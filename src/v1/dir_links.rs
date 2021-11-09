@@ -134,7 +134,7 @@ impl DirLinkAddRequestPayload {
             parent: linked_item_parent_uuid,
             password: PasswordState::Empty,
             password_hashed: EMPTY_PASSWORD_HASH.clone(),
-            link_type: link_type,
+            link_type,
             uuid: linked_item_uuid,
         }
     }
@@ -367,7 +367,7 @@ pub fn dir_link_remove_request(
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api(DIR_LINK_REMOVE_PATH, payload, filen_settings).context(DirLinkRemoveQueryFailed {
-        link_uuid: payload.uuid.clone(),
+        link_uuid: payload.uuid,
     })
 }
 
@@ -380,7 +380,7 @@ pub async fn dir_link_remove_request_async(
     queries::query_filen_api_async(DIR_LINK_REMOVE_PATH, payload, filen_settings)
         .await
         .context(DirLinkRemoveQueryFailed {
-            link_uuid: payload.uuid.clone(),
+            link_uuid: payload.uuid,
         })
 }
 
@@ -390,7 +390,7 @@ pub fn dir_link_status_request(
     filen_settings: &FilenSettings,
 ) -> Result<DirLinkStatusResponsePayload> {
     queries::query_filen_api(DIR_LINK_STATUS_PATH, payload, filen_settings).context(DirLinkStatusQueryFailed {
-        link_uuid: payload.uuid.clone(),
+        link_uuid: payload.uuid,
     })
 }
 
@@ -403,7 +403,7 @@ pub async fn dir_link_status_request_async(
     queries::query_filen_api_async(DIR_LINK_STATUS_PATH, payload, filen_settings)
         .await
         .context(DirLinkStatusQueryFailed {
-            link_uuid: payload.uuid.clone(),
+            link_uuid: payload.uuid,
         })
 }
 

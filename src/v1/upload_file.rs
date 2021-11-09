@@ -251,7 +251,7 @@ impl FileUploadInfo {
             .map(|(index, data)| FileChunkLocation {
                 region: data.region,
                 bucket: data.bucket,
-                file_uuid: self.properties.uuid.clone(),
+                file_uuid: self.properties.uuid,
                 chunk_index: index as u32,
             })
             .collect::<Vec<FileChunkLocation>>();
@@ -275,7 +275,7 @@ pub fn upload_done_request(
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api(UPLOAD_DONE_PATH, payload, filen_settings).context(UploadDoneQueryFailed {
-        file_uuid: payload.uuid.clone(),
+        file_uuid: payload.uuid,
     })
 }
 
@@ -289,7 +289,7 @@ pub async fn upload_done_request_async(
     queries::query_filen_api_async(UPLOAD_DONE_PATH, payload, filen_settings)
         .await
         .context(UploadDoneQueryFailed {
-            file_uuid: payload.uuid.clone(),
+            file_uuid: payload.uuid,
         })
 }
 
@@ -389,7 +389,7 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
         .and_then(|dummy_chunk_response| {
             if dummy_chunk_response.status {
                 let upload_done_payload = UploadDoneRequestPayload {
-                    uuid: upload_properties.uuid.clone(),
+                    uuid: upload_properties.uuid,
                     upload_key: upload_properties.upload_key.clone(),
                 };
                 let mark_done_response =
@@ -453,7 +453,7 @@ pub async fn encrypt_and_upload_file_async<R: Read + Seek>(
         .await?;
         if dummy_chunk_response.status {
             let upload_done_payload = UploadDoneRequestPayload {
-                uuid: upload_properties.uuid.clone(),
+                uuid: upload_properties.uuid,
                 upload_key: upload_properties.upload_key.clone(),
             };
             let mark_done_response = retry_settings

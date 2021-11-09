@@ -61,9 +61,8 @@ pub fn link_dir_status_request(
     payload: &LinkDirStatusRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<LinkDirStatusResponsePayload> {
-    queries::query_filen_api(LINK_DIR_STATUS_PATH, payload, filen_settings).context(LinkDirStatusQueryFailed {
-        uuid: payload.uuid.clone(),
-    })
+    queries::query_filen_api(LINK_DIR_STATUS_PATH, payload, filen_settings)
+        .context(LinkDirStatusQueryFailed { uuid: payload.uuid })
 }
 
 /// Calls [LINK_DIR_STATUS_PATH] endpoint asynchronously.
@@ -74,9 +73,7 @@ pub async fn link_dir_status_request_async(
 ) -> Result<LinkDirStatusResponsePayload> {
     queries::query_filen_api_async(LINK_DIR_STATUS_PATH, payload, filen_settings)
         .await
-        .context(LinkDirStatusQueryFailed {
-            uuid: payload.uuid.clone(),
-        })
+        .context(LinkDirStatusQueryFailed { uuid: payload.uuid })
 }
 
 #[cfg(test)]

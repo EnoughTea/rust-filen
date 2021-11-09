@@ -160,7 +160,7 @@ impl FileProperties {
             })
             .and_then(|file_properties_json| {
                 serde_json::from_str::<FileProperties>(&file_properties_json).context(DeserializeFileMetadataFailed {
-                    metadata: metadata.clone(),
+                    metadata: metadata.to_owned(),
                 })
             })
     }
@@ -175,12 +175,12 @@ impl FileProperties {
     /// Decrypts file properties from a metadata string using RSA for public sharing.
     /// Assumes given metadata string is base64-encoded.
     pub fn decrypt_file_metadata_rsa(metadata: &str, rsa_private_key_bytes: &[u8]) -> Result<FileProperties> {
-        let decoded = base64::decode(&metadata).context(CannotDecodeBase64Metadata {})?;
+        let decoded = base64::decode(metadata).context(CannotDecodeBase64Metadata {})?;
         let decrypted =
             crypto::decrypt_rsa(&decoded, rsa_private_key_bytes).context(DecryptFileMetadataRsaFailed {})?;
         let file_properties_json = String::from_utf8(decrypted).context(DecryptedMetadataIsNotUtf8 {})?;
         serde_json::from_str::<FileProperties>(&file_properties_json).context(DeserializeFileMetadataFailed {
-            metadata: metadata.clone(),
+            metadata: metadata.to_owned(),
         })
     }
 

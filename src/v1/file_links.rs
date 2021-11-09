@@ -148,7 +148,7 @@ pub fn link_status_request(
     filen_settings: &FilenSettings,
 ) -> Result<LinkStatusResponsePayload> {
     queries::query_filen_api(LINK_STATUS_PATH, payload, filen_settings).context(LinkStatusQueryFailed {
-        file_uuid: payload.file_uuid.clone(),
+        file_uuid: payload.file_uuid,
     })
 }
 
@@ -161,7 +161,7 @@ pub async fn link_status_request_async(
     queries::query_filen_api_async(LINK_STATUS_PATH, payload, filen_settings)
         .await
         .context(LinkStatusQueryFailed {
-            file_uuid: payload.file_uuid.clone(),
+            file_uuid: payload.file_uuid,
         })
 }
 
