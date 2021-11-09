@@ -199,7 +199,7 @@ impl LocationNameMetadata {
         crypto::encrypt_metadata_str(&name_json, last_master_key.unsecure(), super::METADATA_VERSION).unwrap()
     }
 
-    /// Decrypt name metadata into actual folder name.
+    /// Decrypt name metadata into actual name.
     pub fn decrypt_name_from_metadata(name_metadata: &str, last_master_key: &SecUtf8) -> Result<String> {
         let decrypted_name_result = crypto::decrypt_metadata_str(name_metadata, last_master_key.unsecure()).context(
             DecryptLocationNameFailed {
@@ -214,6 +214,7 @@ impl LocationNameMetadata {
         })
     }
 
+    /// Returns hashed given location name.
     pub fn name_hashed(name: &str) -> String {
         crypto::hash_fn(&name.to_lowercase())
     }

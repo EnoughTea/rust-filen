@@ -294,6 +294,22 @@ pub fn decrypt_private_key_metadata(private_key_metadata: &str, last_master_key:
     decrypt_metadata_str(private_key_metadata, last_master_key.unsecure()).and_then(|str| decode_base64_to_secvec(&str))
 }
 
+/// Calculates RSA hash (using SHA512 with OAEP padding) from given data with the specified RSA public key.
+pub(crate) fn encrypt_rsa(data: &[u8], public_key: &[u8]) -> Result<Vec<u8>> {
+    let mut rng = thread_rng();
+    let padding = rsa::PaddingScheme::new_oaep::<sha2::Sha512>();
+    let key = rsa::RsaPublicKey::from_public_key_der(public_key).context(RsaCannotDeserializePublicKey {})?;
+    key.encrypt(&mut rng, padding, data)
+        .context(RsaPkcs8CannotEncryptData {})
+}
+
+/// Decrypts data prefiously encrypted with [encrypt_rsa] using PKCS#8 private key in ASN.1 DER-encoded format.
+pub(crate) fn decrypt_rsa(data: &[u8], private_key: &[u8]) -> Result<Vec<u8>> {
+    let padding = rsa::PaddingScheme::new_oaep::<sha2::Sha512>();
+    let private_key = rsa::RsaPrivateKey::from_pkcs8_der(private_key).context(RsaCannotDeserializePrivateKey {})?;
+    private_key.decrypt(padding, data).context(RsaPkcs8CannotDecryptData {})
+}
+
 /// Calculates OpenSSL-compatible AES 256 CBC (Pkcs7 padding) hash with 'Salted__' prefix,
 /// then 8 bytes of salt, rest is ciphered.
 fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -> Vec<u8> {
@@ -399,22 +415,6 @@ fn extract_aes_gcm_iv_and_message(data: &[u8]) -> Result<(&[u8], &[u8])> {
 
     let (iv, message) = data.split_at(AES_GCM_IV_LENGTH);
     Ok((iv, message))
-}
-
-/// Calculates RSA hash (using SHA512 with OAEP padding) from given data with the specified RSA public key.
-fn encrypt_rsa(data: &[u8], public_key: &[u8]) -> Result<Vec<u8>> {
-    let mut rng = thread_rng();
-    let padding = rsa::PaddingScheme::new_oaep::<sha2::Sha512>();
-    let key = rsa::RsaPublicKey::from_public_key_der(public_key).context(RsaCannotDeserializePublicKey {})?;
-    key.encrypt(&mut rng, padding, data)
-        .context(RsaPkcs8CannotEncryptData {})
-}
-
-/// Decrypts data prefiously encrypted with [encrypt_rsa] using PKCS#8 private key in ASN.1 DER-encoded format.
-fn decrypt_rsa(data: &[u8], private_key: &[u8]) -> Result<Vec<u8>> {
-    let padding = rsa::PaddingScheme::new_oaep::<sha2::Sha512>();
-    let private_key = rsa::RsaPrivateKey::from_pkcs8_der(private_key).context(RsaCannotDeserializePrivateKey {})?;
-    private_key.decrypt(padding, data).context(RsaPkcs8CannotDecryptData {})
 }
 
 fn salt_and_message_from_aes_openssl_encrypted_data(
