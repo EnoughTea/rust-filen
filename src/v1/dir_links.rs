@@ -178,7 +178,7 @@ pub struct DirLinkEditRequestPayload {
 
     /// Determines whether a file or a folder link is being edited.
     #[serde(rename = "type")]
-    pub target_type: LinkTarget,
+    pub link_type: LinkTarget,
 
     /// Linked item ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -207,7 +207,7 @@ impl DirLinkEditRequestPayload {
             parent: linked_item_parent_uuid,
             password: PasswordState::Empty,
             password_hashed: EMPTY_PASSWORD_HASH.clone(),
-            target_type: link_type,
+            link_type,
             uuid: linked_item_uuid,
         }
     }
@@ -241,7 +241,7 @@ impl DirLinkEditRequestPayload {
             parent: linked_folder_parent,
             password: PasswordState::NotEmpty,
             password_hashed,
-            target_type: link_type,
+            link_type,
             uuid: linked_folder_uuid,
         }
     }
