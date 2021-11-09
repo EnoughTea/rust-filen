@@ -1,11 +1,11 @@
 {
     "status": true,
-    "message": "Folder sharing status fetched.",
+    "message": "Status fetched.",
     "data": {
         "sharing": true,
         "users": [
             {
-                "email": "test@test.com",
+                "id": 4947,
                 "publicKey": "MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEArtuzg1cPNgvRA197xlIJGUl46xa3xeiiHRZZ8s//77/Qv4TKaF47YHNC4ij/UJg7lWE1cv3Jt8N5jPhEvgqxsHrw/xhFs0BVjF7vk5h6i75+ZdTwTs0SHCrtzerDthlFonrUKB4YuFgXoCBnQCn+DjDvQh4IG0WGt9f+4JE223KqNo4vH4KwkMg6MXruaX5ZzhtV4gRcDG7M0r6zjM3rMZh5SYeqF9K3FK3a/jxyZMBLQeXlIfmbArS1VYhsT+wI65Q2CxZlLNQ7Nplu+odjk/E9ODwhFw4d46K65EQrMEvZ+0p+hc1MAHKZeWnt5lqENO/RykWpXE3IbkCHZ5j41VGwTjGU5NtpUf6OpaLzMXW7gS1WfKKfnpY0jnQH7uEgZ2guBvxanv2fCsWY7esfP2rt+8NEYGfs49Ym3mRXe9FdBwbCzTuI/+QW6AfPyej56L7rtU4WpDE2c01cHr0m/DiWMcV4gjakNL6B4oxMlbRzb10BWNyKT2vYvUQIKThvu8kKC1snLJnXrhkfCpd9H9pB4e+9Sk705gwpyxUm0U29tHQNizXbgCOvceTtapyoRJuNusfI7wuPVnwutfqVD8ZsV4Avj0TBFFLE1cinnHG7QqEMFu23yA8FEnnGj9yTi8SC8uvMnqhWZ71qVjR7trISfzYcEQBhwnWgMye12XkCAwEAAQ=="
             }
         ]

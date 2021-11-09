@@ -83,6 +83,23 @@ pub trait HasPrivateKey {
     }
 }
 
+/// Implement this trait to add conversion of a public key into bytes.
+pub trait HasPublicKey {
+    /// Gets a reference to private key metadata, if present.
+    fn public_key_ref(&self) -> Option<&str>;
+
+    /// Conveniently decodes base64-encoded public key into bytes.
+    fn decode_public_key(&self) -> Result<Vec<u8>> {
+        match self.public_key_ref() {
+            Some(key) => base64::decode(key).context(DecodePublicKeyFailed {}),
+            None => BadArgument {
+                message: "Public key is absent, cannot decode None",
+            }
+            .fail(),
+        }
+    }
+}
+
 /// Used for requests to [USER_KEY_PAIR_INFO_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserKeyPairInfoRequestPayload {
@@ -113,22 +130,15 @@ pub struct UserKeyPairInfoResponseData {
 }
 utils::display_from_json!(UserKeyPairInfoResponseData);
 
-impl UserKeyPairInfoResponseData {
-    /// Conveniently decodes base64-encoded public key into bytes.
-    pub fn decode_public_key(&self) -> Result<Vec<u8>> {
-        match &self.public_key {
-            Some(key) => base64::decode(key).context(DecodePublicKeyFailed {}),
-            None => BadArgument {
-                message: "Public key is absent, cannot decode None",
-            }
-            .fail(),
-        }
-    }
-}
-
 impl HasPrivateKey for UserKeyPairInfoResponseData {
     fn private_key_metadata_ref(&self) -> Option<&str> {
         self.private_key_metadata.as_deref()
+    }
+}
+
+impl HasPublicKey for UserKeyPairInfoResponseData {
+    fn public_key_ref(&self) -> Option<&str> {
+        self.public_key.as_deref()
     }
 }
 

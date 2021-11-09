@@ -1,0 +1,7 @@
+{
+   "status":true,
+   "message":"Folder sharing status fetched.",
+   "data":{
+      "sharing":false
+   }
+}
