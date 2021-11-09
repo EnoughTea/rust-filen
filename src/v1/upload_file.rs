@@ -25,6 +25,7 @@ const FILE_CHUNK_SIZE: u32 = 1024 * 1024; // Hardcoded mostly because Filen also
 const FILE_VERSION: u32 = 1;
 const UPLOAD_PATH: &str = "/v1/upload";
 const UPLOAD_DONE_PATH: &str = "/v1/upload/done";
+const UPLOAD_STOP_PATH: &str = "/v1/upload/stop";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -60,7 +61,16 @@ pub enum Error {
     },
 
     #[snafu(display("{} query failed: {}", UPLOAD_DONE_PATH, source))]
-    UploadDoneQueryFailed { file_uuid: Uuid, source: queries::Error },
+    UploadDoneQueryFailed {
+        payload: UploadDoneRequestPayload,
+        source: queries::Error,
+    },
+
+    #[snafu(display("{} query failed: {}", UPLOAD_STOP_PATH, source))]
+    UploadStopQueryFailed {
+        payload: UploadStopRequestPayload,
+        source: queries::Error,
+    },
 }
 
 /// Response data for [UPLOAD_PATH] endpoint.
@@ -100,6 +110,18 @@ pub struct UploadDoneRequestPayload {
     pub upload_key: String,
 }
 utils::display_from_json!(UploadDoneRequestPayload);
+
+/// Used for requests to [UPLOAD_STOP_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct UploadStopRequestPayload {
+    /// Uploaded file ID, UUID V4 in hyphenated lowercase format.
+    pub uuid: Uuid,
+
+    /// File upload key: random alphanumeric string associated with entire file upload.
+    #[serde(rename = "uploadKey")]
+    pub upload_key: String,
+}
+utils::display_from_json!(UploadStopRequestPayload);
 
 /// File properties needed to upload file to Filen.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -275,7 +297,7 @@ pub fn upload_done_request(
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api(UPLOAD_DONE_PATH, payload, filen_settings).context(UploadDoneQueryFailed {
-        file_uuid: payload.uuid,
+        payload: payload.clone(),
     })
 }
 
@@ -289,7 +311,32 @@ pub async fn upload_done_request_async(
     queries::query_filen_api_async(UPLOAD_DONE_PATH, payload, filen_settings)
         .await
         .context(UploadDoneQueryFailed {
-            file_uuid: payload.uuid,
+            payload: payload.clone(),
+        })
+}
+
+/// Calls [UPLOAD_STOP_PATH] endpoint.
+/// Theoretically, can be used to stop upload in progress, but Filen never uses it.
+pub fn upload_stop_request(
+    payload: &UploadStopRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api(UPLOAD_STOP_PATH, payload, filen_settings).context(UploadStopQueryFailed {
+        payload: payload.clone(),
+    })
+}
+
+/// Calls [UPLOAD_STOP_PATH] endpoint asynchronously.
+/// Theoretically, can be used to stop upload in progress, but Filen never uses it.
+#[cfg(feature = "async")]
+pub async fn upload_stop_request_async(
+    payload: &UploadStopRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api_async(UPLOAD_STOP_PATH, payload, filen_settings)
+        .await
+        .context(UploadStopQueryFailed {
+            payload: payload.clone(),
         })
 }
 
