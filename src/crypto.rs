@@ -251,7 +251,7 @@ pub fn decrypt_file_chunk(
 }
 
 /// Helper which decrypts master keys stored in a metadata into a list of key strings, using specified master key.
-pub(crate) fn encrypt_master_keys_metadata(
+pub fn encrypt_master_keys_metadata(
     master_keys: &[SecUtf8],
     last_master_key: &SecUtf8,
     metadata_version: u32,
@@ -295,7 +295,7 @@ pub fn decrypt_private_key_metadata(private_key_metadata: &str, last_master_key:
 }
 
 /// Calculates RSA hash (using SHA512 with OAEP padding) from given data with the specified RSA public key.
-pub(crate) fn encrypt_rsa(data: &[u8], public_key: &[u8]) -> Result<Vec<u8>> {
+pub fn encrypt_rsa(data: &[u8], public_key: &[u8]) -> Result<Vec<u8>> {
     let mut rng = thread_rng();
     let padding = rsa::PaddingScheme::new_oaep::<sha2::Sha512>();
     let key = rsa::RsaPublicKey::from_public_key_der(public_key).context(RsaCannotDeserializePublicKey {})?;
@@ -304,7 +304,7 @@ pub(crate) fn encrypt_rsa(data: &[u8], public_key: &[u8]) -> Result<Vec<u8>> {
 }
 
 /// Decrypts data prefiously encrypted with [encrypt_rsa] using PKCS#8 private key in ASN.1 DER-encoded format.
-pub(crate) fn decrypt_rsa(data: &[u8], private_key: &[u8]) -> Result<Vec<u8>> {
+pub fn decrypt_rsa(data: &[u8], private_key: &[u8]) -> Result<Vec<u8>> {
     let padding = rsa::PaddingScheme::new_oaep::<sha2::Sha512>();
     let private_key = rsa::RsaPrivateKey::from_pkcs8_der(private_key).context(RsaCannotDeserializePrivateKey {})?;
     private_key.decrypt(padding, data).context(RsaPkcs8CannotDecryptData {})
@@ -312,7 +312,7 @@ pub(crate) fn decrypt_rsa(data: &[u8], private_key: &[u8]) -> Result<Vec<u8>> {
 
 /// Calculates OpenSSL-compatible AES 256 CBC (Pkcs7 padding) hash with 'Salted__' prefix,
 /// then 8 bytes of salt, rest is ciphered.
-fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -> Vec<u8> {
+pub fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -> Vec<u8> {
     let mut salt = [0u8; OPENSSL_SALT_LENGTH];
     match maybe_salt {
         Some(user_salt) if user_salt.len() == OPENSSL_SALT_LENGTH => salt.copy_from_slice(user_salt),
@@ -328,7 +328,7 @@ fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -> Ve
 }
 
 /// Decrypts data prefiously encrypted with [encrypt_aes_openssl].
-fn decrypt_aes_openssl(aes_encrypted_data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
+pub fn decrypt_aes_openssl(aes_encrypted_data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     let (salt, message) = salt_and_message_from_aes_openssl_encrypted_data(aes_encrypted_data, OPENSSL_SALT_LENGTH)?;
     let (key, iv) = generate_aes_key_and_iv(AES_CBC_KEY_LENGTH, AES_CBC_IV_LENGTH, 1, Some(salt), key);
     decrypt_aes_cbc_with_key_and_iv(message, &key.try_into().unwrap(), &iv.try_into().unwrap())
@@ -359,7 +359,7 @@ fn decrypt_aes_cbc_with_key_and_iv(
 
 /// Calculates AES-GCM hash. Returns IV within [0, [AES_GCM_IV_LENGTH]) range,
 /// and encrypted message in base64-encoded part starting at [AES_GCM_IV_LENGTH] string index.
-fn encrypt_aes_gcm_base64(data: &[u8], key: &[u8]) -> Vec<u8> {
+pub fn encrypt_aes_gcm_base64(data: &[u8], key: &[u8]) -> Vec<u8> {
     let (iv, encrypted) = encrypt_aes_gcm(data, key);
     let combined = iv + &base64::encode(encrypted);
     combined.into_bytes()
@@ -368,14 +368,14 @@ fn encrypt_aes_gcm_base64(data: &[u8], key: &[u8]) -> Vec<u8> {
 /// Calculates AES-GCM hash. Returns IV within [0, [AES_GCM_IV_LENGTH]) range,
 /// and encrypted message in unicode scalars starting at [AES_GCM_IV_LENGTH] string index.
 /// Used only in [encrypt_file_chunk].
-fn encrypt_aes_gcm_bstr(data: &[u8], key: &[u8]) -> String {
+pub fn encrypt_aes_gcm_bstr(data: &[u8], key: &[u8]) -> String {
     let (iv, encrypted) = encrypt_aes_gcm(data, key);
     iv + &utils::bytes_to_binary_string(&encrypted)
 }
 
 /// Calculates AES-GCM hash. Returns IV in the first item,
 /// and raw encrypted message in the second item.
-fn encrypt_aes_gcm(data: &[u8], key: &[u8]) -> (String, Vec<u8>) {
+pub fn encrypt_aes_gcm(data: &[u8], key: &[u8]) -> (String, Vec<u8>) {
     let key = derive_key_from_password_256(key, key, 1);
     let iv = utils::random_alphanumeric_string(AES_GCM_IV_LENGTH);
     let cipher = Aes256Gcm::new(Key::from_slice(&key));
@@ -385,7 +385,7 @@ fn encrypt_aes_gcm(data: &[u8], key: &[u8]) -> (String, Vec<u8>) {
 }
 
 /// Decrypts data prefiously encrypted with [encrypt_aes_gcm_base64].
-fn decrypt_aes_gcm_base64(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
+pub fn decrypt_aes_gcm_base64(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     let (iv, encrypted_base64) = extract_aes_gcm_iv_and_message(data)?;
     base64::decode(encrypted_base64)
         .context(CannotDecodeBase64 {})
@@ -393,7 +393,7 @@ fn decrypt_aes_gcm_base64(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
 }
 
 /// Decrypts data prefiously encrypted with [encrypt_aes_gcm].
-fn decrypt_aes_gcm(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
+pub fn decrypt_aes_gcm(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     let (iv, encrypted) = extract_aes_gcm_iv_and_message(data)?;
     decrypt_aes_gcm_from_iv_and_bytes(key, iv, encrypted)
 }
