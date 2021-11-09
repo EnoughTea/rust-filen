@@ -43,6 +43,12 @@ pub enum Error {
         source: download_file::Error,
     },
 
+    #[snafu(display("{} query failed: {}", DOWNLOAD_DIR_LINK_PATH, source))]
+    DownloadDirLinkQueryFailed {
+        payload: DownloadDirLinkRequestPayload,
+        source: queries::Error,
+    },
+
     #[snafu(display("{} query failed: {}", DOWNLOAD_DIR_SHARED_PATH, source))]
     DownloadDirSharedQueryFailed { uuid: Uuid, source: queries::Error },
 
@@ -53,7 +59,30 @@ pub enum Error {
     },
 }
 
-// Used for requests to [DOWNLOAD_DIR_SHARED_PATH] endpoint.
+/// Used for requests to [DOWNLOAD_DIR_LINK_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DownloadDirLinkRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+
+    /// Link ID; hyphenated lowercased UUID V4.
+    pub uuid: Uuid,
+
+    /// Item ID; hyphenated lowercased UUID V4.
+    pub parent: Uuid,
+
+    /// Output of [crypto::derive_key_from_password_512] for link's password with 32 random bytes of salt;
+    /// converted to a hex string.
+    pub password: String,
+}
+
+api_response_struct!(
+    /// Response for [DOWNLOAD_DIR_LINK_PATH] endpoint.
+    DownloadDirLinkResponsePayload<Option<DownloadDirResponseData>>
+);
+
+/// Used for requests to [DOWNLOAD_DIR_SHARED_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DownloadDirSharedRequestPayload {
     /// User-associated Filen API key.
@@ -69,7 +98,7 @@ api_response_struct!(
     DownloadDirSharedResponsePayload<Option<DownloadDirResponseData>>
 );
 
-// Used for requests to [DOWNLOAD_DIR_PATH] endpoint.
+/// Used for requests to [DOWNLOAD_DIR_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DownloadDirRequestPayload {
     /// User-associated Filen API key.
@@ -244,6 +273,29 @@ api_response_struct!(
     /// Response for [DOWNLOAD_DIR_PATH] endpoint.
     DownloadDirResponsePayload<Option<DownloadDirResponseData>>
 );
+
+/// Calls [DOWNLOAD_DIR_LINK_PATH] endpoint.
+pub fn download_dir_link_request(
+    payload: &DownloadDirLinkRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<DownloadDirLinkResponsePayload> {
+    queries::query_filen_api(DOWNLOAD_DIR_LINK_PATH, payload, filen_settings).context(DownloadDirLinkQueryFailed {
+        payload: payload.clone(),
+    })
+}
+
+/// Calls [DOWNLOAD_DIR_LINK_PATH] endpoint asynchronously.
+#[cfg(feature = "async")]
+pub async fn download_dir_link_request_async(
+    payload: &DownloadDirLinkRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<DownloadDirLinkResponsePayload> {
+    queries::query_filen_api_async(DOWNLOAD_DIR_LINK_PATH, payload, filen_settings)
+        .await
+        .context(DownloadDirLinkQueryFailed {
+            payload: payload.clone(),
+        })
+}
 
 /// Calls [DOWNLOAD_DIR_SHARED_PATH] endpoint.
 pub fn download_dir_shared_request(
