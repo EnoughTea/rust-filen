@@ -164,3 +164,110 @@ pub async fn link_status_request_async(
             file_uuid: payload.file_uuid.clone(),
         })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::*;
+    use once_cell::sync::Lazy;
+    use secstr::SecUtf8;
+
+    static API_KEY: Lazy<SecUtf8> =
+        Lazy::new(|| SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"));
+
+    #[test]
+    fn link_status_request_should_have_proper_contract_for_disabled_link() {
+        let request_payload = LinkStatusRequestPayload {
+            api_key: API_KEY.clone(),
+            file_uuid: Uuid::nil(),
+        };
+        validate_contract(
+            LINK_STATUS_PATH,
+            request_payload,
+            "tests/resources/responses/link_status_disabled.json",
+            |request_payload, filen_settings| link_status_request(&request_payload, &filen_settings),
+        );
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn link_status_request_async_should_have_proper_contract_for_disabled_link() {
+        let request_payload = LinkStatusRequestPayload {
+            api_key: API_KEY.clone(),
+            file_uuid: Uuid::nil(),
+        };
+        validate_contract_async(
+            LINK_STATUS_PATH,
+            request_payload,
+            "tests/resources/responses/link_status_disabled.json",
+            |request_payload, filen_settings| async move {
+                link_status_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
+    }
+
+    #[test]
+    fn link_status_request_should_have_proper_contract_for_link_without_password() {
+        let request_payload = LinkStatusRequestPayload {
+            api_key: API_KEY.clone(),
+            file_uuid: Uuid::nil(),
+        };
+        validate_contract(
+            LINK_STATUS_PATH,
+            request_payload,
+            "tests/resources/responses/link_status_enabled_no_password.json",
+            |request_payload, filen_settings| link_status_request(&request_payload, &filen_settings),
+        );
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn link_status_request_async_should_have_proper_contract_for_link_without_password() {
+        let request_payload = LinkStatusRequestPayload {
+            api_key: API_KEY.clone(),
+            file_uuid: Uuid::nil(),
+        };
+        validate_contract_async(
+            LINK_STATUS_PATH,
+            request_payload,
+            "tests/resources/responses/link_status_enabled_no_password.json",
+            |request_payload, filen_settings| async move {
+                link_status_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
+    }
+
+    #[test]
+    fn link_status_request_should_have_proper_contract_for_link_with_password() {
+        let request_payload = LinkStatusRequestPayload {
+            api_key: API_KEY.clone(),
+            file_uuid: Uuid::nil(),
+        };
+        validate_contract(
+            LINK_STATUS_PATH,
+            request_payload,
+            "tests/resources/responses/link_status_enabled_with_password.json",
+            |request_payload, filen_settings| link_status_request(&request_payload, &filen_settings),
+        );
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn link_status_request_async_should_have_proper_contract_for_link_with_password() {
+        let request_payload = LinkStatusRequestPayload {
+            api_key: API_KEY.clone(),
+            file_uuid: Uuid::nil(),
+        };
+        validate_contract_async(
+            LINK_STATUS_PATH,
+            request_payload,
+            "tests/resources/responses/link_status_enabled_with_password.json",
+            |request_payload, filen_settings| async move {
+                link_status_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
+    }
+}

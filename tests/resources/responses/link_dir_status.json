@@ -1,0 +1,13 @@
+{
+    "status": true,
+    "message": "Folder link status fetched.",
+    "data": {
+        "link": true,
+        "links": [
+            {
+                "linkUUID": "ebea9425-0deb-49a1-bf94-59ede3b12413",
+                "linkKey": "U2FsdGVkX1/bqQS3i8uXNVJsIctI7LVI6jhFnf0jRLxDmD8Pbf47Y2NQWvtyld5G5gYgyoWH/zrMY9R0TAWRQw=="
+            }
+        ]
+    }
+}

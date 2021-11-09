@@ -406,3 +406,78 @@ pub async fn dir_link_status_request_async(
             link_uuid: payload.uuid.clone(),
         })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::*;
+    use once_cell::sync::Lazy;
+    use secstr::SecUtf8;
+
+    static API_KEY: Lazy<SecUtf8> =
+        Lazy::new(|| SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"));
+
+    #[test]
+    fn dir_link_status_request_should_have_proper_contract_for_no_link() {
+        let request_payload = DirLinkStatusRequestPayload {
+            api_key: API_KEY.clone(),
+            uuid: Uuid::nil(),
+        };
+        validate_contract(
+            DIR_LINK_STATUS_PATH,
+            request_payload,
+            "tests/resources/responses/dir_link_status_no_link.json",
+            |request_payload, filen_settings| dir_link_status_request(&request_payload, &filen_settings),
+        );
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn dir_link_status_request_async_should_have_proper_contract_for_no_link() {
+        let request_payload = DirLinkStatusRequestPayload {
+            api_key: API_KEY.clone(),
+            uuid: Uuid::nil(),
+        };
+        validate_contract_async(
+            DIR_LINK_STATUS_PATH,
+            request_payload,
+            "tests/resources/responses/dir_link_status_no_link.json",
+            |request_payload, filen_settings| async move {
+                dir_link_status_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
+    }
+
+    #[test]
+    fn dir_link_status_request_should_have_proper_contract_for_link_without_password() {
+        let request_payload = DirLinkStatusRequestPayload {
+            api_key: API_KEY.clone(),
+            uuid: Uuid::nil(),
+        };
+        validate_contract(
+            DIR_LINK_STATUS_PATH,
+            request_payload,
+            "tests/resources/responses/dir_link_status_no_password.json",
+            |request_payload, filen_settings| dir_link_status_request(&request_payload, &filen_settings),
+        );
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn dir_link_status_request_async_should_have_proper_contract_for_link_without_password() {
+        let request_payload = DirLinkStatusRequestPayload {
+            api_key: API_KEY.clone(),
+            uuid: Uuid::nil(),
+        };
+        validate_contract_async(
+            DIR_LINK_STATUS_PATH,
+            request_payload,
+            "tests/resources/responses/dir_link_status_no_password.json",
+            |request_payload, filen_settings| async move {
+                dir_link_status_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
+    }
+}

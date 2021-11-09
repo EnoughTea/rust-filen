@@ -1,0 +1,12 @@
+{
+    "status": true,
+    "message": "Link status fetched.",
+    "data": {
+        "uuid": null,
+        "enabled": false,
+        "expiration": 1636471080,
+        "expirationText": "1h",
+        "downloadBtn": 1,
+        "password": null
+    }
+}

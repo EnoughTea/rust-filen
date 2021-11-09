@@ -1,0 +1,7 @@
+{
+    "status": true,
+    "message": "Folder link not found.",
+    "data": {
+        "exists": false
+    }
+}
