@@ -7,9 +7,9 @@ use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-const DOWNLOAD_DIR: &str = "/v1/download/dir";
-const DOWNLOAD_DIR_SHARED: &str = "/v1/download/dir/shared";
-const DOWNLOAD_DIR_LINK: &str = "/v1/download/dir/link";
+const DOWNLOAD_DIR_PATH: &str = "/v1/download/dir";
+const DOWNLOAD_DIR_SHARED_PATH: &str = "/v1/download/dir/shared";
+const DOWNLOAD_DIR_LINK_PATH: &str = "/v1/download/dir/link";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -43,14 +43,33 @@ pub enum Error {
         source: download_file::Error,
     },
 
-    #[snafu(display("{} query failed: {}", DOWNLOAD_DIR, source))]
+    #[snafu(display("{} query failed: {}", DOWNLOAD_DIR_SHARED_PATH, source))]
+    DownloadDirSharedQueryFailed { uuid: Uuid, source: queries::Error },
+
+    #[snafu(display("{} query failed: {}", DOWNLOAD_DIR_PATH, source))]
     DownloadDirQueryFailed {
         payload: DownloadDirRequestPayload,
         source: queries::Error,
     },
 }
 
-// Used for requests to [DOWNLOAD_DIR] endpoint.
+// Used for requests to [DOWNLOAD_DIR_SHARED_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DownloadDirSharedRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+
+    /// Folder ID; hyphenated lowercased UUID V4.
+    pub uuid: Uuid,
+}
+
+api_response_struct!(
+    /// Response for [DOWNLOAD_DIR_SHARED_PATH] endpoint.
+    DownloadDirSharedResponsePayload<Option<DownloadDirResponseData>>
+);
+
+// Used for requests to [DOWNLOAD_DIR_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DownloadDirRequestPayload {
     /// User-associated Filen API key.
@@ -61,7 +80,7 @@ pub struct DownloadDirRequestPayload {
     pub uuid: Uuid,
 }
 
-/// Response data for [DOWNLOAD_DIR] endpoint.
+/// Response data for [DOWNLOAD_DIR_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DownloadDirResponseData {
     pub folders: Vec<FolderData>,
@@ -222,23 +241,43 @@ pub struct FileNameSizeMime {
 }
 
 api_response_struct!(
-    /// Response for [DOWNLOAD_DIR] endpoint.
+    /// Response for [DOWNLOAD_DIR_PATH] endpoint.
     DownloadDirResponsePayload<Option<DownloadDirResponseData>>
 );
 
-/// Calls [USER_DIRS_PATH] endpoint. Used to get a list of user's folders.
+/// Calls [DOWNLOAD_DIR_SHARED_PATH] endpoint.
+pub fn download_dir_shared_request(
+    payload: &DownloadDirSharedRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<DownloadDirSharedResponsePayload> {
+    queries::query_filen_api(DOWNLOAD_DIR_SHARED_PATH, payload, filen_settings)
+        .context(DownloadDirSharedQueryFailed { uuid: payload.uuid })
+}
+
+/// Calls [DOWNLOAD_DIR_SHARED_PATH] endpoint asynchronously.
+#[cfg(feature = "async")]
+pub async fn download_dir_shared_request_async(
+    payload: &DownloadDirSharedRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<DownloadDirSharedResponsePayload> {
+    queries::query_filen_api_async(DOWNLOAD_DIR_SHARED_PATH, payload, filen_settings)
+        .await
+        .context(DownloadDirSharedQueryFailed { uuid: payload.uuid })
+}
+
+/// Calls [DOWNLOAD_DIR_PATH] endpoint. Used to get a list of user's folders.
 /// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder,
 /// created by Filen's client.
 pub fn download_dir_request(
     payload: &DownloadDirRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<DownloadDirResponsePayload> {
-    queries::query_filen_api(DOWNLOAD_DIR, payload, filen_settings).context(DownloadDirQueryFailed {
+    queries::query_filen_api(DOWNLOAD_DIR_PATH, payload, filen_settings).context(DownloadDirQueryFailed {
         payload: payload.clone(),
     })
 }
 
-/// Calls [USER_DIRS_PATH] endpoint asynchronously. Used to get a list of user's folders.
+/// Calls [DOWNLOAD_DIR_PATH] endpoint asynchronously. Used to get a list of user's folders.
 /// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder,
 /// created by Filen's client.
 #[cfg(feature = "async")]
@@ -246,7 +285,7 @@ pub async fn download_dir_request_async(
     payload: &DownloadDirRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<DownloadDirResponsePayload> {
-    queries::query_filen_api_async(DOWNLOAD_DIR, payload, filen_settings)
+    queries::query_filen_api_async(DOWNLOAD_DIR_PATH, payload, filen_settings)
         .await
         .context(DownloadDirQueryFailed {
             payload: payload.clone(),
@@ -272,7 +311,7 @@ mod tests {
             uuid: Uuid::parse_str("cf2af9a0-6f4e-485d-862c-0459f4662cf1").unwrap(),
         };
         validate_contract(
-            DOWNLOAD_DIR,
+            DOWNLOAD_DIR_PATH,
             request_payload,
             "tests/resources/responses/download_dir.json",
             |request_payload, filen_settings| download_dir_request(&request_payload, &filen_settings),
@@ -287,7 +326,7 @@ mod tests {
             uuid: Uuid::parse_str("cf2af9a0-6f4e-485d-862c-0459f4662cf1").unwrap(),
         };
         validate_contract_async(
-            DOWNLOAD_DIR,
+            DOWNLOAD_DIR_PATH,
             request_payload,
             "tests/resources/responses/download_dir.json",
             |request_payload, filen_settings| async move {
