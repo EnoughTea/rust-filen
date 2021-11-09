@@ -9,12 +9,13 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 
 const SHARE_PATH: &str = "/v1/share";
 const SHARE_DIR_STATUS_PATH: &str = "/v1/share/dir/status";
+const USER_SHARED_ITEM_RENAME_PATH: &str = "/v1/user/shared/item/rename";
 const USER_SHARED_ITEM_STATUS_PATH: &str = "/v1/user/shared/item/status";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display("{} query failed: {}", SHARE_DIR_STATUS_PATH, source))]
-    ShareDirStatusFailed { uuid: Uuid, source: queries::Error },
+    ShareDirStatusQueryFailed { uuid: Uuid, source: queries::Error },
 
     #[snafu(display("{} query failed: {}", SHARE_PATH, source))]
     ShareQueryFailed {
@@ -22,8 +23,14 @@ pub enum Error {
         source: queries::Error,
     },
 
+    #[snafu(display("{} query failed: {}", USER_SHARED_ITEM_RENAME_PATH, source))]
+    UserSharedItemRenameQueryFailed {
+        payload: UserSharedItemRenameRequestPayload,
+        source: queries::Error,
+    },
+
     #[snafu(display("{} query failed: {}", USER_SHARED_ITEM_STATUS_PATH, source))]
-    UserSharedItemStatusFailed { uuid: Uuid, source: queries::Error },
+    UserSharedItemStatusQueryFailed { uuid: Uuid, source: queries::Error },
 }
 
 /// Identifies shared item.
@@ -110,6 +117,26 @@ api_response_struct!(
     ShareDirStatusResponsePayload<Option<ShareDirStatusResponseData>>
 );
 
+/// Used for requests to [USER_SHARED_ITEM_RENAME_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct UserSharedItemRenameRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+
+    /// Folder or file ID; hyphenated lowercased UUID V4.
+    pub uuid: Uuid,
+
+    /// ID of the user this item is being shared with.
+    #[serde(rename = "receiverId")]
+    pub receiver_id: u32,
+
+    /// Folder or file properties, encrypted with RSA public key of the user this item is being shared with,
+    /// base64-encoded.
+    pub metadata: String,
+}
+utils::display_from_json!(UserSharedItemRenameRequestPayload);
+
 /// Used for requests to [USER_SHARED_ITEM_STATUS_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserSharedItemStatusRequestPayload {
@@ -164,7 +191,7 @@ pub fn share_dir_status_request(
     filen_settings: &FilenSettings,
 ) -> Result<ShareDirStatusResponsePayload> {
     queries::query_filen_api(SHARE_DIR_STATUS_PATH, payload, filen_settings)
-        .context(ShareDirStatusFailed { uuid: payload.uuid })
+        .context(ShareDirStatusQueryFailed { uuid: payload.uuid })
 }
 
 /// Calls [SHARE_DIR_STATUS_PATH] endpoint asynchronously.
@@ -175,7 +202,7 @@ pub async fn share_dir_status_request_async(
 ) -> Result<ShareDirStatusResponsePayload> {
     queries::query_filen_api_async(SHARE_DIR_STATUS_PATH, payload, filen_settings)
         .await
-        .context(ShareDirStatusFailed { uuid: payload.uuid })
+        .context(ShareDirStatusQueryFailed { uuid: payload.uuid })
 }
 
 /// Calls [SHARE_PATH] endpoint.
@@ -198,13 +225,38 @@ pub async fn share_request_async(
         })
 }
 
+/// Calls [USER_SHARED_ITEM_RENAME_PATH] endpoint.
+pub fn user_shared_item_rename_request(
+    payload: &UserSharedItemRenameRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api(USER_SHARED_ITEM_RENAME_PATH, payload, filen_settings).context(
+        UserSharedItemRenameQueryFailed {
+            payload: payload.clone(),
+        },
+    )
+}
+
+/// Calls [USER_SHARED_ITEM_RENAME_PATH] endpoint asynchronously.
+#[cfg(feature = "async")]
+pub async fn user_shared_item_rename_request_async(
+    payload: &UserSharedItemRenameRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api_async(USER_SHARED_ITEM_RENAME_PATH, payload, filen_settings)
+        .await
+        .context(UserSharedItemRenameQueryFailed {
+            payload: payload.clone(),
+        })
+}
+
 /// Calls [USER_SHARED_ITEM_STATUS_PATH] endpoint.
 pub fn user_shared_item_status_request(
     payload: &UserSharedItemStatusRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserSharedItemStatusResponsePayload> {
     queries::query_filen_api(USER_SHARED_ITEM_STATUS_PATH, payload, filen_settings)
-        .context(UserSharedItemStatusFailed { uuid: payload.uuid })
+        .context(UserSharedItemStatusQueryFailed { uuid: payload.uuid })
 }
 
 /// Calls [USER_SHARED_ITEM_STATUS_PATH] endpoint asynchronously.
@@ -215,7 +267,7 @@ pub async fn user_shared_item_status_request_async(
 ) -> Result<UserSharedItemStatusResponsePayload> {
     queries::query_filen_api_async(USER_SHARED_ITEM_STATUS_PATH, payload, filen_settings)
         .await
-        .context(UserSharedItemStatusFailed { uuid: payload.uuid })
+        .context(UserSharedItemStatusQueryFailed { uuid: payload.uuid })
 }
 
 #[cfg(test)]

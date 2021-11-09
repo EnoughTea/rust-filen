@@ -40,7 +40,8 @@ pub struct LinkDirItemRenameRequestPayload {
     #[serde(rename = "linkUUID")]
     pub link_uuid: Uuid,
 
-    /// Folder or file metadata.
+    /// Folder or file properties, encrypted with RSA public key of the user this item is being shared with,
+    /// base64-encoded.
     pub metadata: String,
 }
 utils::display_from_json!(LinkDirItemRenameRequestPayload);
