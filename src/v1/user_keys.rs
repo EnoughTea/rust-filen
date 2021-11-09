@@ -278,7 +278,8 @@ pub fn user_key_pair_update_request(
     payload: &UserKeyPairUpdateRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(USER_KEY_PAIR_INFO_PATH, payload, filen_settings).context(UserKeyPairUpdateQueryFailed {})
+    queries::query_filen_api(USER_KEY_PAIR_UPDATE_PATH, payload, filen_settings)
+        .context(UserKeyPairUpdateQueryFailed {})
 }
 
 /// Calls [KEY_PAIR_UPDATE_PATH] endpoint asynchronously. Used to set user's RSA public/private key pair.
@@ -287,7 +288,7 @@ pub async fn key_pair_update_request_async(
     payload: &UserKeyPairUpdateRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(USER_KEY_PAIR_INFO_PATH, payload, filen_settings)
+    queries::query_filen_api_async(USER_KEY_PAIR_UPDATE_PATH, payload, filen_settings)
         .await
         .context(UserKeyPairUpdateQueryFailed {})
 }
