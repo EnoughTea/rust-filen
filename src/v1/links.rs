@@ -7,26 +7,26 @@ use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-const LINK_DIR_ITEM_RENAME: &str = "/v1/link/dir/item/rename";
-const LINK_DIR_ITEM_STATUS: &str = "/v1/link/dir/item/status";
+const LINK_DIR_ITEM_RENAME_PATH: &str = "/v1/link/dir/item/rename";
+const LINK_DIR_ITEM_STATUS_PATH: &str = "/v1/link/dir/item/status";
 const LINK_DIR_STATUS_PATH: &str = "/v1/link/dir/status";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("{} query failed: {}", LINK_DIR_ITEM_RENAME, source))]
+    #[snafu(display("{} query failed: {}", LINK_DIR_ITEM_RENAME_PATH, source))]
     LinkDirItemRenameQueryFailed {
         payload: LinkDirItemRenameRequestPayload,
         source: queries::Error,
     },
 
-    #[snafu(display("{} query failed: {}", LINK_DIR_ITEM_STATUS, source))]
+    #[snafu(display("{} query failed: {}", LINK_DIR_ITEM_STATUS_PATH, source))]
     LinkDirItemStatusQueryFailed { uuid: Uuid, source: queries::Error },
 
     #[snafu(display("{} query failed: {}", LINK_DIR_STATUS_PATH, source))]
     LinkDirStatusQueryFailed { uuid: Uuid, source: queries::Error },
 }
 
-/// Used for requests to [LINK_DIR_ITEM_RENAME] endpoint.
+/// Used for requests to [LINK_DIR_ITEM_RENAME_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LinkDirItemRenameRequestPayload {
     /// User-associated Filen API key.
@@ -46,7 +46,7 @@ pub struct LinkDirItemRenameRequestPayload {
 }
 utils::display_from_json!(LinkDirItemRenameRequestPayload);
 
-/// Used for requests to [LINK_DIR_ITEM_STATUS] endpoint.
+/// Used for requests to [LINK_DIR_ITEM_STATUS_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LinkDirItemStatusRequestPayload {
     /// User-associated Filen API key.
@@ -58,7 +58,7 @@ pub struct LinkDirItemStatusRequestPayload {
 }
 utils::display_from_json!(LinkDirItemStatusRequestPayload);
 
-/// Response data for [LINK_DIR_ITEM_STATUS] endpoint.
+/// Response data for [LINK_DIR_ITEM_STATUS_PATH] endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LinkDirItemStatusResponseData {
@@ -72,7 +72,7 @@ pub struct LinkDirItemStatusResponseData {
 utils::display_from_json!(LinkDirItemStatusResponseData);
 
 api_response_struct!(
-    /// Response for [LINK_DIR_ITEM_STATUS] endpoint.
+    /// Response for [LINK_DIR_ITEM_STATUS_PATH] endpoint.
     LinkDirItemStatusResponsePayload<Option<LinkDirItemStatusResponseData>>
 );
 
@@ -119,45 +119,45 @@ api_response_struct!(
     LinkDirStatusResponsePayload<Option<LinkDirStatusResponseData>>
 );
 
-/// Calls [LINK_DIR_ITEM_RENAME] endpoint.
+/// Calls [LINK_DIR_ITEM_RENAME_PATH] endpoint.
 pub fn link_dir_item_rename_request(
     payload: &LinkDirItemRenameRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(LINK_DIR_ITEM_RENAME, payload, filen_settings).context(LinkDirItemRenameQueryFailed {
+    queries::query_filen_api(LINK_DIR_ITEM_RENAME_PATH, payload, filen_settings).context(LinkDirItemRenameQueryFailed {
         payload: payload.clone(),
     })
 }
 
-/// Calls [LINK_DIR_ITEM_RENAME] endpoint asynchronously.
+/// Calls [LINK_DIR_ITEM_RENAME_PATH] endpoint asynchronously.
 #[cfg(feature = "async")]
 pub async fn link_dir_item_rename_request_async(
     payload: &LinkDirItemRenameRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(LINK_DIR_ITEM_RENAME, payload, filen_settings)
+    queries::query_filen_api_async(LINK_DIR_ITEM_RENAME_PATH, payload, filen_settings)
         .await
         .context(LinkDirItemRenameQueryFailed {
             payload: payload.clone(),
         })
 }
 
-/// Calls [LINK_DIR_ITEM_STATUS] endpoint.
+/// Calls [LINK_DIR_ITEM_STATUS_PATH] endpoint.
 pub fn link_dir_item_status_request(
     payload: &LinkDirItemStatusRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<LinkDirStatusResponsePayload> {
-    queries::query_filen_api(LINK_DIR_ITEM_STATUS, payload, filen_settings)
+    queries::query_filen_api(LINK_DIR_ITEM_STATUS_PATH, payload, filen_settings)
         .context(LinkDirItemStatusQueryFailed { uuid: payload.uuid })
 }
 
-/// Calls [LINK_DIR_ITEM_STATUS] endpoint asynchronously.
+/// Calls [LINK_DIR_ITEM_STATUS_PATH] endpoint asynchronously.
 #[cfg(feature = "async")]
 pub async fn link_dir_item_status_request_async(
     payload: &LinkDirItemStatusRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<LinkDirStatusResponsePayload> {
-    queries::query_filen_api_async(LINK_DIR_ITEM_STATUS, payload, filen_settings)
+    queries::query_filen_api_async(LINK_DIR_ITEM_STATUS_PATH, payload, filen_settings)
         .await
         .context(LinkDirItemStatusQueryFailed { uuid: payload.uuid })
 }
