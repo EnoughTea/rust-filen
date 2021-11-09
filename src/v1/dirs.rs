@@ -74,7 +74,7 @@ pub enum Error {
     },
 }
 
-// Used for requests to [USER_BASE_FOLDERS_PATH] endpoint.
+/// Used for requests to [USER_BASE_FOLDERS_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserBaseFoldersRequestPayload {
     /// User-associated Filen API key.
@@ -144,7 +144,7 @@ api_response_struct!(
     UserBaseFoldersResponsePayload<Option<UserBaseFoldersResponseData>>
 );
 
-// Used for requests to [USER_DIRS_PATH] endpoint.
+/// Used for requests to [USER_DIRS_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserDirsRequestPayload {
     /// User-associated Filen API key.
@@ -207,7 +207,7 @@ impl UserDirsResponsePayload {
     }
 }
 
-// Used for requests to [DIR_CONTENT_PATH] endpoint.
+/// Used for requests to [DIR_CONTENT_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirContentRequestPayload {
     /// User-associated Filen API key.
@@ -375,7 +375,7 @@ api_response_struct!(
     DirContentResponsePayload<Option<DirContentResponseData>>
 );
 
-// Used for requests to [DIR_CREATE_PATH] endpoint.
+/// Used for requests to [DIR_CREATE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirCreateRequestPayload {
     /// User-associated Filen API key.
@@ -399,7 +399,7 @@ pub struct DirCreateRequestPayload {
 }
 utils::display_from_json!(DirCreateRequestPayload);
 
-// Used for requests to [DIR_SUB_CREATE_PATH] endpoint.
+/// Used for requests to [DIR_SUB_CREATE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirSubCreateRequestPayload {
     /// User-associated Filen API key.
@@ -447,7 +447,7 @@ impl DirCreateRequestPayload {
     }
 }
 
-// Used for requests to [DIR_MOVE_PATH] endpoint.
+/// Used for requests to [DIR_MOVE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirMoveRequestPayload {
     /// User-associated Filen API key.
@@ -463,7 +463,7 @@ pub struct DirMoveRequestPayload {
 }
 utils::display_from_json!(DirMoveRequestPayload);
 
-// Used for requests to [DIR_RENAME_PATH] endpoint.
+/// Used for requests to [DIR_RENAME_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirRenameRequestPayload {
     /// User-associated Filen API key.

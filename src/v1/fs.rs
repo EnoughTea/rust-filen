@@ -264,7 +264,7 @@ pub trait HasLocationName {
     }
 }
 
-// Used for requests to [DIR_TRASH_PATH] or [FILE_TRASH_PATH] endpoint.
+/// Used for requests to [DIR_TRASH_PATH] or [FILE_TRASH_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LocationTrashRequestPayload {
     /// User-associated Filen API key.
@@ -276,7 +276,7 @@ pub struct LocationTrashRequestPayload {
 }
 utils::display_from_json!(LocationTrashRequestPayload);
 
-// Used for requests to [DIR_EXISTS_PATH] or [FILE_TRASH_PATH] endpoint.
+/// Used for requests to [DIR_EXISTS_PATH] or [FILE_TRASH_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LocationExistsRequestPayload {
     /// User-associated Filen API key.

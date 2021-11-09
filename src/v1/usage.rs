@@ -17,7 +17,7 @@ pub enum Error {
     UserSyncGetDataQueryFailed { source: queries::Error },
 }
 
-// Used for requests to [USER_SYNC_GET_DATA_PATH] endpoint.
+/// Used for requests to [USER_SYNC_GET_DATA_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserSyncGetDataRequestPayload {
     /// User-associated Filen API key.
@@ -55,7 +55,7 @@ api_response_struct!(
     UserSyncGetDataResponsePayload<Option<UserSyncGetDataResponseData>>
 );
 
-// Used for requests to [USER_USAGE_PATH] endpoint.
+/// Used for requests to [USER_USAGE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserUsageRequestPayload {
     /// User-associated Filen API key.

@@ -23,7 +23,7 @@ pub enum Error {
     },
 }
 
-// Used for requests to [GET_DIR_PATH] endpoint.
+/// Used for requests to [GET_DIR_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct GetDirRequestPayload {
     /// User-associated Filen API key.
