@@ -7,6 +7,7 @@ use snafu::{ResultExt, Snafu};
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 const SYNC_CLIENT_MESSAGE_PATH: &str = "/v1/sync/client/message";
+const TRASH_EMPTY_PATH: &str = "/v1/trash/empty";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -15,6 +16,9 @@ pub enum Error {
 
     #[snafu(display("{} query failed: {}", SYNC_CLIENT_MESSAGE_PATH, source))]
     SyncClientMessageQueryFailed { data: String, source: queries::Error },
+
+    #[snafu(display("{} query failed: {}", TRASH_EMPTY_PATH, source))]
+    TrashEmptyQueryFailed { source: queries::Error },
 }
 
 /// Used for requests to [SYNC_CLIENT_MESSAGE_PATH] endpoint.
@@ -58,6 +62,15 @@ impl SyncClientMessageRequestPayload {
     }
 }
 
+/// Used for requests to [TRASH_EMPTY_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct TrashEmptyRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+}
+utils::display_from_json!(TrashEmptyRequestPayload);
+
 /// Calls [SYNC_CLIENT_MESSAGE_PATH] endpoint. Used to pass data to Filen client.
 pub fn sync_client_message_request(
     payload: &SyncClientMessageRequestPayload,
@@ -79,4 +92,23 @@ pub async fn sync_client_message_request_async(
         .context(SyncClientMessageQueryFailed {
             data: payload.args.clone(),
         })
+}
+
+/// Calls [TRASH_EMPTY_PATH] endpoint. Used to permanently delete all files in the 'Trash' folder.
+pub fn trash_empty_request(
+    payload: &TrashEmptyRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api(TRASH_EMPTY_PATH, payload, filen_settings).context(TrashEmptyQueryFailed {})
+}
+
+/// Calls [TRASH_EMPTY_PATH] endpoint asynchronously. Used to permanently delete all files in the 'Trash' folder.
+#[cfg(feature = "async")]
+pub async fn trash_empty_request_async(
+    payload: &TrashEmptyRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api_async(TRASH_EMPTY_PATH, payload, filen_settings)
+        .await
+        .context(TrashEmptyQueryFailed {})
 }
