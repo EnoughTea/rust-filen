@@ -43,7 +43,7 @@ pub enum Error {
         source: queries::Error,
     },
 
-    #[snafu(display("{} query failed: {}", DIR_CREATE_PATH, source))]
+    #[snafu(display("{} query failed: {}", DIR_SUB_CREATE_PATH, source))]
     DirSubCreateQueryFailed {
         payload: DirSubCreateRequestPayload,
         source: queries::Error,
