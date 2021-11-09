@@ -6,11 +6,18 @@ use snafu::{ResultExt, Snafu};
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
+const DIR_COLOR_CHANGE_PATH: &str = "/v1/dir/color/change";
 const SYNC_CLIENT_MESSAGE_PATH: &str = "/v1/sync/client/message";
 const TRASH_EMPTY_PATH: &str = "/v1/trash/empty";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
+    #[snafu(display("{} query failed: {}", DIR_COLOR_CHANGE_PATH, source))]
+    DirColorChangeQueryFailed {
+        payload: DirColorChangeRequestPayload,
+        source: queries::Error,
+    },
+
     #[snafu(display("Cannot serialize data struct to JSON: {}", source))]
     CannotSerializeDataToJson { source: serde_json::Error },
 
@@ -20,6 +27,21 @@ pub enum Error {
     #[snafu(display("{} query failed: {}", TRASH_EMPTY_PATH, source))]
     TrashEmptyQueryFailed { source: queries::Error },
 }
+
+/// Used for requests to [DIR_COLOR_CHANGE_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DirColorChangeRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+
+    /// Folder color name.
+    pub color: LocationColor,
+
+    /// Folder ID.
+    pub uuid: Uuid,
+}
+utils::display_from_json!(DirColorChangeRequestPayload);
 
 /// Used for requests to [SYNC_CLIENT_MESSAGE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -70,6 +92,29 @@ pub struct TrashEmptyRequestPayload {
     pub api_key: SecUtf8,
 }
 utils::display_from_json!(TrashEmptyRequestPayload);
+
+/// Calls [DIR_COLOR_CHANGE_PATH] endpoint.
+pub fn dir_color_change_request(
+    payload: &DirColorChangeRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api(DIR_COLOR_CHANGE_PATH, payload, filen_settings).context(DirColorChangeQueryFailed {
+        payload: payload.clone(),
+    })
+}
+
+/// Calls [DIR_COLOR_CHANGE_PATH] endpoint asynchronously.
+#[cfg(feature = "async")]
+pub async fn dir_color_change_request_async(
+    payload: &DirColorChangeRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api_async(DIR_COLOR_CHANGE_PATH, payload, filen_settings)
+        .await
+        .context(DirColorChangeQueryFailed {
+            payload: payload.clone(),
+        })
+}
 
 /// Calls [SYNC_CLIENT_MESSAGE_PATH] endpoint. Used to pass data to Filen client.
 pub fn sync_client_message_request(

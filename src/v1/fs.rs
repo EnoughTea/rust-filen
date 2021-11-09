@@ -35,11 +35,13 @@ pub enum LinkTarget {
 }
 utils::display_from_json!(LinkTarget);
 
-/// Identifies location color set by user. Default yellow color is represented by the absence of specifically set
+/// Identifies location color set by user. Default yellow color is often represented by the absence of specifically set
 /// `LocationColor`.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LocationColor {
+    /// Default yellow color.
+    Default,
     Blue,
     Gray,
     Green,
