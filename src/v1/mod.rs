@@ -3,12 +3,12 @@ pub use {
     dirs::Error as DirsError, download_dir::Error as DownloadDirError, download_file::Error as DownloadFileError,
     file_links::Error as FileLinksError, files::Error as FilesError, fs::Error as FsError, links::Error as LinksError,
     share::Error as ShareError, sync_dir::Error as SyncDirError, upload_file::Error as UploadFileError,
-    usage::Error as UsageError, user_keys::Error as UserKeysError,
+    usage::Error as UsageError, user_keys::Error as UserKeysError, versions::Error as VersionsError,
 };
 
 pub use {
     auth::*, client::*, dir_links::*, download_dir::*, download_file::*, file_links::*, files::*, fs::*, links::*,
-    share::*, sync_dir::*, upload_file::*, usage::*, user_keys::*,
+    share::*, sync_dir::*, upload_file::*, usage::*, user_keys::*, versions::*,
 };
 
 use crate::{crypto, utils};
@@ -31,6 +31,7 @@ mod sync_dir;
 mod upload_file;
 mod usage;
 mod user_keys;
+mod versions;
 
 const METADATA_VERSION: u32 = 1;
 

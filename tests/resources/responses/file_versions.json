@@ -1,0 +1,18 @@
+{
+    "status": true,
+    "message": "File versions fetched.",
+    "data": {
+        "versions": [
+            {
+                "uuid": "b5ec90d2-957c-4481-b211-08a68accd1b2",
+                "metadata": "U2FsdGVkX19wZ0qnk+d52Yz+zJDPF6qQL2Dyu0efKmZ52V782d/xUz8eXaBDDhGefelk3Fcysutm2h+lFzsBOrmZJM1KPVkaxfUaj04HMiQbXe1+J2zpeTvWqfaeye8LBi4KU167A5dSyxk0Ct5H13RZwc6tXEq2GN2+HiqvTcdHs1S59XEJHPW17NmrYBoT",
+                "bucket": "filen-1",
+                "region": "de-1",
+                "chunks": 1,
+                "rm": "tHaILGxTGTxjbvaaAXnRCPQ8JB9nIyoV",
+                "timestamp": 1634504310,
+                "version": 1
+            }
+        ]
+    }
+}
