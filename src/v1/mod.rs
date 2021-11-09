@@ -1,14 +1,14 @@
 pub use {
-    auth::Error as AuthError, dir_links::Error as DirLinksError, dirs::Error as DirsError,
-    download_dir::Error as DownloadDirError, download_file::Error as DownloadFileError,
+    auth::Error as AuthError, client::Error as ClientError, dir_links::Error as DirLinksError,
+    dirs::Error as DirsError, download_dir::Error as DownloadDirError, download_file::Error as DownloadFileError,
     file_links::Error as FileLinksError, files::Error as FilesError, fs::Error as FsError, links::Error as LinksError,
     share::Error as ShareError, sync_dir::Error as SyncDirError, upload_file::Error as UploadFileError,
     usage::Error as UsageError, user_keys::Error as UserKeysError,
 };
 
 pub use {
-    auth::*, dir_links::*, download_dir::*, download_file::*, file_links::*, files::*, fs::*, links::*, share::*,
-    sync_dir::*, upload_file::*, usage::*, user_keys::*,
+    auth::*, client::*, dir_links::*, download_dir::*, download_file::*, file_links::*, files::*, fs::*, links::*,
+    share::*, sync_dir::*, upload_file::*, usage::*, user_keys::*,
 };
 
 use crate::{crypto, utils};
@@ -17,6 +17,7 @@ use serde::*;
 use uuid::Uuid;
 
 mod auth;
+mod client;
 mod dir_links;
 mod dirs;
 mod download_dir;
