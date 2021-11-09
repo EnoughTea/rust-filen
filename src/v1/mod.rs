@@ -19,6 +19,7 @@ mod dir_links;
 mod dirs;
 mod download_dir;
 mod download_file;
+mod file_links;
 mod files;
 mod fs;
 mod keys;
