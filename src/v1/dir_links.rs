@@ -100,6 +100,7 @@ pub struct DirLinkAddRequestPayload {
     pub password: PasswordState,
 
     /// Output of hash_fn for the password.
+    #[serde(rename = "passwordHashed")]
     pub password_hashed: String,
 
     /// Determines whether a file or a folder is being linked.
@@ -174,6 +175,7 @@ pub struct DirLinkEditRequestPayload {
 
     /// Output of [crypto::derive_key_from_password_512] for user's plain text password with 32 random bytes of salt,
     /// converted to a hex string.
+    #[serde(rename = "passwordHashed")]
     pub password_hashed: String,
 
     /// Determines whether a file or a folder link is being edited.
