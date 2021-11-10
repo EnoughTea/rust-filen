@@ -7,8 +7,8 @@ pub use {
 };
 
 pub use {
-    auth::*, client::*, dir_links::*, download_dir::*, download_file::*, file_links::*, files::*, fs::*, links::*,
-    share::*, sync_dir::*, upload_file::*, usage::*, user_keys::*, versions::*,
+    auth::*, client::*, dir_links::*, dirs::*, download_dir::*, download_file::*, file_links::*, files::*, fs::*,
+    links::*, share::*, sync_dir::*, upload_file::*, usage::*, user_keys::*, versions::*,
 };
 
 use crate::{crypto, utils};
