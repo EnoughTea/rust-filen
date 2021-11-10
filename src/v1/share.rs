@@ -11,6 +11,8 @@ const SHARE_PATH: &str = "/v1/share";
 const SHARE_DIR_STATUS_PATH: &str = "/v1/share/dir/status";
 const USER_SHARED_ITEM_RENAME_PATH: &str = "/v1/user/shared/item/rename";
 const USER_SHARED_ITEM_STATUS_PATH: &str = "/v1/user/shared/item/status";
+const USER_SHARED_ITEM_IN_REMOVE_PATH: &str = "/v1/user/shared/item/in/remove";
+const USER_SHARED_ITEM_OUT_REMOVE_PATH: &str = "/v1/user/shared/item/out/remove";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -20,6 +22,18 @@ pub enum Error {
     #[snafu(display("{} query failed: {}", SHARE_PATH, source))]
     ShareQueryFailed {
         payload: ShareRequestPayload,
+        source: queries::Error,
+    },
+
+    #[snafu(display("{} query failed: {}", USER_SHARED_ITEM_IN_REMOVE_PATH, source))]
+    UserSharedItemInRemoveQueryFailed {
+        payload: UserSharedItemRemoveRequestPayload,
+        source: queries::Error,
+    },
+
+    #[snafu(display("{} query failed: {}", USER_SHARED_ITEM_OUT_REMOVE_PATH, source))]
+    UserSharedItemOutRemoveQueryFailed {
+        payload: UserSharedItemRemoveRequestPayload,
         source: queries::Error,
     },
 
@@ -137,6 +151,22 @@ pub struct UserSharedItemRenameRequestPayload {
 }
 utils::display_from_json!(UserSharedItemRenameRequestPayload);
 
+/// Used for requests to [USER_SHARED_ITEM_REMOVE_STATUS_PATH_FORMAT] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct UserSharedItemRemoveRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+
+    /// ID of the user this item is being shared with.
+    #[serde(rename = "receiverId")]
+    pub receiver_id: u32,
+
+    /// ID of the shared item; hyphenated lowercased UUID V4.
+    pub uuid: Uuid,
+}
+utils::display_from_json!(UserSharedItemRemoveRequestPayload);
+
 /// Used for requests to [USER_SHARED_ITEM_STATUS_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserSharedItemStatusRequestPayload {
@@ -221,6 +251,60 @@ pub async fn share_request_async(
     queries::query_filen_api_async(SHARE_PATH, payload, filen_settings)
         .await
         .context(ShareQueryFailed {
+            payload: payload.clone(),
+        })
+}
+
+/// Calls [USER_SHARED_ITEM_IN_REMOVE_PATH] endpoint.
+/// Used to remove shared item from the perspective of a sharee: a user an item is being shared with.
+pub fn user_shared_item_in_remove_request(
+    payload: &UserSharedItemRemoveRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api(USER_SHARED_ITEM_IN_REMOVE_PATH, payload, filen_settings).context(
+        UserSharedItemInRemoveQueryFailed {
+            payload: payload.clone(),
+        },
+    )
+}
+
+/// Calls [USER_SHARED_ITEM_IN_REMOVE_PATH] endpoint asynchronously.
+/// Used to remove shared item from the perspective of a sharee: a user an item is being shared with.
+#[cfg(feature = "async")]
+pub async fn user_shared_item_in_rename_request_async(
+    payload: &UserSharedItemRemoveRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api_async(USER_SHARED_ITEM_IN_REMOVE_PATH, payload, filen_settings)
+        .await
+        .context(UserSharedItemInRemoveQueryFailed {
+            payload: payload.clone(),
+        })
+}
+
+/// Calls [USER_SHARED_ITEM_OUT_REMOVE_PATH] endpoint.
+/// Used to remove shared item from the perspective of an item's owner: to stop sharing the item.
+pub fn user_shared_item_out_remove_request(
+    payload: &UserSharedItemRemoveRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api(USER_SHARED_ITEM_OUT_REMOVE_PATH, payload, filen_settings).context(
+        UserSharedItemOutRemoveQueryFailed {
+            payload: payload.clone(),
+        },
+    )
+}
+
+/// Calls [USER_SHARED_ITEM_OUT_REMOVE_PATH] endpoint asynchronously.
+/// Used to remove shared item from the perspective of an item's owner: to stop sharing the item.
+#[cfg(feature = "async")]
+pub async fn user_shared_item_out_remove_request_async(
+    payload: &UserSharedItemRemoveRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api_async(USER_SHARED_ITEM_OUT_REMOVE_PATH, payload, filen_settings)
+        .await
+        .context(UserSharedItemOutRemoveQueryFailed {
             payload: payload.clone(),
         })
 }
