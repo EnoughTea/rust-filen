@@ -1,0 +1,54 @@
+{
+    "status": true,
+    "message": "Share items fetched.",
+    "data": {
+        "uploads": [
+            {
+                "uuid": "af26328c-1ebf-4a92-b20a-ba3d5d08261c",
+                "parent": null,
+                "metadata": "U2FsdGVkX1/1UYLIMbe5uwGXkbHbBRNzDL+Hz1L7E7kza0n6fsyk5waNpbS3HYb1ggFOP/TIyvtOZFzXY8PXWApWnqZLNMj4Rxf965Al7jx5DkuF2x3m2ZhAegMkeHf7c3mHLTjxOxh566WwI1LnBfyOGoT2jOsw2tbZZsql2TpiqyTkDn5SMrf6WEg7Me5jvn+hEMlgvPdZVS19XG9hkAsloRGzocIbAjxySw9mOH6URhfFICFdKBVQggL+vROv",
+                "type": "file",
+                "bucket": "filen-1",
+                "region": "de-1",
+                "chunks": 3,
+                "version": 1,
+                "sharerEmail": null,
+                "sharerId": null,
+                "receiverEmail": "enough.tea@outlook.com",
+                "receiverId": 4947,
+                "writeAccess": 0,
+                "timestamp": 1634830584
+            }
+        ],
+        "folders": [
+            {
+                "uuid": "51845ac9-47ce-4820-aedb-876f591aef84",
+                "parent": null,
+                "metadata": "U2FsdGVkX18pozKFuiUz2btbyd7cERlTEhrfGzjABH3wghtLJwV3cKPwCe53/4oq",
+                "type": "folder",
+                "bucket": null,
+                "region": null,
+                "chunks": null,
+                "sharerEmail": null,
+                "sharerId": null,
+                "receiverEmail": "enough.tea@outlook.com",
+                "receiverId": 4947,
+                "writeAccess": 0,
+                "color": null,
+                "timestamp": 1634506318,
+                "is_sync": 0,
+                "is_default": 0
+            }
+        ],
+        "foldersInfo": [
+            {
+                "uuid": "51845ac9-47ce-4820-aedb-876f591aef84",
+                "name": "U2FsdGVkX18pozKFuiUz2btbyd7cERlTEhrfGzjABH3wghtLJwV3cKPwCe53/4oq",
+                "color": null
+            }
+        ],
+        "totalUploads": 1,
+        "page": 1,
+        "perPage": 999999999
+    }
+}

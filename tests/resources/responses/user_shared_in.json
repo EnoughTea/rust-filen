@@ -1,0 +1,48 @@
+{
+    "status": true,
+    "message": "Share items fetched.",
+    "data": {
+        "uploads": [
+            {
+                "uuid": "68343547-0742-4d29-8566-645fb006c572",
+                "parent": null,
+                "metadata": "Pc1WtUji8HzUtjBmOhzFAVjViL/ZOuJCOZL6Jjl/qvzo8uC66ra52es4e0an8XL730O3qFbJahiXafClRcUNlfMBHuTgiuzWz/9G8nt7WCCRxI52GRcApFkU08XL9JvsVc29e0LU+K9UO2QS2ukAuRaj0LlVT4ldIBp0D0puzhsaZ2b2/+tGFoEbAxkU/nFcPacdiu9x1a5ZkAjfe2A2EVQDJFcj/AI6rTqeAqakP14dH0k/FD2JzXC8Yd8HKGzMaQW0CHN6ehvbIjgHySNmAcDrqRw5tBjRdHRvSsE+HTgiI/RGpf/RznCnEw+CMPrh7MKD8p6Hato7fktBpkmqj5B6lwPT16czrKow4iEQGLNOWJtQm62y935+i3U/NhZZZSwfr8XrEc7FxTmqDZIzHEy9uvOJBvnUIiKe280SOrHusfisjLj+Dq0hFTl5UL6xgCcdOkH9vxhab2tMalZEkCk0+9JYU5ta7uS1wpFKv6TTsOaMLhVuk7Tqdo3lUkC7Tm4WBKnNNzIaolFwBorHXjlC5E1ELX03BkdqeZXaLztmhqnC8jYrTBLjKI+MM08P6Nm9ymPF0IAqK7hOa6X0NEWk6VT8/9y3YqEovaG4q/+pBFt31/BQizZk5p3rT5IcgZYDlrb0pD1msghwDpAc3pCE8ubcdGz1ToD5s9mNQlk=",
+                "type": "file",
+                "bucket": "filen-1",
+                "region": "de-1",
+                "chunks": 1,
+                "version": 1,
+                "sharerEmail": "test@test.com",
+                "sharerId": 4947,
+                "receiverEmail": null,
+                "receiverId": null,
+                "writeAccess": 0,
+                "timestamp": 1636467086
+            }
+        ],
+        "folders": [
+            {
+                "uuid": "5c86494b-36ec-4d39-a839-9f391474ad00",
+                "parent": null,
+                "metadata": "QLplP8dsEL9dkDYYT4DTM+o19go4pwXkRviJ94+y3vl4XGIYuvBPcBYOQQJHO5vlpQP8rLRPNQgiu1AmCyXpfVtHW3uuM+PStT0jiFWds3/YLiWYRB/nJxCyqp5D3/k0emvSpnfk3ZiXDQMfE8bq/54dFOkFcmeiZP5lgbiuMMf0hHL434JgD1oX2vEqAFbZrmInISyDYRJGI2sU3+ffckV/JUiGKtF+wJT6JqIkCjkSPxzEOcib6ogwRbsTfkNeH8zt1kILnUeerK5ZPTs8ZAvQcImoccrVQ7Vv2xAwQBP3mZfD3A2Y1gbtpUz2/4T6VXOSVs3Cn+QArLlwaX3NwhrzBkZazRwOgeymtTeS3yGoIC++7ajxm268lC8E2HAGpuqNsYANqfC9cgK0FwYm90LYcu/3kHhwHBoahGSJZtOWZCmf+UXR0Ey64k9d/rbBJ141lsw+INoi2EcseaY6XlU+xiUUhgNMrp3jeSaAnDhHl8tSfhZ2SDVZHDARPbihEitl4fxdjpnrCuDBhZCI3627qnWoYwpyFRpuUntFhXHr4dZiCEWiYxYMnU2tMLE+5fRXBKxnhS7FeT9t5AOAiGr7AS/HdIxNVX9LlRDwfU8zWpLUW5w7c3Z9ClxY/0l8Vuqu5UNg7fRoKKVBOe75GgJ9Dtc5YhW3duvnrXzL0Uo=",
+                "type": "folder",
+                "bucket": null,
+                "region": null,
+                "chunks": null,
+                "sharerEmail": "test@test.com",
+                "sharerId": 4947,
+                "receiverEmail": null,
+                "receiverId": null,
+                "writeAccess": 0,
+                "color": null,
+                "timestamp": 1635983239,
+                "is_sync": 0,
+                "is_default": 0
+            }
+        ],
+        "foldersInfo": [],
+        "totalUploads": 1,
+        "page": 1,
+        "perPage": 999999999
+    }
+}
