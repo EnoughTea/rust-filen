@@ -371,7 +371,7 @@ pub struct DirCreateRequestPayload {
 
     /// Should always be "folder", with "sync" reserved for Filen client sync folder.
     #[serde(rename = "type")]
-    pub dir_type: LocationType,
+    pub dir_type: LocationKind,
 
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -408,7 +408,7 @@ impl DirCreateRequestPayload {
     /// You should only use this if you are writing your own replacement client.
     pub fn payload_for_sync_folder_creation(api_key: SecUtf8, last_master_key: &SecUtf8) -> DirCreateRequestPayload {
         let mut payload = DirCreateRequestPayload::new(api_key, FILEN_SYNC_FOLDER_NAME, last_master_key);
-        payload.dir_type = LocationType::Sync;
+        payload.dir_type = LocationKind::Sync;
         payload
     }
 
@@ -421,7 +421,7 @@ impl DirCreateRequestPayload {
             uuid: Uuid::new_v4(),
             name_metadata,
             name_hashed,
-            dir_type: LocationType::Folder,
+            dir_type: LocationKind::Folder,
         }
     }
 }
@@ -705,7 +705,7 @@ mod tests {
         assert_eq!(payload.api_key, *API_KEY);
         assert_eq!(decrypted_name, NAME);
         assert_eq!(payload.name_hashed, NAME_HASHED);
-        assert_eq!(payload.dir_type, LocationType::Folder);
+        assert_eq!(payload.dir_type, LocationKind::Folder);
     }
 
     #[test]
@@ -745,7 +745,7 @@ mod tests {
             uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_metadata: NAME_METADATA.to_owned(),
             name_hashed: NAME_HASHED.to_owned(),
-            dir_type: LocationType::Folder,
+            dir_type: LocationKind::Folder,
         };
         validate_contract(
             DIR_CREATE_PATH,
@@ -763,7 +763,7 @@ mod tests {
             uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_metadata: NAME_METADATA.to_owned(),
             name_hashed: NAME_HASHED.to_owned(),
-            dir_type: LocationType::Folder,
+            dir_type: LocationKind::Folder,
         };
         validate_contract_async(
             DIR_CREATE_PATH,

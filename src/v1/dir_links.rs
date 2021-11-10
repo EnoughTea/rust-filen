@@ -99,7 +99,7 @@ pub struct DirLinkAddRequestPayload {
 
     /// Determines whether a file or a folder is being linked.
     #[serde(rename = "type")]
-    pub link_type: LinkTarget,
+    pub link_type: ItemKind,
 
     /// Linked item ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -112,7 +112,7 @@ impl DirLinkAddRequestPayload {
         linked_item_uuid: Uuid,
         linked_item_metadata: S,
         linked_item_parent_uuid: ParentId,
-        link_type: LinkTarget,
+        link_type: ItemKind,
         last_master_key: &SecUtf8,
     ) -> DirLinkAddRequestPayload {
         let link_key = utils::random_alphanumeric_string(32);
@@ -174,7 +174,7 @@ pub struct DirLinkEditRequestPayload {
 
     /// Determines whether a file or a folder link is being edited.
     #[serde(rename = "type")]
-    pub link_type: LinkTarget,
+    pub link_type: ItemKind,
 
     /// Linked item ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -190,7 +190,7 @@ impl DirLinkEditRequestPayload {
         linked_item_uuid: Uuid,
         linked_item_metadata: S,
         linked_item_parent_uuid: ParentId,
-        link_type: LinkTarget,
+        link_type: ItemKind,
         link_expiration: Expire,
     ) -> DirLinkEditRequestPayload {
         DirLinkEditRequestPayload {
@@ -216,7 +216,7 @@ impl DirLinkEditRequestPayload {
         linked_folder_uuid: Uuid,
         linked_folder_metadata: S,
         linked_folder_parent: ParentId,
-        link_type: LinkTarget,
+        link_type: ItemKind,
         link_expiration: Expire,
         plain_text_password: &SecUtf8,
     ) -> DirLinkEditRequestPayload {

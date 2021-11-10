@@ -24,16 +24,16 @@ pub enum Error {
     CannotParseParentIdFromString { string_length: usize, backtrace: Backtrace },
 }
 
-/// Identifies linked item.
+/// Identifies whether an item is a file or folder.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
-pub enum LinkTarget {
-    /// Linked item is a file.
+pub enum ItemKind {
+    /// Item is a file.
     File,
-    /// Linked item is a folder.
+    /// Item is a folder.
     Folder,
 }
-utils::display_from_json!(LinkTarget);
+utils::display_from_json!(ItemKind);
 
 /// Identifies location color set by user. Default yellow color is often represented by the absence of specifically set
 /// `LocationColor`.
@@ -53,13 +53,13 @@ utils::display_from_json!(LocationColor);
 /// Identifies location type.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
-pub enum LocationType {
+pub enum LocationKind {
     /// Location is a folder.
     Folder,
     /// Location is a special Filen Sync folder.
     Sync,
 }
-utils::display_from_json!(LocationType);
+utils::display_from_json!(LocationKind);
 
 /// Public link or file chunk expiration time.
 ///

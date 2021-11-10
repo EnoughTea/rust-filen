@@ -7,6 +7,7 @@ use snafu::{ResultExt, Snafu};
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 const DIR_COLOR_CHANGE_PATH: &str = "/v1/dir/color/change";
+const ITEM_FAVORITE_PATH: &str = "/v1/item/favorite";
 const SYNC_CLIENT_MESSAGE_PATH: &str = "/v1/sync/client/message";
 const TRASH_EMPTY_PATH: &str = "/v1/trash/empty";
 
@@ -17,6 +18,9 @@ pub enum Error {
 
     #[snafu(display("Cannot serialize data struct to JSON: {}", source))]
     CannotSerializeDataToJson { source: serde_json::Error },
+
+    #[snafu(display("{} query failed: {}", ITEM_FAVORITE_PATH, source))]
+    ItemFavoriteQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", SYNC_CLIENT_MESSAGE_PATH, source))]
     SyncClientMessageQueryFailed { source: queries::Error },
@@ -39,6 +43,26 @@ pub struct DirColorChangeRequestPayload {
     pub uuid: Uuid,
 }
 utils::display_from_json!(DirColorChangeRequestPayload);
+
+/// Used for requests to [ITEM_FAVORITE_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct ItemFavoriteRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+
+    /// ID of item to set favorite for.
+    pub uuid: Uuid,
+
+    /// What is favorited: a "file" or "folder"?
+    #[serde(rename = "type")]
+    pub item_type: ItemKind,
+
+    /// 0 to unfavorite, 1 to favorite.
+    #[serde(deserialize_with = "bool_from_int", serialize_with = "bool_to_int")]
+    pub value: bool,
+}
+utils::display_from_json!(ItemFavoriteRequestPayload);
 
 /// Used for requests to [SYNC_CLIENT_MESSAGE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -107,6 +131,25 @@ pub async fn dir_color_change_request_async(
     queries::query_filen_api_async(DIR_COLOR_CHANGE_PATH, payload, filen_settings)
         .await
         .context(DirColorChangeQueryFailed {})
+}
+
+/// Calls [ITEM_FAVORITE_PATH] endpoint.
+pub fn item_favorite_request(
+    payload: &ItemFavoriteRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api(ITEM_FAVORITE_PATH, payload, filen_settings).context(ItemFavoriteQueryFailed {})
+}
+
+/// Calls [ITEM_FAVORITE_PATH] endpoint asynchronously.
+#[cfg(feature = "async")]
+pub async fn item_favorite_request_async(
+    payload: &ItemFavoriteRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api_async(ITEM_FAVORITE_PATH, payload, filen_settings)
+        .await
+        .context(ItemFavoriteQueryFailed {})
 }
 
 /// Calls [SYNC_CLIENT_MESSAGE_PATH] endpoint. Used to pass data to Filen client.

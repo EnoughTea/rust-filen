@@ -63,10 +63,17 @@ pub(crate) fn bool_from_string<'de, D>(deserializer: D) -> Result<bool, D::Error
 where
     D: Deserializer<'de>,
 {
-    match String::deserialize(deserializer)?.to_lowercase().trim() {
-        "true" => Ok(true),
-        "false" => Ok(false),
-        other => Err(de::Error::invalid_value(de::Unexpected::Str(other), &"true or false")),
+    let deserialized = String::deserialize(deserializer)?;
+    let trimmed_value = deserialized.trim();
+    if trimmed_value.eq_ignore_ascii_case("true") {
+        Ok(true)
+    } else if trimmed_value.eq_ignore_ascii_case("false") {
+        Ok(false)
+    } else {
+        Err(de::Error::invalid_value(
+            de::Unexpected::Str(&deserialized),
+            &"\"true\" or \"false\"",
+        ))
     }
 }
 
