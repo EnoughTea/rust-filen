@@ -19,6 +19,7 @@ const DIR_SUB_CREATE_PATH: &str = "/v1/dir/sub/create";
 const DIR_EXISTS_PATH: &str = "/v1/dir/exists";
 const DIR_MOVE_PATH: &str = "/v1/dir/move";
 const DIR_RENAME_PATH: &str = "/v1/dir/rename";
+const DIR_RESTORE_PATH: &str = "/v1/dir/restore";
 const DIR_TRASH_PATH: &str = "/v1/dir/trash";
 
 #[derive(Snafu, Debug)]
@@ -55,6 +56,9 @@ pub enum Error {
 
     #[snafu(display("{} query failed: {}", DIR_RENAME_PATH, source))]
     DirRenameQueryFailed { source: queries::Error },
+
+    #[snafu(display("{} query failed: {}", DIR_RESTORE_PATH, source))]
+    DirRestoreQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", DIR_TRASH_PATH, source))]
     DirTrashQueryFailed { source: queries::Error },
@@ -576,6 +580,18 @@ impl DirRenameRequestPayload {
     }
 }
 
+/// Used for requests to [DIR_RESTORE_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DirRestoreRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+
+    /// ID of the folder to restore, hyphenated lowercased UUID V4.
+    pub uuid: Uuid,
+}
+utils::display_from_json!(DirRestoreRequestPayload);
+
 /// Calls [USER_BASE_FOLDERS_PATH] endpoint. Used to get a list of user's *base* folders, also known as 'cloud drives'.
 /// Note the difference from [user_dirs_request], which returns a set of all user folders, cloud drives or not.
 /// Includes Filen "Default" folder.
@@ -750,6 +766,25 @@ pub async fn dir_rename_request_async(
     queries::query_filen_api_async(DIR_RENAME_PATH, payload, filen_settings)
         .await
         .context(DirRenameQueryFailed {})
+}
+
+/// Calls [DIR_RESTORE_PATH] endpoint. Used to restore folder from the 'trash' folder.
+pub fn dir_restore_request(
+    payload: &DirRestoreRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api(DIR_RESTORE_PATH, payload, filen_settings).context(DirRestoreQueryFailed {})
+}
+
+/// Calls [DIR_RESTORE_PATH] endpoint asynchronously. Used to restore folder from the 'trash' folder.
+#[cfg(feature = "async")]
+pub async fn dir_restore_request_async(
+    payload: &DirRestoreRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api_async(DIR_RESTORE_PATH, payload, filen_settings)
+        .await
+        .context(DirRestoreQueryFailed {})
 }
 
 /// Calls [DIR_TRASH_PATH] endpoint.
