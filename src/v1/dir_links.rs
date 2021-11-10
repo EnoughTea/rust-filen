@@ -18,22 +18,16 @@ const DIR_LINK_STATUS_PATH: &str = "/v1/dir/link/status";
 #[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display("{} query failed: {}", DIR_LINK_ADD_PATH, source))]
-    DirLinkAddQueryFailed {
-        payload: DirLinkAddRequestPayload,
-        source: queries::Error,
-    },
+    DirLinkAddQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", DIR_LINK_EDIT_PATH, source))]
-    DirLinkEditQueryFailed {
-        payload: DirLinkEditRequestPayload,
-        source: queries::Error,
-    },
+    DirLinkEditQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", DIR_LINK_REMOVE_PATH, source))]
-    DirLinkRemoveQueryFailed { link_uuid: Uuid, source: queries::Error },
+    DirLinkRemoveQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", DIR_LINK_STATUS_PATH, source))]
-    DirLinkStatusQueryFailed { link_uuid: Uuid, source: queries::Error },
+    DirLinkStatusQueryFailed { source: queries::Error },
 }
 
 /// State of the 'Enable download button' GUI checkbox represented as a string.
@@ -314,9 +308,7 @@ pub fn dir_link_add_request(
     payload: &DirLinkAddRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(DIR_LINK_ADD_PATH, payload, filen_settings).context(DirLinkAddQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(DIR_LINK_ADD_PATH, payload, filen_settings).context(DirLinkAddQueryFailed {})
 }
 
 /// Calls [DIR_LINK_ADD_PATH] endpoint asynchronously. Used to add a folder or a file to a folder link.
@@ -329,9 +321,7 @@ pub async fn dir_link_add_request_async(
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(DIR_LINK_ADD_PATH, payload, filen_settings)
         .await
-        .context(DirLinkAddQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(DirLinkAddQueryFailed {})
 }
 
 /// Calls [DIR_LINK_EDIT_PATH] endpoint. Used to edit given folder link.
@@ -341,9 +331,7 @@ pub fn dir_link_edit_request(
     payload: &DirLinkEditRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(DIR_LINK_EDIT_PATH, payload, filen_settings).context(DirLinkEditQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(DIR_LINK_EDIT_PATH, payload, filen_settings).context(DirLinkEditQueryFailed {})
 }
 
 /// Calls [DIR_LINK_EDIT_PATH] endpoint asynchronously. Used to edit given folder link.
@@ -356,9 +344,7 @@ pub async fn dir_link_edit_request_async(
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(DIR_LINK_EDIT_PATH, payload, filen_settings)
         .await
-        .context(DirLinkEditQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(DirLinkEditQueryFailed {})
 }
 
 /// Calls [DIR_LINK_REMOVE_PATH] endpoint. Used to remove given folder link.
@@ -366,9 +352,7 @@ pub fn dir_link_remove_request(
     payload: &DirLinkRemoveRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(DIR_LINK_REMOVE_PATH, payload, filen_settings).context(DirLinkRemoveQueryFailed {
-        link_uuid: payload.uuid,
-    })
+    queries::query_filen_api(DIR_LINK_REMOVE_PATH, payload, filen_settings).context(DirLinkRemoveQueryFailed {})
 }
 
 /// Calls [DIR_LINK_REMOVE_PATH] endpoint asynchronously. Used to remove given folder link.
@@ -379,9 +363,7 @@ pub async fn dir_link_remove_request_async(
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(DIR_LINK_REMOVE_PATH, payload, filen_settings)
         .await
-        .context(DirLinkRemoveQueryFailed {
-            link_uuid: payload.uuid,
-        })
+        .context(DirLinkRemoveQueryFailed {})
 }
 
 /// Calls [DIR_LINK_STATUS_PATH] endpoint. Used to check folder link status.
@@ -389,9 +371,7 @@ pub fn dir_link_status_request(
     payload: &DirLinkStatusRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<DirLinkStatusResponsePayload> {
-    queries::query_filen_api(DIR_LINK_STATUS_PATH, payload, filen_settings).context(DirLinkStatusQueryFailed {
-        link_uuid: payload.uuid,
-    })
+    queries::query_filen_api(DIR_LINK_STATUS_PATH, payload, filen_settings).context(DirLinkStatusQueryFailed {})
 }
 
 /// Calls [DIR_LINK_STATUS_PATH] endpoint asynchronously. Used to check folder link status.
@@ -402,9 +382,7 @@ pub async fn dir_link_status_request_async(
 ) -> Result<DirLinkStatusResponsePayload> {
     queries::query_filen_api_async(DIR_LINK_STATUS_PATH, payload, filen_settings)
         .await
-        .context(DirLinkStatusQueryFailed {
-            link_uuid: payload.uuid,
-        })
+        .context(DirLinkStatusQueryFailed {})
 }
 
 #[cfg(test)]

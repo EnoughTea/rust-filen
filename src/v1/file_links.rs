@@ -13,13 +13,10 @@ const LINK_STATUS_PATH: &str = "/v1/link/status";
 #[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display("{} query failed: {}", LINK_EDIT_PATH, source))]
-    LinkEditQueryFailed {
-        payload: LinkEditRequestPayload,
-        source: queries::Error,
-    },
+    LinkEditQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", LINK_STATUS_PATH, source))]
-    LinkStatusQueryFailed { file_uuid: Uuid, source: queries::Error },
+    LinkStatusQueryFailed { source: queries::Error },
 }
 
 /// Determines public link state.
@@ -124,9 +121,7 @@ api_response_struct!(
 
 /// Calls [LINK_EDIT_PATH] endpoint. Used to edit given file link.
 pub fn link_edit_request(payload: &LinkEditRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
-    queries::query_filen_api(LINK_EDIT_PATH, payload, filen_settings).context(LinkEditQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(LINK_EDIT_PATH, payload, filen_settings).context(LinkEditQueryFailed {})
 }
 
 /// Calls [LINK_EDIT_PATH] endpoint asynchronously. Used to edit given file link.
@@ -137,9 +132,7 @@ pub async fn link_edit_request_async(
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(LINK_EDIT_PATH, payload, filen_settings)
         .await
-        .context(LinkEditQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(LinkEditQueryFailed {})
 }
 
 /// Calls [LINK_STATUS_PATH] endpoint. Used to check file link status.
@@ -147,9 +140,7 @@ pub fn link_status_request(
     payload: &LinkStatusRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<LinkStatusResponsePayload> {
-    queries::query_filen_api(LINK_STATUS_PATH, payload, filen_settings).context(LinkStatusQueryFailed {
-        file_uuid: payload.file_uuid,
-    })
+    queries::query_filen_api(LINK_STATUS_PATH, payload, filen_settings).context(LinkStatusQueryFailed {})
 }
 
 /// Calls [LINK_STATUS_PATH] endpoint asynchronously. Used to check file link status.
@@ -160,9 +151,7 @@ pub async fn link_status_request_async(
 ) -> Result<LinkStatusResponsePayload> {
     queries::query_filen_api_async(LINK_STATUS_PATH, payload, filen_settings)
         .await
-        .context(LinkStatusQueryFailed {
-            file_uuid: payload.file_uuid,
-        })
+        .context(LinkStatusQueryFailed {})
 }
 
 #[cfg(test)]

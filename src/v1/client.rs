@@ -13,16 +13,13 @@ const TRASH_EMPTY_PATH: &str = "/v1/trash/empty";
 #[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display("{} query failed: {}", DIR_COLOR_CHANGE_PATH, source))]
-    DirColorChangeQueryFailed {
-        payload: DirColorChangeRequestPayload,
-        source: queries::Error,
-    },
+    DirColorChangeQueryFailed { source: queries::Error },
 
     #[snafu(display("Cannot serialize data struct to JSON: {}", source))]
     CannotSerializeDataToJson { source: serde_json::Error },
 
     #[snafu(display("{} query failed: {}", SYNC_CLIENT_MESSAGE_PATH, source))]
-    SyncClientMessageQueryFailed { data: String, source: queries::Error },
+    SyncClientMessageQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", TRASH_EMPTY_PATH, source))]
     TrashEmptyQueryFailed { source: queries::Error },
@@ -98,9 +95,7 @@ pub fn dir_color_change_request(
     payload: &DirColorChangeRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(DIR_COLOR_CHANGE_PATH, payload, filen_settings).context(DirColorChangeQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(DIR_COLOR_CHANGE_PATH, payload, filen_settings).context(DirColorChangeQueryFailed {})
 }
 
 /// Calls [DIR_COLOR_CHANGE_PATH] endpoint asynchronously.
@@ -111,9 +106,7 @@ pub async fn dir_color_change_request_async(
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(DIR_COLOR_CHANGE_PATH, payload, filen_settings)
         .await
-        .context(DirColorChangeQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(DirColorChangeQueryFailed {})
 }
 
 /// Calls [SYNC_CLIENT_MESSAGE_PATH] endpoint. Used to pass data to Filen client.
@@ -121,9 +114,7 @@ pub fn sync_client_message_request(
     payload: &SyncClientMessageRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(SYNC_CLIENT_MESSAGE_PATH, payload, filen_settings).context(SyncClientMessageQueryFailed {
-        data: payload.args.clone(),
-    })
+    queries::query_filen_api(SYNC_CLIENT_MESSAGE_PATH, payload, filen_settings).context(SyncClientMessageQueryFailed {})
 }
 
 /// Calls [SYNC_CLIENT_MESSAGE_PATH] endpoint asynchronously. Used to pass data to Filen client.
@@ -134,9 +125,7 @@ pub async fn sync_client_message_request_async(
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(SYNC_CLIENT_MESSAGE_PATH, payload, filen_settings)
         .await
-        .context(SyncClientMessageQueryFailed {
-            data: payload.args.clone(),
-        })
+        .context(SyncClientMessageQueryFailed {})
 }
 
 /// Calls [TRASH_EMPTY_PATH] endpoint. Used to permanently delete all files in the 'Trash' folder.

@@ -40,13 +40,10 @@ pub enum Error {
     UserKeyPairUpdateQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", USER_MASTER_KEYS_PATH, source))]
-    UserMasterKeysQueryFailed {
-        payload: MasterKeysFetchRequestPayload,
-        source: queries::Error,
-    },
+    UserMasterKeysQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", USER_PUBLIC_KEY_GET_PATH, source))]
-    UserPublicKeyGetQueryFailed { email: String, source: queries::Error },
+    UserPublicKeyGetQueryFailed { source: queries::Error },
 }
 
 /// Implement this trait to add decryption of a master keys metadata.
@@ -336,9 +333,7 @@ pub fn user_master_keys_request(
     payload: &MasterKeysFetchRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<MasterKeysFetchResponsePayload> {
-    queries::query_filen_api(USER_MASTER_KEYS_PATH, payload, filen_settings).context(UserMasterKeysQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(USER_MASTER_KEYS_PATH, payload, filen_settings).context(UserMasterKeysQueryFailed {})
 }
 
 /// Calls [MASTER_KEYS_PATH] endpoint asynchronously. Used to get/update user's master keys.
@@ -351,9 +346,7 @@ pub async fn user_master_keys_request_async(
 ) -> Result<MasterKeysFetchResponsePayload> {
     queries::query_filen_api_async(USER_MASTER_KEYS_PATH, payload, filen_settings)
         .await
-        .context(UserMasterKeysQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(UserMasterKeysQueryFailed {})
 }
 
 /// Calls [USER_PUBLIC_KEY_GET_PATH] endpoint. Used to get any user's RSA public key.
@@ -361,9 +354,7 @@ pub fn user_public_key_get_request(
     payload: &UserPublicKeyGetRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserPublicKeyGetResponsePayload> {
-    queries::query_filen_api(USER_PUBLIC_KEY_GET_PATH, payload, filen_settings).context(UserPublicKeyGetQueryFailed {
-        email: payload.email.clone(),
-    })
+    queries::query_filen_api(USER_PUBLIC_KEY_GET_PATH, payload, filen_settings).context(UserPublicKeyGetQueryFailed {})
 }
 
 /// Calls [USER_PUBLIC_KEY_GET_PATH] endpoint asynchronously. Used to get any user's RSA public key.
@@ -374,9 +365,7 @@ pub async fn user_public_key_get_request_async(
 ) -> Result<UserPublicKeyGetResponsePayload> {
     queries::query_filen_api_async(USER_PUBLIC_KEY_GET_PATH, payload, filen_settings)
         .await
-        .context(UserPublicKeyGetQueryFailed {
-            email: payload.email.clone(),
-        })
+        .context(UserPublicKeyGetQueryFailed {})
 }
 
 #[cfg(test)]

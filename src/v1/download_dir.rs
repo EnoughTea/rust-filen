@@ -13,22 +13,19 @@ const DOWNLOAD_DIR_LINK_PATH: &str = "/v1/download/dir/link";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("Failed to decrypt file metadata {}: {}", metadata, source))]
+    #[snafu(display("Failed to decrypt file metadata '{}': {}", metadata, source))]
     DecryptFileMetadataFailed { metadata: String, source: files::Error },
 
-    #[snafu(display("Failed to decrypt folder name metadata: {}", source))]
-    DecryptFolderNameMetadataFailed {
-        name_metadata: String,
-        source: crate::v1::fs::Error,
-    },
+    #[snafu(display("Failed to decrypt folder name metadata '{}': {}", name_metadata, source))]
+    DecryptFolderNameMetadataFailed { name_metadata: String, source: FsError },
 
-    #[snafu(display("Failed to decrypt file mime metadata {}: {}", metadata, source))]
+    #[snafu(display("Failed to decrypt file mime metadata '{}': {}", metadata, source))]
     DecryptFileMimeMetadataFailed { metadata: String, source: crypto::Error },
 
-    #[snafu(display("Failed to decrypt file name metadata {}: {}", metadata, source))]
+    #[snafu(display("Failed to decrypt file name metadata '{}': {}", metadata, source))]
     DecryptFileNameMetadataFailed { metadata: String, source: crypto::Error },
 
-    #[snafu(display("Failed to decrypt file size metadata {}: {}", metadata, source))]
+    #[snafu(display("Failed to decrypt file size metadata '{}': {}", metadata, source))]
     DecryptFileSizeMetadataFailed { metadata: String, source: crypto::Error },
 
     #[snafu(display("Decrypted size '{}' was invalid: {}", size, source))]
@@ -44,19 +41,13 @@ pub enum Error {
     },
 
     #[snafu(display("{} query failed: {}", DOWNLOAD_DIR_LINK_PATH, source))]
-    DownloadDirLinkQueryFailed {
-        payload: DownloadDirLinkRequestPayload,
-        source: queries::Error,
-    },
+    DownloadDirLinkQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", DOWNLOAD_DIR_SHARED_PATH, source))]
-    DownloadDirSharedQueryFailed { uuid: Uuid, source: queries::Error },
+    DownloadDirSharedQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", DOWNLOAD_DIR_PATH, source))]
-    DownloadDirQueryFailed {
-        payload: DownloadDirRequestPayload,
-        source: queries::Error,
-    },
+    DownloadDirQueryFailed { source: queries::Error },
 }
 
 /// Used for requests to [DOWNLOAD_DIR_LINK_PATH] endpoint.
@@ -279,9 +270,7 @@ pub fn download_dir_link_request(
     payload: &DownloadDirLinkRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<DownloadDirLinkResponsePayload> {
-    queries::query_filen_api(DOWNLOAD_DIR_LINK_PATH, payload, filen_settings).context(DownloadDirLinkQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(DOWNLOAD_DIR_LINK_PATH, payload, filen_settings).context(DownloadDirLinkQueryFailed {})
 }
 
 /// Calls [DOWNLOAD_DIR_LINK_PATH] endpoint asynchronously.
@@ -292,9 +281,7 @@ pub async fn download_dir_link_request_async(
 ) -> Result<DownloadDirLinkResponsePayload> {
     queries::query_filen_api_async(DOWNLOAD_DIR_LINK_PATH, payload, filen_settings)
         .await
-        .context(DownloadDirLinkQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(DownloadDirLinkQueryFailed {})
 }
 
 /// Calls [DOWNLOAD_DIR_SHARED_PATH] endpoint.
@@ -302,8 +289,7 @@ pub fn download_dir_shared_request(
     payload: &DownloadDirSharedRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<DownloadDirSharedResponsePayload> {
-    queries::query_filen_api(DOWNLOAD_DIR_SHARED_PATH, payload, filen_settings)
-        .context(DownloadDirSharedQueryFailed { uuid: payload.uuid })
+    queries::query_filen_api(DOWNLOAD_DIR_SHARED_PATH, payload, filen_settings).context(DownloadDirSharedQueryFailed {})
 }
 
 /// Calls [DOWNLOAD_DIR_SHARED_PATH] endpoint asynchronously.
@@ -314,7 +300,7 @@ pub async fn download_dir_shared_request_async(
 ) -> Result<DownloadDirSharedResponsePayload> {
     queries::query_filen_api_async(DOWNLOAD_DIR_SHARED_PATH, payload, filen_settings)
         .await
-        .context(DownloadDirSharedQueryFailed { uuid: payload.uuid })
+        .context(DownloadDirSharedQueryFailed {})
 }
 
 /// Calls [DOWNLOAD_DIR_PATH] endpoint. Used to get a list of user's folders.
@@ -324,9 +310,7 @@ pub fn download_dir_request(
     payload: &DownloadDirRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<DownloadDirResponsePayload> {
-    queries::query_filen_api(DOWNLOAD_DIR_PATH, payload, filen_settings).context(DownloadDirQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(DOWNLOAD_DIR_PATH, payload, filen_settings).context(DownloadDirQueryFailed {})
 }
 
 /// Calls [DOWNLOAD_DIR_PATH] endpoint asynchronously. Used to get a list of user's folders.
@@ -339,9 +323,7 @@ pub async fn download_dir_request_async(
 ) -> Result<DownloadDirResponsePayload> {
     queries::query_filen_api_async(DOWNLOAD_DIR_PATH, payload, filen_settings)
         .await
-        .context(DownloadDirQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(DownloadDirQueryFailed {})
 }
 
 #[cfg(test)]

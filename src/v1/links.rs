@@ -14,16 +14,13 @@ const LINK_DIR_STATUS_PATH: &str = "/v1/link/dir/status";
 #[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display("{} query failed: {}", LINK_DIR_ITEM_RENAME_PATH, source))]
-    LinkDirItemRenameQueryFailed {
-        payload: LinkDirItemRenameRequestPayload,
-        source: queries::Error,
-    },
+    LinkDirItemRenameQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", LINK_DIR_ITEM_STATUS_PATH, source))]
-    LinkDirItemStatusQueryFailed { uuid: Uuid, source: queries::Error },
+    LinkDirItemStatusQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", LINK_DIR_STATUS_PATH, source))]
-    LinkDirStatusQueryFailed { uuid: Uuid, source: queries::Error },
+    LinkDirStatusQueryFailed { source: queries::Error },
 }
 
 /// Used for requests to [LINK_DIR_ITEM_RENAME_PATH] endpoint.
@@ -124,9 +121,8 @@ pub fn link_dir_item_rename_request(
     payload: &LinkDirItemRenameRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(LINK_DIR_ITEM_RENAME_PATH, payload, filen_settings).context(LinkDirItemRenameQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(LINK_DIR_ITEM_RENAME_PATH, payload, filen_settings)
+        .context(LinkDirItemRenameQueryFailed {})
 }
 
 /// Calls [LINK_DIR_ITEM_RENAME_PATH] endpoint asynchronously.
@@ -137,9 +133,7 @@ pub async fn link_dir_item_rename_request_async(
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(LINK_DIR_ITEM_RENAME_PATH, payload, filen_settings)
         .await
-        .context(LinkDirItemRenameQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(LinkDirItemRenameQueryFailed {})
 }
 
 /// Calls [LINK_DIR_ITEM_STATUS_PATH] endpoint.
@@ -148,7 +142,7 @@ pub fn link_dir_item_status_request(
     filen_settings: &FilenSettings,
 ) -> Result<LinkDirStatusResponsePayload> {
     queries::query_filen_api(LINK_DIR_ITEM_STATUS_PATH, payload, filen_settings)
-        .context(LinkDirItemStatusQueryFailed { uuid: payload.uuid })
+        .context(LinkDirItemStatusQueryFailed {})
 }
 
 /// Calls [LINK_DIR_ITEM_STATUS_PATH] endpoint asynchronously.
@@ -159,7 +153,7 @@ pub async fn link_dir_item_status_request_async(
 ) -> Result<LinkDirStatusResponsePayload> {
     queries::query_filen_api_async(LINK_DIR_ITEM_STATUS_PATH, payload, filen_settings)
         .await
-        .context(LinkDirItemStatusQueryFailed { uuid: payload.uuid })
+        .context(LinkDirItemStatusQueryFailed {})
 }
 
 /// Calls [LINK_DIR_STATUS_PATH] endpoint.
@@ -167,8 +161,7 @@ pub fn link_dir_status_request(
     payload: &LinkDirStatusRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<LinkDirStatusResponsePayload> {
-    queries::query_filen_api(LINK_DIR_STATUS_PATH, payload, filen_settings)
-        .context(LinkDirStatusQueryFailed { uuid: payload.uuid })
+    queries::query_filen_api(LINK_DIR_STATUS_PATH, payload, filen_settings).context(LinkDirStatusQueryFailed {})
 }
 
 /// Calls [LINK_DIR_STATUS_PATH] endpoint asynchronously.
@@ -179,7 +172,7 @@ pub async fn link_dir_status_request_async(
 ) -> Result<LinkDirStatusResponsePayload> {
     queries::query_filen_api_async(LINK_DIR_STATUS_PATH, payload, filen_settings)
         .await
-        .context(LinkDirStatusQueryFailed { uuid: payload.uuid })
+        .context(LinkDirStatusQueryFailed {})
 }
 
 #[cfg(test)]

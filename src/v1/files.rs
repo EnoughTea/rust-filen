@@ -26,58 +26,49 @@ pub enum Error {
     BadArgument { message: String, backtrace: Backtrace },
 
     #[snafu(display("Expected metadata to be base64-encoded, but cannot decode it as such"))]
-    CannotDecodeBase64Metadata { source: base64::DecodeError },
+    CannotDecodeBase64Metadata {
+        metadata: String,
+        source: base64::DecodeError,
+    },
 
     #[snafu(display("Decrypted metadata is not a valid UTF-8 string"))]
-    DecryptedMetadataIsNotUtf8 { source: std::string::FromUtf8Error },
+    DecryptedMetadataIsNotUtf8 {
+        metadata: String,
+        source: std::string::FromUtf8Error,
+    },
 
-    #[snafu(display("Failed to deserialize file metadata {}: {}", metadata, source))]
+    #[snafu(display("Failed to deserialize file metadata '{}': {}", metadata, source))]
     DeserializeFileMetadataFailed {
         metadata: String,
         source: serde_json::Error,
     },
 
-    #[snafu(display("Failed to decrypt file metadata {}: {}", metadata, source))]
+    #[snafu(display("Failed to decrypt file metadata '{}': {}", metadata, source))]
     DecryptFileMetadataFailed { metadata: String, source: crypto::Error },
 
-    #[snafu(display("Failed to decrypt file metadata using RSA: {}", source))]
-    DecryptFileMetadataRsaFailed { source: crypto::Error },
+    #[snafu(display("Failed to decrypt file metadata '{}' using RSA: {}", metadata, source))]
+    DecryptFileMetadataRsaFailed { metadata: String, source: crypto::Error },
 
-    #[snafu(display("Failed to encrypt file metadata: {}", source))]
-    EncryptFileMetadataFailed { source: crypto::Error },
+    #[snafu(display("Failed to encrypt file metadata '{}': {}", metadata, source))]
+    EncryptFileMetadataFailed { metadata: String, source: crypto::Error },
 
-    #[snafu(display("Failed to encrypt file metadata using RSA: {}", source))]
-    EncryptFileMetadataRsaFailed { source: crypto::Error },
+    #[snafu(display("Failed to encrypt file metadata '{}' using RSA: {}", metadata, source))]
+    EncryptFileMetadataRsaFailed { metadata: String, source: crypto::Error },
 
     #[snafu(display("{} query failed: {}", FILE_ARCHIVE_PATH, source))]
-    FileArchieveQueryFailed {
-        payload: FileArchiveRequestPayload,
-        source: queries::Error,
-    },
+    FileArchieveQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", FILE_EXISTS_PATH, source))]
-    FileExistsQueryFailed {
-        payload: LocationExistsRequestPayload,
-        source: queries::Error,
-    },
+    FileExistsQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", FILE_MOVE_PATH, source))]
-    FileMoveQueryFailed {
-        payload: FileMoveRequestPayload,
-        source: queries::Error,
-    },
+    FileMoveQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", FILE_RENAME_PATH, source))]
-    FileRenameQueryFailed {
-        payload: FileRenameRequestPayload,
-        source: queries::Error,
-    },
+    FileRenameQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", FILE_TRASH_PATH, source))]
-    FileTrashQueryFailed {
-        payload: LocationTrashRequestPayload,
-        source: queries::Error,
-    },
+    FileTrashQueryFailed { source: queries::Error },
 
     #[snafu(display(
         "File path does not contain valid filename.\
@@ -89,10 +80,7 @@ pub enum Error {
     FileSystemMetadataError { source: std::io::Error },
 
     #[snafu(display("{} query failed: {}", RM_PATH, source))]
-    RmQueryFailed {
-        payload: RmRequestPayload,
-        source: queries::Error,
-    },
+    RmQueryFailed { source: queries::Error },
 
     #[snafu(display("Unknown system time error: {}", source))]
     SystemTimeError { source: std::time::SystemTimeError },
@@ -175,17 +163,25 @@ impl FileProperties {
     /// Encrypts file properties to a metadata string.
     pub fn encrypt_file_metadata(file_properties: &FileProperties, last_master_key: &SecUtf8) -> Result<String> {
         let metadata_json = json!(file_properties).to_string();
-        crypto::encrypt_metadata_str(&metadata_json, last_master_key.unsecure(), METADATA_VERSION)
-            .context(EncryptFileMetadataFailed {})
+        crypto::encrypt_metadata_str(&metadata_json, last_master_key.unsecure(), METADATA_VERSION).context(
+            EncryptFileMetadataFailed {
+                metadata: metadata_json,
+            },
+        )
     }
 
     /// Decrypts file properties from a metadata string using RSA for public sharing.
     /// Assumes given metadata string is base64-encoded.
     pub fn decrypt_file_metadata_rsa(metadata: &str, rsa_private_key_bytes: &[u8]) -> Result<FileProperties> {
-        let decoded = base64::decode(metadata).context(CannotDecodeBase64Metadata {})?;
-        let decrypted =
-            crypto::decrypt_rsa(&decoded, rsa_private_key_bytes).context(DecryptFileMetadataRsaFailed {})?;
-        let file_properties_json = String::from_utf8(decrypted).context(DecryptedMetadataIsNotUtf8 {})?;
+        let decoded = base64::decode(metadata).context(CannotDecodeBase64Metadata {
+            metadata: metadata.to_owned(),
+        })?;
+        let decrypted = crypto::decrypt_rsa(&decoded, rsa_private_key_bytes).context(DecryptFileMetadataRsaFailed {
+            metadata: metadata.to_owned(),
+        })?;
+        let file_properties_json = String::from_utf8(decrypted).context(DecryptedMetadataIsNotUtf8 {
+            metadata: metadata.to_owned(),
+        })?;
         serde_json::from_str::<FileProperties>(&file_properties_json).context(DeserializeFileMetadataFailed {
             metadata: metadata.to_owned(),
         })
@@ -194,8 +190,11 @@ impl FileProperties {
     /// Encrypts file properties to a metadata string using RSA for public sharing. Returns base64-encoded bytes.
     pub fn encrypt_file_metadata_rsa(file_properties: &FileProperties, rsa_public_key_bytes: &[u8]) -> Result<String> {
         let metadata_json = json!(file_properties).to_string();
-        let encrypted = crypto::encrypt_rsa(metadata_json.as_bytes(), rsa_public_key_bytes)
-            .context(EncryptFileMetadataRsaFailed {})?;
+        let encrypted = crypto::encrypt_rsa(metadata_json.as_bytes(), rsa_public_key_bytes).context(
+            EncryptFileMetadataRsaFailed {
+                metadata: metadata_json,
+            },
+        )?;
         Ok(base64::encode(&encrypted))
     }
 
@@ -317,9 +316,7 @@ pub fn file_archive_request(
     payload: &FileArchiveRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(FILE_ARCHIVE_PATH, payload, filen_settings).context(FileArchieveQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(FILE_ARCHIVE_PATH, payload, filen_settings).context(FileArchieveQueryFailed {})
 }
 
 /// Calls [FILE_ARCHIVE_PATH] endpoint asynchronously.
@@ -332,9 +329,7 @@ pub async fn file_archive_request_async(
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(FILE_ARCHIVE_PATH, payload, filen_settings)
         .await
-        .context(FileArchieveQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(FileArchieveQueryFailed {})
 }
 
 /// Calls [FILE_EXISTS_PATH] endpoint.
@@ -343,9 +338,7 @@ pub fn file_exists_request(
     payload: &LocationExistsRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<LocationExistsResponsePayload> {
-    queries::query_filen_api(FILE_EXISTS_PATH, payload, filen_settings).context(FileExistsQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(FILE_EXISTS_PATH, payload, filen_settings).context(FileExistsQueryFailed {})
 }
 
 /// Calls [FILE_EXISTS_PATH] endpoint asynchronously.
@@ -357,9 +350,7 @@ pub async fn file_exists_request_async(
 ) -> Result<LocationExistsResponsePayload> {
     queries::query_filen_api_async(FILE_EXISTS_PATH, payload, filen_settings)
         .await
-        .context(FileExistsQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(FileExistsQueryFailed {})
 }
 
 /// Calls [FILE_MOVE_PATH] endpoint.
@@ -369,9 +360,7 @@ pub async fn file_exists_request_async(
 /// If file is moved into a linked and/or shared folder, don't forget to call [dir_link_add_request]
 /// and/or [share_request] after a successfull move.
 pub fn file_move_request(payload: &FileMoveRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
-    queries::query_filen_api(FILE_MOVE_PATH, payload, filen_settings).context(FileMoveQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(FILE_MOVE_PATH, payload, filen_settings).context(FileMoveQueryFailed {})
 }
 
 /// Calls [FILE_MOVE_PATH] endpoint asynchronously.
@@ -387,9 +376,7 @@ pub async fn file_move_request_async(
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(FILE_MOVE_PATH, payload, filen_settings)
         .await
-        .context(FileMoveQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(FileMoveQueryFailed {})
 }
 
 /// Calls [FILE_RENAME_PATH] endpoint.
@@ -399,9 +386,7 @@ pub fn file_rename_request(
     payload: &FileRenameRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(FILE_RENAME_PATH, payload, filen_settings).context(FileRenameQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(FILE_RENAME_PATH, payload, filen_settings).context(FileRenameQueryFailed {})
 }
 
 /// Calls [FILE_RENAME_PATH] endpoint asynchronously.
@@ -414,9 +399,7 @@ pub async fn file_rename_request_async(
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(FILE_RENAME_PATH, payload, filen_settings)
         .await
-        .context(FileRenameQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(FileRenameQueryFailed {})
 }
 
 /// Calls [FILE_TRASH_PATH] endpoint.
@@ -426,9 +409,7 @@ pub fn file_trash_request(
     payload: &LocationTrashRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(FILE_TRASH_PATH, payload, filen_settings).context(FileTrashQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(FILE_TRASH_PATH, payload, filen_settings).context(FileTrashQueryFailed {})
 }
 
 /// Calls [FILE_TRASH_PATH] endpoint asynchronously.
@@ -441,16 +422,12 @@ pub async fn file_trash_request_async(
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(FILE_TRASH_PATH, payload, filen_settings)
         .await
-        .context(FileTrashQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(FileTrashQueryFailed {})
 }
 
 /// Calls [RM_PATH] endpoint. Used to delete file.
 pub fn rm_request(payload: &RmRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
-    queries::query_filen_api(RM_PATH, payload, filen_settings).context(RmQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(RM_PATH, payload, filen_settings).context(RmQueryFailed {})
 }
 
 /// Calls [RM_PATH] endpoint asynchronously. Used to delete file.
@@ -458,9 +435,7 @@ pub fn rm_request(payload: &RmRequestPayload, filen_settings: &FilenSettings) ->
 pub async fn rm_request_async(payload: &RmRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(RM_PATH, payload, filen_settings)
         .await
-        .context(RmQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(RmQueryFailed {})
 }
 
 #[cfg(test)]

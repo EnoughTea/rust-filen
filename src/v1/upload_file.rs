@@ -29,9 +29,16 @@ const UPLOAD_STOP_PATH: &str = "/v1/upload/stop";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("Chunk encryption failed"))]
+    #[snafu(display(
+        "Chunk of size '{}' encryption failed, file key size was '{}' and file version was '{}'",
+        chunk_size,
+        file_key_size,
+        file_version,
+    ))]
     ChunkEncryptionError {
-        upload_properties: FileUploadProperties,
+        chunk_size: usize,
+        file_key_size: usize,
+        file_version: u32,
         source: crypto::Error,
     },
 
@@ -61,16 +68,10 @@ pub enum Error {
     },
 
     #[snafu(display("{} query failed: {}", UPLOAD_DONE_PATH, source))]
-    UploadDoneQueryFailed {
-        payload: UploadDoneRequestPayload,
-        source: queries::Error,
-    },
+    UploadDoneQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", UPLOAD_STOP_PATH, source))]
-    UploadStopQueryFailed {
-        payload: UploadStopRequestPayload,
-        source: queries::Error,
-    },
+    UploadStopQueryFailed { source: queries::Error },
 }
 
 /// Response data for [UPLOAD_PATH] endpoint.
@@ -296,9 +297,7 @@ pub fn upload_done_request(
     payload: &UploadDoneRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(UPLOAD_DONE_PATH, payload, filen_settings).context(UploadDoneQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(UPLOAD_DONE_PATH, payload, filen_settings).context(UploadDoneQueryFailed {})
 }
 
 /// Calls [UPLOAD_DONE_PATH] endpoint asynchronously. Used to mark upload as done after all file chunks
@@ -310,9 +309,7 @@ pub async fn upload_done_request_async(
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(UPLOAD_DONE_PATH, payload, filen_settings)
         .await
-        .context(UploadDoneQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(UploadDoneQueryFailed {})
 }
 
 /// Calls [UPLOAD_STOP_PATH] endpoint.
@@ -321,9 +318,7 @@ pub fn upload_stop_request(
     payload: &UploadStopRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(UPLOAD_STOP_PATH, payload, filen_settings).context(UploadStopQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(UPLOAD_STOP_PATH, payload, filen_settings).context(UploadStopQueryFailed {})
 }
 
 /// Calls [UPLOAD_STOP_PATH] endpoint asynchronously.
@@ -335,9 +330,7 @@ pub async fn upload_stop_request_async(
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(UPLOAD_STOP_PATH, payload, filen_settings)
         .await
-        .context(UploadStopQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(UploadStopQueryFailed {})
 }
 
 /// Calls [UPLOAD_PATH] endpoint. Used to encrypt and upload a file chunk to Filen.
@@ -353,7 +346,9 @@ pub fn encrypt_and_upload_chunk(
     let file_key = upload_properties.file_key.unsecure().as_bytes().try_into().unwrap();
     let chunk_encrypted =
         crypto::encrypt_file_chunk(chunk, file_key, upload_properties.version).context(ChunkEncryptionError {
-            upload_properties: upload_properties.clone(),
+            chunk_size: chunk.len(),
+            file_key_size: file_key.len(),
+            file_version: upload_properties.version,
         })?;
     let chunk_size = chunk_encrypted.len();
     let api_endpoint = upload_properties.to_api_endpoint(chunk_index, api_key);
@@ -379,14 +374,13 @@ pub async fn encrypt_and_upload_chunk_async(
     upload_properties: &FileUploadProperties,
     filen_settings: &FilenSettings,
 ) -> Result<UploadFileChunkResponsePayload> {
-    let chunk_encrypted = crypto::encrypt_file_chunk(
-        chunk,
-        upload_properties.file_key.unsecure().as_bytes().try_into().unwrap(),
-        upload_properties.version,
-    )
-    .context(ChunkEncryptionError {
-        upload_properties: upload_properties.clone(),
-    })?;
+    let file_key = upload_properties.file_key.unsecure().as_bytes().try_into().unwrap();
+    let chunk_encrypted =
+        crypto::encrypt_file_chunk(chunk, file_key, upload_properties.version).context(ChunkEncryptionError {
+            chunk_size: chunk.len(),
+            file_key_size: file_key.len(),
+            file_version: upload_properties.version,
+        })?;
 
     let chunk_size = chunk_encrypted.len();
     let api_endpoint = upload_properties.to_api_endpoint(chunk_index, api_key);

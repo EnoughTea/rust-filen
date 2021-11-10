@@ -17,10 +17,7 @@ pub enum Error {
     },
 
     #[snafu(display("{} query failed: {}", GET_DIR_PATH, source))]
-    GetDirQueryFailed {
-        payload: GetDirRequestPayload,
-        source: queries::Error,
-    },
+    GetDirQueryFailed { source: queries::Error },
 }
 
 /// Used for requests to [GET_DIR_PATH] endpoint.
@@ -100,9 +97,7 @@ pub fn get_dir_request(
     payload: &GetDirRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<GetDirResponsePayload> {
-    queries::query_filen_api(GET_DIR_PATH, payload, filen_settings).context(GetDirQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(GET_DIR_PATH, payload, filen_settings).context(GetDirQueryFailed {})
 }
 
 /// Calls [GET_DIR_PATH] endpoint asynchronously. It fetches the entire Filen sync folder contents, with option
@@ -114,9 +109,7 @@ pub async fn get_dir_request_async(
 ) -> Result<GetDirResponsePayload> {
     queries::query_filen_api_async(GET_DIR_PATH, payload, filen_settings)
         .await
-        .context(GetDirQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(GetDirQueryFailed {})
 }
 
 #[cfg(test)]

@@ -13,13 +13,10 @@ const FILE_VERSIONS_PATH: &str = "/v1/file/versions";
 #[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display("{} query failed: {}", FILE_ARCHIVE_RESTORE_PATH, source))]
-    FileArchiveRestoreQueryFailed {
-        payload: FileArchiveRestoreRequestPayload,
-        source: queries::Error,
-    },
+    FileArchiveRestoreQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", FILE_VERSIONS_PATH, source))]
-    FileVersionsQueryFailed { uuid: Uuid, source: queries::Error },
+    FileVersionsQueryFailed { source: queries::Error },
 }
 
 /// Used for requests to [FILE_ARCHIVE_RESTORE_PATH] endpoint.
@@ -148,11 +145,8 @@ pub fn file_archive_restore_request(
     payload: &FileArchiveRestoreRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<FileArchiveRestoreResponsePayload> {
-    queries::query_filen_api(FILE_ARCHIVE_RESTORE_PATH, payload, filen_settings).context(
-        FileArchiveRestoreQueryFailed {
-            payload: payload.clone(),
-        },
-    )
+    queries::query_filen_api(FILE_ARCHIVE_RESTORE_PATH, payload, filen_settings)
+        .context(FileArchiveRestoreQueryFailed {})
 }
 
 /// Calls [FILE_ARCHIVE_RESTORE_PATH] endpoint asynchronously. Used to get versions of the given file.
@@ -163,9 +157,7 @@ pub async fn file_archive_restore_request_async(
 ) -> Result<FileArchiveRestoreResponsePayload> {
     queries::query_filen_api_async(FILE_ARCHIVE_RESTORE_PATH, payload, filen_settings)
         .await
-        .context(FileArchiveRestoreQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(FileArchiveRestoreQueryFailed {})
 }
 
 /// Calls [FILE_VERSIONS_PATH] endpoint. Used to get versions of the given file.
@@ -173,8 +165,7 @@ pub fn file_versions_request(
     payload: &FileVersionsRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<FileVersionsResponsePayload> {
-    queries::query_filen_api(FILE_VERSIONS_PATH, payload, filen_settings)
-        .context(FileVersionsQueryFailed { uuid: payload.uuid })
+    queries::query_filen_api(FILE_VERSIONS_PATH, payload, filen_settings).context(FileVersionsQueryFailed {})
 }
 
 /// Calls [FILE_VERSIONS_PATH] endpoint asynchronously. Used to get versions of the given file.
@@ -185,7 +176,7 @@ pub async fn file_versions_request_async(
 ) -> Result<FileVersionsResponsePayload> {
     queries::query_filen_api_async(FILE_VERSIONS_PATH, payload, filen_settings)
         .await
-        .context(FileVersionsQueryFailed { uuid: payload.uuid })
+        .context(FileVersionsQueryFailed {})
 }
 
 #[cfg(test)]

@@ -32,46 +32,25 @@ pub enum Error {
     UserDirsQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", DIR_CONTENT_PATH, source))]
-    DirContentQueryFailed {
-        payload: DirContentRequestPayload,
-        source: queries::Error,
-    },
+    DirContentQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", DIR_CREATE_PATH, source))]
-    DirCreateQueryFailed {
-        payload: DirCreateRequestPayload,
-        source: queries::Error,
-    },
+    DirCreateQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", DIR_SUB_CREATE_PATH, source))]
-    DirSubCreateQueryFailed {
-        payload: DirSubCreateRequestPayload,
-        source: queries::Error,
-    },
+    DirSubCreateQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", DIR_EXISTS_PATH, source))]
-    DirExistsQueryFailed {
-        payload: LocationExistsRequestPayload,
-        source: queries::Error,
-    },
+    DirExistsQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", DIR_MOVE_PATH, source))]
-    DirMoveQueryFailed {
-        payload: DirMoveRequestPayload,
-        source: queries::Error,
-    },
+    DirMoveQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", DIR_RENAME_PATH, source))]
-    DirRenameQueryFailed {
-        payload: DirRenameRequestPayload,
-        source: queries::Error,
-    },
+    DirRenameQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", DIR_TRASH_PATH, source))]
-    DirTrashQueryFailed {
-        payload: LocationTrashRequestPayload,
-        source: queries::Error,
-    },
+    DirTrashQueryFailed { source: queries::Error },
 }
 
 /// Used for requests to [USER_BASE_FOLDERS_PATH] endpoint.
@@ -554,9 +533,7 @@ pub fn dir_content_request(
     payload: &DirContentRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<DirContentResponsePayload> {
-    queries::query_filen_api(DIR_CONTENT_PATH, payload, filen_settings).context(DirContentQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(DIR_CONTENT_PATH, payload, filen_settings).context(DirContentQueryFailed {})
 }
 
 /// Calls [DIR_CONTENT_PATH] endpoint asynchronously. Used to get a paginated set of user's files and folders in a way
@@ -568,9 +545,7 @@ pub async fn dir_content_request_async(
 ) -> Result<DirContentResponsePayload> {
     queries::query_filen_api_async(DIR_CONTENT_PATH, payload, filen_settings)
         .await
-        .context(DirContentQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(DirContentQueryFailed {})
 }
 
 /// Calls [DIR_CREATE_PATH] endpoint. Creates parentless folder that you need to move yourself later.
@@ -578,9 +553,7 @@ pub fn dir_create_request(
     payload: &DirCreateRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(DIR_CREATE_PATH, payload, filen_settings).context(DirCreateQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(DIR_CREATE_PATH, payload, filen_settings).context(DirCreateQueryFailed {})
 }
 
 /// Calls [DIR_CREATE_PATH] endpoint asynchronously. Creates parentless folder that you need to move yourself later.
@@ -591,9 +564,7 @@ pub async fn dir_create_request_async(
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(DIR_CREATE_PATH, payload, filen_settings)
         .await
-        .context(DirCreateQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(DirCreateQueryFailed {})
 }
 
 /// Calls [DIR_SUB_CREATE_PATH] endpoint. Creates a new folder within the given parent folder.
@@ -601,9 +572,7 @@ pub fn dir_sub_create_request(
     payload: &DirSubCreateRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(DIR_SUB_CREATE_PATH, payload, filen_settings).context(DirSubCreateQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(DIR_SUB_CREATE_PATH, payload, filen_settings).context(DirSubCreateQueryFailed {})
 }
 
 /// Calls [DIR_SUB_CREATE_PATH] endpoint asynchronously. Creates a new folder within the given parent folder.
@@ -614,9 +583,7 @@ pub async fn dir_sub_create_request_async(
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(DIR_SUB_CREATE_PATH, payload, filen_settings)
         .await
-        .context(DirSubCreateQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(DirSubCreateQueryFailed {})
 }
 
 /// Calls [DIR_EXISTS_PATH] endpoint.
@@ -625,9 +592,7 @@ pub fn dir_exists_request(
     payload: &LocationExistsRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<LocationExistsResponsePayload> {
-    queries::query_filen_api(DIR_EXISTS_PATH, payload, filen_settings).context(DirExistsQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(DIR_EXISTS_PATH, payload, filen_settings).context(DirExistsQueryFailed {})
 }
 
 /// Calls [DIR_EXISTS_PATH] endpoint asynchronously.
@@ -639,9 +604,7 @@ pub async fn dir_exists_request_async(
 ) -> Result<LocationExistsResponsePayload> {
     queries::query_filen_api_async(DIR_EXISTS_PATH, payload, filen_settings)
         .await
-        .context(DirExistsQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(DirExistsQueryFailed {})
 }
 
 /// Calls [DIR_MOVE_PATH] endpoint.
@@ -651,9 +614,7 @@ pub async fn dir_exists_request_async(
 /// If folder is moved into a linked and/or shared folder, don't forget to call [dir_link_add_request]
 /// and/or [share_request] after a successfull move.
 pub fn dir_move_request(payload: &DirMoveRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
-    queries::query_filen_api(DIR_MOVE_PATH, payload, filen_settings).context(DirMoveQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(DIR_MOVE_PATH, payload, filen_settings).context(DirMoveQueryFailed {})
 }
 
 /// Calls [DIR_MOVE_PATH] endpoint asynchronously.
@@ -669,9 +630,7 @@ pub async fn dir_move_request_async(
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(DIR_MOVE_PATH, payload, filen_settings)
         .await
-        .context(DirMoveQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(DirMoveQueryFailed {})
 }
 
 /// Calls [DIR_RENAME_PATH] endpoint.
@@ -681,9 +640,7 @@ pub fn dir_rename_request(
     payload: &DirRenameRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(DIR_RENAME_PATH, payload, filen_settings).context(DirRenameQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(DIR_RENAME_PATH, payload, filen_settings).context(DirRenameQueryFailed {})
 }
 
 /// Calls [DIR_RENAME_PATH] endpoint asynchronously.
@@ -696,9 +653,7 @@ pub async fn dir_rename_request_async(
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(DIR_RENAME_PATH, payload, filen_settings)
         .await
-        .context(DirRenameQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(DirRenameQueryFailed {})
 }
 
 /// Calls [DIR_TRASH_PATH] endpoint.
@@ -708,9 +663,7 @@ pub fn dir_trash_request(
     payload: &LocationTrashRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
-    queries::query_filen_api(DIR_TRASH_PATH, payload, filen_settings).context(DirTrashQueryFailed {
-        payload: payload.clone(),
-    })
+    queries::query_filen_api(DIR_TRASH_PATH, payload, filen_settings).context(DirTrashQueryFailed {})
 }
 
 /// Calls [DIR_TRASH_PATH] endpoint asynchronously.
@@ -723,9 +676,7 @@ pub async fn dir_trash_request_async(
 ) -> Result<PlainApiResponse> {
     queries::query_filen_api_async(DIR_TRASH_PATH, payload, filen_settings)
         .await
-        .context(DirTrashQueryFailed {
-            payload: payload.clone(),
-        })
+        .context(DirTrashQueryFailed {})
 }
 
 #[cfg(test)]
