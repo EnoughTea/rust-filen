@@ -3,6 +3,7 @@ use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use snafu::{Backtrace, ResultExt, Snafu};
+use std::{convert::TryFrom, fmt};
 use uuid::Uuid;
 
 #[allow(dead_code)]
@@ -24,6 +25,12 @@ const DIR_TRASH_PATH: &str = "/v1/dir/trash";
 pub enum Error {
     #[snafu(display("Caller provided invalid argument: {}", message))]
     BadArgument { message: String, backtrace: Backtrace },
+
+    #[snafu(display(
+        "Expected \"trash\" or hyphenated lowercased UUID, got unknown string of length: {}",
+        string_length
+    ))]
+    CannotParseContentKindFromString { string_length: usize, backtrace: Backtrace },
 
     #[snafu(display("{} query failed: {}", USER_BASE_FOLDERS_PATH, source))]
     UserBaseFoldersQueryFailed { source: queries::Error },
@@ -51,6 +58,88 @@ pub enum Error {
 
     #[snafu(display("{} query failed: {}", DIR_TRASH_PATH, source))]
     DirTrashQueryFailed { source: queries::Error },
+}
+
+/// Identifies listed content target eitner by ID or by special reference.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ContentKind {
+    /// Listed content is a trash folder.
+    Trash,
+    /// Listed content is a folder with the specified UUID.
+    Folder(Uuid),
+}
+
+impl ContentKind {
+    /// Tries to parse [IdRef] from given string, which must be either "trash" or hyphenated lowercased UUID.
+    pub fn try_parse(trash_or_id: &str) -> Result<ContentKind> {
+        if trash_or_id.eq_ignore_ascii_case("trash") {
+            Ok(ContentKind::Trash)
+        } else {
+            match Uuid::parse_str(trash_or_id) {
+                Ok(uuid) => Ok(ContentKind::Folder(uuid)),
+                Err(_) => CannotParseContentKindFromString {
+                    string_length: trash_or_id.len(),
+                }
+                .fail(),
+            }
+        }
+    }
+}
+
+impl TryFrom<String> for ContentKind {
+    type Error = Error;
+    fn try_from(base_or_id: String) -> Result<Self, Self::Error> {
+        ContentKind::try_parse(&base_or_id)
+    }
+}
+
+impl TryFrom<&str> for ContentKind {
+    type Error = Error;
+    fn try_from(base_or_id: &str) -> Result<Self, Self::Error> {
+        ContentKind::try_parse(base_or_id)
+    }
+}
+
+impl fmt::Display for ContentKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ContentKind::Trash => write!(f, "trash"),
+            ContentKind::Folder(uuid) => uuid.to_hyphenated().fmt(f),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ContentKind {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let trash_or_id = String::deserialize(deserializer)?;
+
+        if trash_or_id.eq_ignore_ascii_case("trash") {
+            Ok(ContentKind::Trash)
+        } else {
+            match Uuid::parse_str(&trash_or_id) {
+                Ok(uuid) => Ok(ContentKind::Folder(uuid)),
+                Err(_) => Err(de::Error::invalid_value(
+                    de::Unexpected::Str(&trash_or_id),
+                    &"\"trash\" or hyphenated lowercased UUID",
+                )),
+            }
+        }
+    }
+}
+
+impl Serialize for ContentKind {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match *self {
+            ContentKind::Trash => serializer.serialize_str("trash"),
+            ContentKind::Folder(uuid) => serializer.serialize_str(&uuid.to_hyphenated().to_string()),
+        }
+    }
 }
 
 /// Used for requests to [USER_BASE_FOLDERS_PATH] endpoint.
@@ -194,11 +283,11 @@ pub struct DirContentRequestPayload {
     pub api_key: SecUtf8,
 
     /// Folder ID; hyphenated lowercased UUID V4.
-    pub uuid: Uuid,
+    pub uuid: ContentKind,
 
     /// A string containing 'path' to the listed folder as JSON array:
     /// "[\"grand_parent_uuid\", \"parent_uuid\", \"folder_uuid\"]"
-    /// If folder has no parents, only 'folder_uuid' needs to be present.
+    /// If folder has no parents, only 'folder_uuid' needs to be present. Can be empty string: "[\"\"]"
     pub folders: String,
 
     /// Seems like pagination parameter; currently is always 1.
@@ -694,6 +783,26 @@ mod tests {
     const NAME: &str = "test_folder";
     const NAME_METADATA: &str = "U2FsdGVkX19d09wR+Ti+qMO7o8habxXkS501US7uv96+zbHHZwDDPbnq1di1z0/S";
     const NAME_HASHED: &str = "19d24c63b1170a0b1b40520a636a25235735f39f";
+
+    #[test]
+    fn content_kind_should_be_deserialized_from_trash() {
+        let json = r#""trash""#;
+        let expected = ContentKind::Trash;
+
+        let result = serde_json::from_str::<ContentKind>(&json);
+
+        assert_eq!(result.unwrap(), expected);
+    }
+
+    #[test]
+    fn content_kind_should_be_deserialized_from_id() {
+        let json = r#""00000000-0000-0000-0000-000000000000""#;
+        let expected = ContentKind::Folder(Uuid::nil());
+
+        let result = serde_json::from_str::<ContentKind>(&json);
+
+        assert_eq!(result.unwrap(), expected);
+    }
 
     #[test]
     fn dir_create_request_payload_should_be_created_correctly_from_name() {
