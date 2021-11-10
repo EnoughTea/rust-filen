@@ -129,7 +129,7 @@ pub struct UserSharedItemRenameRequestPayload {
     /// Folder or file ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 
-    /// ID of the user this item is being shared with.
+    /// ID of the user this item is being shared with. Set to 0 when renaming is done from the perspective of sharee.
     #[serde(rename = "receiverId")]
     pub receiver_id: u32,
 
@@ -139,14 +139,14 @@ pub struct UserSharedItemRenameRequestPayload {
 }
 utils::display_from_json!(UserSharedItemRenameRequestPayload);
 
-/// Used for requests to [USER_SHARED_ITEM_REMOVE_STATUS_PATH_FORMAT] endpoint.
+/// Used for requests to [USER_SHARED_ITEM_IN_REMOVE_PATH] and [USER_SHARED_ITEM_OUT_REMOVE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserSharedItemRemoveRequestPayload {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 
-    /// ID of the user this item is being shared with.
+    /// ID of the user this item is being shared with. Set to 0 when removing is done from the perspective of sharee.
     #[serde(rename = "receiverId")]
     pub receiver_id: u32,
 
