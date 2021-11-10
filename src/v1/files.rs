@@ -17,6 +17,7 @@ const FILE_ARCHIVE_PATH: &str = "/v1/file/archive";
 const FILE_EXISTS_PATH: &str = "/v1/file/exists";
 const FILE_MOVE_PATH: &str = "/v1/file/move";
 const FILE_RENAME_PATH: &str = "/v1/file/rename";
+const FILE_RESTORE_PATH: &str = "/v1/file/restore";
 const FILE_TRASH_PATH: &str = "/v1/file/trash";
 const RM_PATH: &str = "/v1/rm";
 const USER_RECENT_PATH: &str = "/v1/user/recent";
@@ -67,6 +68,9 @@ pub enum Error {
 
     #[snafu(display("{} query failed: {}", FILE_RENAME_PATH, source))]
     FileRenameQueryFailed { source: queries::Error },
+
+    #[snafu(display("{} query failed: {}", FILE_RESTORE_PATH, source))]
+    FileRestoreQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", FILE_TRASH_PATH, source))]
     FileTrashQueryFailed { source: queries::Error },
@@ -301,6 +305,18 @@ impl FileRenameRequestPayload {
     }
 }
 
+/// Used for requests to [FILE_RESTORE_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct FileRestoreRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+
+    /// Trashed file ID; hyphenated lowercased UUID V4.
+    pub uuid: Uuid,
+}
+utils::display_from_json!(FileRestoreRequestPayload);
+
 /// Used for requests to [RM_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct RmRequestPayload {
@@ -418,6 +434,25 @@ pub async fn file_rename_request_async(
     queries::query_filen_api_async(FILE_RENAME_PATH, payload, filen_settings)
         .await
         .context(FileRenameQueryFailed {})
+}
+
+/// Calls [FILE_RESTORE_PATH] endpoint. Used to restore file from the 'trash' folder.
+pub fn file_restore_request(
+    payload: &FileRestoreRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api(FILE_RESTORE_PATH, payload, filen_settings).context(FileRestoreQueryFailed {})
+}
+
+/// Calls [FILE_RESTORE_PATH] endpoint asynchronously. Used to restore file from the 'trash' folder.
+#[cfg(feature = "async")]
+pub async fn file_restore_request_async(
+    payload: &FileRestoreRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api_async(FILE_RESTORE_PATH, payload, filen_settings)
+        .await
+        .context(FileRestoreQueryFailed {})
 }
 
 /// Calls [FILE_TRASH_PATH] endpoint.
