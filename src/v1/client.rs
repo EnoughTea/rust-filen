@@ -1,7 +1,6 @@
 use crate::{crypto, filen_settings::*, queries, utils, v1::*};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
-use serde_with::*;
 use snafu::{ResultExt, Snafu};
 
 type Result<T, E = Error> = std::result::Result<T, E>;

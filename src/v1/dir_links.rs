@@ -1,8 +1,8 @@
 use crate::{crypto, filen_settings::*, queries, utils, v1::*};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
-use serde_repr::*;
-use serde_with::*;
+use serde_repr::{Deserialize_repr, Serialize_repr};
+use serde_with::skip_serializing_none;
 use snafu::{ResultExt, Snafu};
 use std::fmt;
 use uuid::Uuid;

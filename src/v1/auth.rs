@@ -2,7 +2,7 @@ use crate::{crypto, filen_settings::FilenSettings, queries, utils};
 use easy_hasher::easy_hasher::sha512;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
-use serde_with::*;
+use serde_with::skip_serializing_none;
 use snafu::{Backtrace, ResultExt, Snafu};
 
 use super::{api_response_struct, HasMasterKeys, HasPrivateKey};

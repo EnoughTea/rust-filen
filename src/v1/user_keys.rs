@@ -1,7 +1,7 @@
 use crate::{crypto, filen_settings::FilenSettings, queries, utils};
 use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
-use serde_with::*;
+use serde_with::skip_serializing_none;
 use snafu::{ensure, Backtrace, ResultExt, Snafu};
 
 use super::{api_response_struct, PlainApiResponse, METADATA_VERSION};

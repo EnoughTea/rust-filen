@@ -1,7 +1,7 @@
 use crate::{filen_settings::*, queries, utils, v1::*};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
-use serde_with::*;
+use serde_with::skip_serializing_none;
 use snafu::{ResultExt, Snafu};
 use uuid::Uuid;
 

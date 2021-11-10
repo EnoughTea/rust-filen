@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use serde_with::*;
+use serde_with::{serde_as, DisplayFromStr};
 use url::Url;
 
 pub static DEFAULT_FILEN_SETTINGS: Lazy<FilenSettings> = Lazy::new(FilenSettings::default);
