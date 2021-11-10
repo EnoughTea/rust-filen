@@ -52,7 +52,7 @@ pub struct LinkEditRequestPayload {
 
     /// ID of the parent of the linked folder, hyphenated lowercased UUID V4 if non-base.
     /// Use "base" if linked folder is located in the root folder.
-    pub parent: ParentId,
+    pub parent: ParentKind,
 
     /// "empty" means no password protection, "notempty" means password is present.
     pub password: PasswordState,

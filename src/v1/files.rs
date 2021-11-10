@@ -457,7 +457,7 @@ mod tests {
     fn file_exists_request_should_be_correctly_typed() {
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
-            parent: ParentId::try_from("b640414e-367e-4df6-b31a-030fd639bcff").unwrap(),
+            parent: ParentKind::try_from("b640414e-367e-4df6-b31a-030fd639bcff").unwrap(),
             name_hashed: NAME_HASHED.to_owned(),
         };
         validate_contract(
@@ -473,7 +473,7 @@ mod tests {
     async fn file_exists_request_async_should_be_correctly_typed() {
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
-            parent: ParentId::try_from("b640414e-367e-4df6-b31a-030fd639bcff").unwrap(),
+            parent: ParentKind::try_from("b640414e-367e-4df6-b31a-030fd639bcff").unwrap(),
             name_hashed: NAME_HASHED.to_owned(),
         };
         validate_contract_async(

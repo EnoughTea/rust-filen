@@ -21,7 +21,7 @@ pub enum Error {
         "Expected \"base\" or hyphenated lowercased UUID, got unknown string of length: {}",
         string_length
     ))]
-    CannotParseParentIdFromString { string_length: usize, backtrace: Backtrace },
+    CannotParseParentKindFromString { string_length: usize, backtrace: Backtrace },
 }
 
 /// Identifies whether an item is a file or folder.
@@ -40,7 +40,7 @@ utils::display_from_json!(ItemKind);
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LocationColor {
-    /// Default yellow color.
+    /// Default yellow color. Often represented by the absence of specifically set `LocationColor`.
     Default,
     Blue,
     Gray,
@@ -118,22 +118,22 @@ impl Serialize for Expire {
 
 /// Identifies parent eitner by ID or by indirect reference.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum ParentId {
+pub enum ParentKind {
     /// Parent is a base folder.
     Base,
     /// Parent is a folder with the specified UUID.
-    Id(Uuid),
+    Folder(Uuid),
 }
 
-impl ParentId {
+impl ParentKind {
     /// Tries to parse [IdRef] from given string, which must be either "base" or hyphenated lowercased UUID.
-    pub fn try_parse(base_or_id: &str) -> Result<ParentId> {
+    pub fn try_parse(base_or_id: &str) -> Result<ParentKind> {
         if base_or_id.eq_ignore_ascii_case("base") {
-            Ok(ParentId::Base)
+            Ok(ParentKind::Base)
         } else {
             match Uuid::parse_str(base_or_id) {
-                Ok(uuid) => Ok(ParentId::Id(uuid)),
-                Err(_) => CannotParseParentIdFromString {
+                Ok(uuid) => Ok(ParentKind::Folder(uuid)),
+                Err(_) => CannotParseParentKindFromString {
                     string_length: base_or_id.len(),
                 }
                 .fail(),
@@ -142,30 +142,30 @@ impl ParentId {
     }
 }
 
-impl TryFrom<String> for ParentId {
+impl TryFrom<String> for ParentKind {
     type Error = Error;
     fn try_from(base_or_id: String) -> Result<Self, Self::Error> {
-        ParentId::try_parse(&base_or_id)
+        ParentKind::try_parse(&base_or_id)
     }
 }
 
-impl TryFrom<&str> for ParentId {
+impl TryFrom<&str> for ParentKind {
     type Error = Error;
     fn try_from(base_or_id: &str) -> Result<Self, Self::Error> {
-        ParentId::try_parse(base_or_id)
+        ParentKind::try_parse(base_or_id)
     }
 }
 
-impl fmt::Display for ParentId {
+impl fmt::Display for ParentKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ParentId::Base => write!(f, "base"),
-            ParentId::Id(uuid) => uuid.to_hyphenated().fmt(f),
+            ParentKind::Base => write!(f, "base"),
+            ParentKind::Folder(uuid) => uuid.to_hyphenated().fmt(f),
         }
     }
 }
 
-impl<'de> Deserialize<'de> for ParentId {
+impl<'de> Deserialize<'de> for ParentKind {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -173,10 +173,10 @@ impl<'de> Deserialize<'de> for ParentId {
         let base_or_id = String::deserialize(deserializer)?;
 
         if base_or_id.eq_ignore_ascii_case("base") {
-            Ok(ParentId::Base)
+            Ok(ParentKind::Base)
         } else {
             match Uuid::parse_str(&base_or_id) {
-                Ok(uuid) => Ok(ParentId::Id(uuid)),
+                Ok(uuid) => Ok(ParentKind::Folder(uuid)),
                 Err(_) => Err(de::Error::invalid_value(
                     de::Unexpected::Str(&base_or_id),
                     &"\"base\" or hyphenated lowercased UUID",
@@ -186,14 +186,14 @@ impl<'de> Deserialize<'de> for ParentId {
     }
 }
 
-impl Serialize for ParentId {
+impl Serialize for ParentKind {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         match *self {
-            ParentId::Base => serializer.serialize_str("base"),
-            ParentId::Id(uuid) => serializer.serialize_str(&uuid.to_hyphenated().to_string()),
+            ParentKind::Base => serializer.serialize_str("base"),
+            ParentKind::Folder(uuid) => serializer.serialize_str(&uuid.to_hyphenated().to_string()),
         }
     }
 }
@@ -210,7 +210,7 @@ pub struct FolderData {
 
     /// Either parent folder ID (hyphenated lowercased UUID V4) or "base" when folder is located in the base folder,
     /// also known as 'cloud drive'.
-    pub parent: ParentId,
+    pub parent: ParentKind,
 }
 utils::display_from_json!(FolderData);
 
@@ -287,7 +287,7 @@ pub struct LocationExistsRequestPayload {
 
     /// Either parent folder ID (hyphenated lowercased UUID V4) or "base" when folder is located in the base folder,
     /// also known as 'cloud drive'.
-    pub parent: ParentId,
+    pub parent: ParentKind,
 
     /// Currently hash_fn of lowercased target folder or file name.
     #[serde(rename = "nameHashed")]
@@ -296,7 +296,7 @@ pub struct LocationExistsRequestPayload {
 utils::display_from_json!(LocationExistsRequestPayload);
 
 impl LocationExistsRequestPayload {
-    pub fn new(api_key: SecUtf8, target_parent: ParentId, target_name: &str) -> LocationExistsRequestPayload {
+    pub fn new(api_key: SecUtf8, target_parent: ParentKind, target_name: &str) -> LocationExistsRequestPayload {
         let name_hashed = LocationNameMetadata::name_hashed(target_name);
         LocationExistsRequestPayload {
             api_key,
