@@ -340,6 +340,11 @@ pub struct DirContentFile {
     /// File creation time, as Unix timestamp in seconds.
     pub timestamp: u64,
 
+    /// Timestamp when file was moved to trash. Only set when listing contents using [ContentKind::Trash],
+    /// otherwise would be None since file was not moved to trash yet.
+    #[serde(rename = "trashTimestamp")]
+    pub trash_timestamp: Option<u64>,
+
     /// ID of the folder which contains this file.
     pub parent: Uuid,
 
@@ -413,13 +418,15 @@ utils::display_from_json!(DirContentFolderInfo);
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirContentResponseData {
+    /// List of files in the given folder.
     pub uploads: Vec<DirContentFile>,
 
+    /// List of folders in the given folder.
     pub folders: Vec<DirContentFolder>,
 
     /// Info for folders passed in [DirContentRequestPayload::folders].
     #[serde(rename = "foldersInfo")]
-    pub folders_info: Vec<DirContentFolder>,
+    pub folders_info: Vec<DirContentFolderInfo>,
 
     /// Number of files in the current folder.
     #[serde(rename = "totalUploads")]
@@ -842,6 +849,82 @@ mod tests {
             "tests/resources/responses/user_dirs_default.json",
             |request_payload, filen_settings| async move {
                 user_dirs_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
+    }
+
+    #[test]
+    fn dir_content_request_should_have_proper_contract() {
+        let request_payload = DirContentRequestPayload {
+            api_key: API_KEY.clone(),
+            uuid: ContentKind::Folder(Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap()),
+            folders: "[\"51845ac9-47ce-4820-aedb-876f591aef84\"]".to_owned(),
+            page: 1,
+            app: true,
+        };
+        validate_contract(
+            DIR_CONTENT_PATH,
+            request_payload,
+            "tests/resources/responses/dir_content.json",
+            |request_payload, filen_settings| dir_content_request(&request_payload, &filen_settings),
+        );
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn dir_content_request_async_should_have_proper_contract() {
+        let request_payload = DirContentRequestPayload {
+            api_key: API_KEY.clone(),
+            uuid: ContentKind::Folder(Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap()),
+            folders: "[\"51845ac9-47ce-4820-aedb-876f591aef84\"]".to_owned(),
+            page: 1,
+            app: true,
+        };
+        validate_contract_async(
+            DIR_CONTENT_PATH,
+            request_payload,
+            "tests/resources/responses/dir_content.json",
+            |request_payload, filen_settings| async move {
+                dir_content_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
+    }
+
+    #[test]
+    fn dir_content_request_should_have_proper_contract_for_trash() {
+        let request_payload = DirContentRequestPayload {
+            api_key: API_KEY.clone(),
+            uuid: ContentKind::Trash,
+            folders: "[\"51845ac9-47ce-4820-aedb-876f591aef84\"]".to_owned(),
+            page: 1,
+            app: true,
+        };
+        validate_contract(
+            DIR_CONTENT_PATH,
+            request_payload,
+            "tests/resources/responses/dir_content_trash.json",
+            |request_payload, filen_settings| dir_content_request(&request_payload, &filen_settings),
+        );
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn dir_content_request_async_should_have_proper_contract_for_trash() {
+        let request_payload = DirContentRequestPayload {
+            api_key: API_KEY.clone(),
+            uuid: ContentKind::Trash,
+            folders: "[\"51845ac9-47ce-4820-aedb-876f591aef84\"]".to_owned(),
+            page: 1,
+            app: true,
+        };
+        validate_contract_async(
+            DIR_CONTENT_PATH,
+            request_payload,
+            "tests/resources/responses/dir_content_trash.json",
+            |request_payload, filen_settings| async move {
+                dir_content_request_async(&request_payload, &filen_settings).await
             },
         )
         .await;

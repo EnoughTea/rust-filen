@@ -1,0 +1,71 @@
+{
+    "status": true,
+    "message": "Folder contents fetched.",
+    "data": {
+        "uploads": [
+            {
+                "uuid": "af26328c-1ebf-4a92-b20a-ba3d5d08261c",
+                "metadata": "U2FsdGVkX1/1UYLIMbe5uwGXkbHbBRNzDL+Hz1L7E7kza0n6fsyk5waNpbS3HYb1ggFOP/TIyvtOZFzXY8PXWApWnqZLNMj4Rxf965Al7jx5DkuF2x3m2ZhAegMkeHf7c3mHLTjxOxh566WwI1LnBfyOGoT2jOsw2tbZZsql2TpiqyTkDn5SMrf6WEg7Me5jvn+hEMlgvPdZVS19XG9hkAsloRGzocIbAjxySw9mOH6URhfFICFdKBVQggL+vROv",
+                "rm": "XDmAPnnYHMQNT5yACLql9kEbNvS697yQ",
+                "expireSet": 1,
+                "expireTimestamp": 4788430583,
+                "deleteTimestamp": 4788430583,
+                "timestamp": 1634830584,
+                "chunks": 3,
+                "bucket": "filen-1",
+                "region": "de-1",
+                "parent": "cf2af9a0-6f4e-485d-862c-0459f4662cf1",
+                "version": 1,
+                "favorited": 0
+            },
+            {
+                "uuid": "53183d9c-d811-45b6-8b4c-cdea8392ca7d",
+                "metadata": "U2FsdGVkX19a30M4s1BWxSQEZnK0a59WyJCGCjFwrlPukYbMWGWhRlCd/+7cN6UdNr/lsy0GVY9KCiRaDz3mX6fqmuIzVnyD32XhNZWh+vEWu2ITqgeQWm4PVESP13G3dqoeAYNLiu8SVh1yeqrth3SQSVJ8g11pu3uas9ZO3h6ciqhcHst7Y73+9sblKA56",
+                "rm": "Q7iIAGULXOxNvs4JSt2LH6AGUXY96zQV",
+                "expireSet": 1,
+                "expireTimestamp": 4790101408,
+                "deleteTimestamp": 4790101408,
+                "timestamp": 1636501408,
+                "chunks": 1,
+                "bucket": "filen-1",
+                "region": "de-1",
+                "parent": "cf2af9a0-6f4e-485d-862c-0459f4662cf1",
+                "version": 1,
+                "favorited": 0
+            }
+        ],
+        "folders": [
+            {
+                "uuid": "353fa773-64e7-4989-8b5b-b829b2c7dcc7",
+                "name": "U2FsdGVkX18SN5QsT/LF8bNWo1Nz432ylhwsun8NJ0YX+FNf+EGJwjMSs3IFijkg",
+                "parent": "cf2af9a0-6f4e-485d-862c-0459f4662cf1",
+                "color": null,
+                "timestamp": 1634417010,
+                "favorited": 0,
+                "is_sync": 0,
+                "is_default": 0
+            },
+            {
+                "uuid": "51845ac9-47ce-4820-aedb-876f591aef84",
+                "name": "U2FsdGVkX18pozKFuiUz2btbyd7cERlTEhrfGzjABH3wghtLJwV3cKPwCe53/4oq",
+                "parent": "cf2af9a0-6f4e-485d-862c-0459f4662cf1",
+                "color": null,
+                "timestamp": 1634506318,
+                "favorited": 0,
+                "is_sync": 0,
+                "is_default": 0
+            }
+        ],
+        "foldersInfo": [
+            {
+                "uuid": "51845ac9-47ce-4820-aedb-876f591aef84",
+                "name": "U2FsdGVkX18pozKFuiUz2btbyd7cERlTEhrfGzjABH3wghtLJwV3cKPwCe53/4oq",
+                "color": null
+            }
+        ],
+        "totalUploads": 2,
+        "startAt": 0,
+        "perPage": 999999999,
+        "page": 1
+    }
+}

@@ -303,8 +303,8 @@ pub struct RmRequestPayload {
     /// ID of the file to delete; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 
-    /// Random alphanumeric string associated with the file. After file uploading, 'rm' can be accessed with
-    /// [file_versions_request].
+    /// Random alphanumeric string associated with the file. After file uploading, 'rm' can be viewed with
+    /// queries like [file_versions_request] or [dir_content_request].
     pub rm: String,
 }
 utils::display_from_json!(RmRequestPayload);
