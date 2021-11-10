@@ -19,6 +19,7 @@ const FILE_MOVE_PATH: &str = "/v1/file/move";
 const FILE_RENAME_PATH: &str = "/v1/file/rename";
 const FILE_TRASH_PATH: &str = "/v1/file/trash";
 const RM_PATH: &str = "/v1/rm";
+const USER_RECENT_PATH: &str = "/v1/user/recent";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -84,6 +85,9 @@ pub enum Error {
 
     #[snafu(display("Unknown system time error: {}", source))]
     SystemTimeError { source: std::time::SystemTimeError },
+
+    #[snafu(display("{} query failed: {}", USER_RECENT_PATH, source))]
+    UserRecentQueryFailed { source: queries::Error },
 }
 
 /// File properties and a key used to decrypt file data.
@@ -309,6 +313,20 @@ pub struct RmRequestPayload {
 }
 utils::display_from_json!(RmRequestPayload);
 
+/// Used for requests to [USER_RECENT_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct UserRecentRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+}
+utils::display_from_json!(UserRecentRequestPayload);
+
+api_response_struct!(
+    /// Response for [USER_RECENT_PATH] endpoint.
+    UserRecentResponsePayload<Option<Vec<DirContentFile>>>
+);
+
 /// Calls [FILE_ARCHIVE_PATH] endpoint.
 /// Replaces one version of a file with another version of the same file.
 /// Used when the file you want to upload already exists, so existing file needs to be archived first.
@@ -438,6 +456,25 @@ pub async fn rm_request_async(payload: &RmRequestPayload, filen_settings: &Filen
         .context(RmQueryFailed {})
 }
 
+/// Calls [USER_RECENT_PATH] endpoint. Used to fetch recent files.
+pub fn user_recent_request(
+    payload: &UserRecentRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<UserRecentResponsePayload> {
+    queries::query_filen_api(USER_RECENT_PATH, payload, filen_settings).context(UserRecentQueryFailed {})
+}
+
+/// Calls [USER_RECENT_PATH] endpoint asynchronously. Used to fetch recent files.
+#[cfg(feature = "async")]
+pub async fn user_recent_request_async(
+    payload: &UserRecentRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<UserRecentResponsePayload> {
+    queries::query_filen_api_async(USER_RECENT_PATH, payload, filen_settings)
+        .await
+        .context(UserRecentQueryFailed {})
+}
+
 #[cfg(test)]
 mod tests {
     use std::convert::TryFrom;
@@ -482,6 +519,36 @@ mod tests {
             "tests/resources/responses/file_exists.json",
             |request_payload, filen_settings| async move {
                 file_exists_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
+    }
+
+    #[test]
+    fn user_recent_request_should_be_correctly_typed() {
+        let request_payload = UserRecentRequestPayload {
+            api_key: API_KEY.clone(),
+        };
+        validate_contract(
+            USER_RECENT_PATH,
+            request_payload,
+            "tests/resources/responses/user_recent.json",
+            |request_payload, filen_settings| user_recent_request(&request_payload, &filen_settings),
+        );
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn user_recent_request_async_should_be_correctly_typed() {
+        let request_payload = UserRecentRequestPayload {
+            api_key: API_KEY.clone(),
+        };
+        validate_contract_async(
+            USER_RECENT_PATH,
+            request_payload,
+            "tests/resources/responses/user_recent.json",
+            |request_payload, filen_settings| async move {
+                user_recent_request_async(&request_payload, &filen_settings).await
             },
         )
         .await;
