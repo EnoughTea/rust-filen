@@ -365,4 +365,24 @@ mod tests {
 
         assert_eq!(result.unwrap(), expected);
     }
+
+    #[test]
+    fn parent_kind_should_be_deserialized_from_base() {
+        let json = r#""base""#;
+        let expected = ParentKind::Base;
+
+        let result = serde_json::from_str::<ParentKind>(&json);
+
+        assert_eq!(result.unwrap(), expected);
+    }
+
+    #[test]
+    fn parent_kind_should_be_deserialized_from_id() {
+        let json = r#""00000000-0000-0000-0000-000000000000""#;
+        let expected = ParentKind::Folder(Uuid::nil());
+
+        let result = serde_json::from_str::<ParentKind>(&json);
+
+        assert_eq!(result.unwrap(), expected);
+    }
 }
