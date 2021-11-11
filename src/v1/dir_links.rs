@@ -30,9 +30,8 @@ pub enum Error {
     DirLinkStatusQueryFailed { source: queries::Error },
 }
 
-/// State of the 'Enable download button' GUI checkbox represented as a string.
-/// It is the checkbox you could have seen at the bottom of modal popup when creating or sharing an item.
-/// Now it seems to be obsolete.
+/// State of the 'Enable download button' GUI toggle represented as a string.
+/// It is the toggle you can see at the bottom of modal popup when creating or sharing an item.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DownloadBtnState {
@@ -42,9 +41,8 @@ pub enum DownloadBtnState {
     Enable,
 }
 
-/// State of the 'Enable download button' GUI checkbox represented as a 0|1 flag.
-/// It is the checkbox you could have seen at the bottom of modal popup when creating or sharing an item.
-/// Now it seems to be obsolete.
+/// State of the 'Enable download button' GUI toggle represented as a 0|1 flag.
+/// It is the toggle you can see at the bottom of modal popup when creating or sharing an item.
 #[derive(Clone, Debug, Deserialize_repr, Eq, PartialEq, Serialize_repr)]
 #[repr(u8)]
 pub enum DownloadBtnStateByte {
