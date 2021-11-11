@@ -34,43 +34,6 @@ pub enum Error {
     CannotParseParentKindFromString { string_length: usize, backtrace: Backtrace },
 }
 
-/// Identifies whether an item is a file or folder.
-#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
-#[serde(rename_all = "lowercase")]
-#[strum(ascii_case_insensitive, serialize_all = "lowercase")]
-pub enum ItemKind {
-    /// Item is a file.
-    File,
-    /// Item is a folder.
-    Folder,
-}
-
-/// Identifies location color set by user. Default yellow color is often represented by the absence of specifically set
-/// `LocationColor`.
-#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
-#[serde(rename_all = "lowercase")]
-#[strum(ascii_case_insensitive, serialize_all = "lowercase")]
-pub enum LocationColor {
-    /// Default yellow color. Often represented by the absence of specifically set `LocationColor`.
-    Default,
-    Blue,
-    Gray,
-    Green,
-    Purple,
-    Red,
-}
-
-/// Identifies location type.
-#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
-#[serde(rename_all = "lowercase")]
-#[strum(ascii_case_insensitive, serialize_all = "lowercase")]
-pub enum LocationKind {
-    /// Location is a folder.
-    Folder,
-    /// Location is a special Filen Sync folder.
-    Sync,
-}
-
 /// Public link or file chunk expiration time.
 ///
 /// For defined expiration period, Filen currently uses values "1h", "6h", "1d", "3d", "7d", "14d" and "30d".
@@ -139,66 +102,28 @@ impl Serialize for Expire {
     }
 }
 
-/// Identifies parent eitner by ID or by indirect reference.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum ParentKind {
-    /// Parent is a base folder.
-    Base,
-    /// Parent is a folder with the specified UUID.
-    Folder(Uuid),
-}
-utils::display_from_json!(ParentKind);
-
-impl FromStr for ParentKind {
-    type Err = Error;
-
-    /// Tries to parse [ParentKind] from given string, which must be either "base" or hyphenated lowercased UUID.
-    fn from_str(base_or_id: &str) -> Result<Self, Self::Err> {
-        if base_or_id.eq_ignore_ascii_case("base") {
-            Ok(ParentKind::Base)
-        } else {
-            match Uuid::parse_str(base_or_id) {
-                Ok(uuid) => Ok(ParentKind::Folder(uuid)),
-                Err(_) => CannotParseParentKindFromString {
-                    string_length: base_or_id.len(),
-                }
-                .fail(),
-            }
-        }
-    }
+/// Identifies whether an item is a file or folder.
+#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+#[strum(ascii_case_insensitive, serialize_all = "lowercase")]
+pub enum ItemKind {
+    /// Item is a file.
+    File,
+    /// Item is a folder.
+    Folder,
 }
 
-impl<'de> Deserialize<'de> for ParentKind {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let base_or_id = String::deserialize(deserializer)?;
+/// Determines where file is stored by Filen.
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub struct FileStorageInfo {
+    /// Server's bucket where file is stored.
+    pub bucket: String,
 
-        if base_or_id.eq_ignore_ascii_case("base") {
-            Ok(ParentKind::Base)
-        } else {
-            match Uuid::parse_str(&base_or_id) {
-                Ok(uuid) => Ok(ParentKind::Folder(uuid)),
-                Err(_) => Err(de::Error::invalid_value(
-                    de::Unexpected::Str(&base_or_id),
-                    &"\"base\" or hyphenated lowercased UUID",
-                )),
-            }
-        }
-    }
-}
+    /// Server region where file is stored.
+    pub region: String,
 
-impl Serialize for ParentKind {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match *self {
-            ParentKind::Base => serializer.serialize_str("base"),
-            ParentKind::Folder(uuid) => serializer.serialize_str(&uuid.to_hyphenated().to_string()),
-        }
-    }
+    /// Amount of chunks file is split into.
+    pub chunks: u32,
 }
 
 /// Folder data for one of the user folders or for one of the folders in Filen sync folder.
@@ -222,6 +147,32 @@ impl HasLocationName for FolderData {
     fn name_metadata_ref(&self) -> &str {
         &self.name_metadata
     }
+}
+
+/// Identifies location color set by user. Default yellow color is often represented by the absence of specifically set
+/// `LocationColor`.
+#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+#[strum(ascii_case_insensitive, serialize_all = "lowercase")]
+pub enum LocationColor {
+    /// Default yellow color. Often represented by the absence of specifically set `LocationColor`.
+    Default,
+    Blue,
+    Gray,
+    Green,
+    Purple,
+    Red,
+}
+
+/// Identifies location type.
+#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+#[strum(ascii_case_insensitive, serialize_all = "lowercase")]
+pub enum LocationKind {
+    /// Location is a folder.
+    Folder,
+    /// Location is a special Filen Sync folder.
+    Sync,
 }
 
 /// Typed folder or file name metadata.
@@ -326,6 +277,68 @@ api_response_struct!(
     /// Response for [DIR_EXISTS_PATH] or [FILE_TRASH_PATH] endpoint.
     LocationExistsResponsePayload<Option<LocationExistsResponseData>>
 );
+
+/// Identifies parent eitner by ID or by indirect reference.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum ParentKind {
+    /// Parent is a base folder.
+    Base,
+    /// Parent is a folder with the specified UUID.
+    Folder(Uuid),
+}
+utils::display_from_json!(ParentKind);
+
+impl FromStr for ParentKind {
+    type Err = Error;
+
+    /// Tries to parse [ParentKind] from given string, which must be either "base" or hyphenated lowercased UUID.
+    fn from_str(base_or_id: &str) -> Result<Self, Self::Err> {
+        if base_or_id.eq_ignore_ascii_case("base") {
+            Ok(ParentKind::Base)
+        } else {
+            match Uuid::parse_str(base_or_id) {
+                Ok(uuid) => Ok(ParentKind::Folder(uuid)),
+                Err(_) => CannotParseParentKindFromString {
+                    string_length: base_or_id.len(),
+                }
+                .fail(),
+            }
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ParentKind {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let base_or_id = String::deserialize(deserializer)?;
+
+        if base_or_id.eq_ignore_ascii_case("base") {
+            Ok(ParentKind::Base)
+        } else {
+            match Uuid::parse_str(&base_or_id) {
+                Ok(uuid) => Ok(ParentKind::Folder(uuid)),
+                Err(_) => Err(de::Error::invalid_value(
+                    de::Unexpected::Str(&base_or_id),
+                    &"\"base\" or hyphenated lowercased UUID",
+                )),
+            }
+        }
+    }
+}
+
+impl Serialize for ParentKind {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match *self {
+            ParentKind::Base => serializer.serialize_str("base"),
+            ParentKind::Folder(uuid) => serializer.serialize_str(&uuid.to_hyphenated().to_string()),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

@@ -206,14 +206,9 @@ pub struct UserSharedFile {
     #[serde(rename = "type")]
     pub item_type: ItemKind,
 
-    /// Server's bucket where file is stored.
-    pub bucket: String,
-
-    /// Server region.
-    pub region: String,
-
-    /// Amount of chunks file is split into.
-    pub chunks: u32,
+    /// Filen file storage info.
+    #[serde(flatten)]
+    pub file_storage: FileStorageInfo,
 
     /// Determines how file bytes should be encrypted/decrypted.
     /// File is encrypted using roughly the same algorithm as metadata encryption,

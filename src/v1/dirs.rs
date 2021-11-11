@@ -294,14 +294,9 @@ pub struct DirContentFile {
     /// Random alphanumeric string associated with the file. Used for deleting and versioning.
     pub rm: String,
 
-    /// Amount of chunks file is split into.
-    pub chunks: u32,
-
-    /// Server's bucket where file is stored.
-    pub bucket: String,
-
-    /// Server region.
-    pub region: String,
+    /// Filen file storage info.
+    #[serde(flatten)]
+    pub file_storage: FileStorageInfo,
 
     /// 1 if expire was set when uploading file; 0 otherwise.
     #[serde(

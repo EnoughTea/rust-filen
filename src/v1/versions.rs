@@ -49,14 +49,9 @@ pub struct FileArchiveRestoreResponseData {
     /// File metadata.
     pub metadata: String,
 
-    /// Name of the Filen bucket where file data is stored.
-    pub bucket: String,
-
-    /// Name of the Filen region where file data is stored.
-    pub region: String,
-
-    /// Amount of chunks file is split into.
-    pub chunks: u32,
+    /// Filen file storage info.
+    #[serde(flatten)]
+    pub file_storage: FileStorageInfo,
 
     /// Parent folder ID; hyphenated lowercased UUID V4.
     pub parent: Uuid,
@@ -92,14 +87,9 @@ pub struct FileVersion {
     /// File metadata.
     pub metadata: String,
 
-    /// Name of the Filen bucket where file data is stored.
-    pub bucket: String,
-
-    /// Name of the Filen region where file data is stored.
-    pub region: String,
-
-    /// Amount of chunks file is split into.
-    pub chunks: u32,
+    /// Filen file storage info.
+    #[serde(flatten)]
+    pub file_storage: FileStorageInfo,
 
     /// Random alphanumeric string associated with the file. Used for deleting and versioning.
     pub rm: String,
