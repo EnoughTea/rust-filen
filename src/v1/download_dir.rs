@@ -36,7 +36,7 @@ pub enum Error {
 
     #[snafu(display("download_and_decrypt_file call failed for data {}: {}", file_data, source))]
     DownloadAndDecryptFileFailed {
-        file_data: DownloadedFileData,
+        file_data: Box<DownloadedFileData>,
         source: download_file::Error,
     },
 

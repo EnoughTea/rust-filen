@@ -522,12 +522,11 @@ pub async fn user_recent_request_async(
 
 #[cfg(test)]
 mod tests {
-    use std::convert::TryFrom;
-
     use super::*;
     use crate::test_utils::*;
     use once_cell::sync::Lazy;
     use secstr::SecUtf8;
+    use std::str::FromStr;
 
     static API_KEY: Lazy<SecUtf8> =
         Lazy::new(|| SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"));
@@ -539,7 +538,7 @@ mod tests {
     fn file_exists_request_should_be_correctly_typed() {
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
-            parent: ParentKind::try_from("b640414e-367e-4df6-b31a-030fd639bcff").unwrap(),
+            parent: ParentKind::from_str("b640414e-367e-4df6-b31a-030fd639bcff").unwrap(),
             name_hashed: NAME_HASHED.to_owned(),
         };
         validate_contract(
@@ -555,7 +554,7 @@ mod tests {
     async fn file_exists_request_async_should_be_correctly_typed() {
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
-            parent: ParentKind::try_from("b640414e-367e-4df6-b31a-030fd639bcff").unwrap(),
+            parent: ParentKind::from_str("b640414e-367e-4df6-b31a-030fd639bcff").unwrap(),
             name_hashed: NAME_HASHED.to_owned(),
         };
         validate_contract_async(

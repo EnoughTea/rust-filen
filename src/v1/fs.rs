@@ -4,7 +4,8 @@ use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use snafu::{Backtrace, ResultExt, Snafu};
-use std::{convert::TryFrom, fmt};
+use std::{num::ParseIntError, str::FromStr};
+use strum::{Display, EnumString};
 use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -17,6 +18,15 @@ pub enum Error {
     #[snafu(display("Failed to decrypt location name {}: {}", metadata, source))]
     DecryptLocationNameFailed { metadata: String, source: crypto::Error },
 
+    #[snafu(display("Expire duration value '{}' is too short to be valid", value))]
+    DurationIsTooShort { value: String, backtrace: Backtrace },
+
+    #[snafu(display("Expire duration unit '{}' is unsupported", unit))]
+    DurationUnitUnsupported { unit: String, backtrace: Backtrace },
+
+    #[snafu(display("Expire duration value '{}' is not a number: {}", value, source))]
+    DurationValueIsNotNum { value: String, source: ParseIntError },
+
     #[snafu(display(
         "Expected \"base\" or hyphenated lowercased UUID, got unknown string of length: {}",
         string_length
@@ -25,20 +35,21 @@ pub enum Error {
 }
 
 /// Identifies whether an item is a file or folder.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
+#[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum ItemKind {
     /// Item is a file.
     File,
     /// Item is a folder.
     Folder,
 }
-utils::display_from_json!(ItemKind);
 
 /// Identifies location color set by user. Default yellow color is often represented by the absence of specifically set
 /// `LocationColor`.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
+#[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum LocationColor {
     /// Default yellow color. Often represented by the absence of specifically set `LocationColor`.
     Default,
@@ -48,23 +59,22 @@ pub enum LocationColor {
     Purple,
     Red,
 }
-utils::display_from_json!(LocationColor);
 
 /// Identifies location type.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
+#[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum LocationKind {
     /// Location is a folder.
     Folder,
     /// Location is a special Filen Sync folder.
     Sync,
 }
-utils::display_from_json!(LocationKind);
 
 /// Public link or file chunk expiration time.
 ///
 /// For defined expiration period, Filen currently uses values "1h", "6h", "1d", "3d", "7d", "14d" and "30d".
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Expire {
     Never,
 
@@ -74,32 +84,45 @@ pub enum Expire {
 }
 utils::display_from_json!(Expire);
 
+impl FromStr for Expire {
+    type Err = Error;
+
+    /// Tries to parse [Expire] from given string, which must be either "never" or amount of hours/days,
+    /// e.g. "6h" or "30d".
+    fn from_str(never_or_duration: &str) -> Result<Self, Self::Err> {
+        if never_or_duration.eq_ignore_ascii_case("never") {
+            Ok(Expire::Never)
+        } else if never_or_duration.len() < 2 {
+            DurationIsTooShort {
+                value: never_or_duration.to_owned(),
+            }
+            .fail()
+        } else {
+            let (raw_value, unit) = never_or_duration.split_at(never_or_duration.len() - 1);
+            let value = str::parse::<u32>(raw_value).context(DurationValueIsNotNum {
+                value: never_or_duration,
+            })?;
+            match unit {
+                "d" => Ok(Expire::Days(value)),
+                "h" => Ok(Expire::Hours(value)),
+                other => DurationUnitUnsupported { unit: other.to_owned() }.fail(),
+            }
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for Expire {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        fn invalid_value_error<'de, D: Deserializer<'de>>(value: &str) -> D::Error {
+        let never_or_duration_repr = String::deserialize(deserializer)?;
+        str::parse::<Expire>(&never_or_duration_repr).map_err(|_| {
             de::Error::invalid_value(
-                de::Unexpected::Str(value),
+                de::Unexpected::Str(&never_or_duration_repr),
                 &"\"never\" or duration with time units, e.g. \"6h\" or \"1d\"",
             )
-        }
-
-        let never_or_duration = String::deserialize(deserializer)?;
-        if never_or_duration.eq_ignore_ascii_case("never") {
-            Ok(Expire::Never)
-        } else if never_or_duration.len() < 2 {
-            Err(invalid_value_error::<D>(&never_or_duration))
-        } else {
-            let (raw_value, unit) = never_or_duration.split_at(never_or_duration.len() - 1);
-            let value = str::parse::<u32>(raw_value).map_err(|_| invalid_value_error::<D>(&never_or_duration))?;
-            match unit {
-                "d" => Ok(Expire::Days(value)),
-                "h" => Ok(Expire::Hours(value)),
-                _ => Err(invalid_value_error::<D>(&never_or_duration)),
-            }
-        }
+        })
     }
 }
 
@@ -117,17 +140,20 @@ impl Serialize for Expire {
 }
 
 /// Identifies parent eitner by ID or by indirect reference.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum ParentKind {
     /// Parent is a base folder.
     Base,
     /// Parent is a folder with the specified UUID.
     Folder(Uuid),
 }
+utils::display_from_json!(ParentKind);
 
-impl ParentKind {
-    /// Tries to parse [IdRef] from given string, which must be either "base" or hyphenated lowercased UUID.
-    pub fn try_parse(base_or_id: &str) -> Result<ParentKind> {
+impl FromStr for ParentKind {
+    type Err = Error;
+
+    /// Tries to parse [ParentKind] from given string, which must be either "base" or hyphenated lowercased UUID.
+    fn from_str(base_or_id: &str) -> Result<Self, Self::Err> {
         if base_or_id.eq_ignore_ascii_case("base") {
             Ok(ParentKind::Base)
         } else {
@@ -138,29 +164,6 @@ impl ParentKind {
                 }
                 .fail(),
             }
-        }
-    }
-}
-
-impl TryFrom<String> for ParentKind {
-    type Error = Error;
-    fn try_from(base_or_id: String) -> Result<Self, Self::Error> {
-        ParentKind::try_parse(&base_or_id)
-    }
-}
-
-impl TryFrom<&str> for ParentKind {
-    type Error = Error;
-    fn try_from(base_or_id: &str) -> Result<Self, Self::Error> {
-        ParentKind::try_parse(base_or_id)
-    }
-}
-
-impl fmt::Display for ParentKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            ParentKind::Base => write!(f, "base"),
-            ParentKind::Folder(uuid) => uuid.to_hyphenated().fmt(f),
         }
     }
 }
@@ -327,6 +330,7 @@ api_response_struct!(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn location_should_be_deserialized_from_empty_string_uuid() {

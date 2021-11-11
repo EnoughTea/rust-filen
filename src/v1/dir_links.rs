@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::skip_serializing_none;
 use snafu::{ResultExt, Snafu};
-use std::fmt;
+use strum::{Display, EnumString};
 use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -32,8 +32,9 @@ pub enum Error {
 
 /// State of the 'Enable download button' GUI toggle represented as a string.
 /// It is the toggle you can see at the bottom of modal popup when creating or sharing an item.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
+#[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum DownloadBtnState {
     /// 'Enable download button' checkbox is disabled.
     Disable,
@@ -43,20 +44,12 @@ pub enum DownloadBtnState {
 
 /// State of the 'Enable download button' GUI toggle represented as a 0|1 flag.
 /// It is the toggle you can see at the bottom of modal popup when creating or sharing an item.
-#[derive(Clone, Debug, Deserialize_repr, Eq, PartialEq, Serialize_repr)]
+#[derive(Clone, Debug, Deserialize_repr, Display, EnumString, Eq, Hash, PartialEq, Serialize_repr)]
 #[repr(u8)]
+#[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum DownloadBtnStateByte {
     Disable = 0,
     Enable = 1,
-}
-
-impl fmt::Display for DownloadBtnStateByte {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            DownloadBtnStateByte::Disable => write!(f, "disable"),
-            DownloadBtnStateByte::Enable => write!(f, "enable"),
-        }
-    }
 }
 
 /// Used for requests to [DIR_LINK_ADD_PATH] endpoint.

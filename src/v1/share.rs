@@ -44,15 +44,15 @@ pub enum Error {
 }
 
 /// Identifies shared item.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
+#[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum ShareTarget {
     /// Linked item is a file.
     File,
     /// Linked item is a folder.
     Folder,
 }
-utils::display_from_json!(ShareTarget);
 
 /// Used for requests to [SHARE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -127,12 +127,11 @@ api_response_struct!(
     ShareDirStatusResponsePayload<Option<ShareDirStatusResponseData>>
 );
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+#[strum(ascii_case_insensitive, serialize_all = "kebab-case")]
 pub enum SharedContentKind {
-    #[serde(rename = "shared-in")]
     SharedIn,
-
-    #[serde(rename = "shared-out")]
     SharedOut,
 }
 

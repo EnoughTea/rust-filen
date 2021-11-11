@@ -14,6 +14,7 @@ pub use {
 use crate::{crypto, utils};
 use once_cell::sync::Lazy;
 use serde::*;
+use strum::{Display, EnumString};
 use uuid::Uuid;
 
 mod auth;
@@ -49,15 +50,15 @@ pub struct PlainApiResponse {
 utils::display_from_json!(PlainApiResponse);
 
 /// Serves as a flag for password-protection.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
+#[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum PasswordState {
     /// "empty" means no password protection is set.
     Empty,
     /// "notempty" means password is present.
     NotEmpty,
 }
-utils::display_from_json!(PasswordState);
 
 pub(crate) fn bool_from_string<'de, D>(deserializer: D) -> Result<bool, D::Error>
 where

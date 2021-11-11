@@ -50,7 +50,7 @@ pub enum Error {
         "Not all uploaded chunks with status == true actually had data: {}",
         file_upload_info
     ))]
-    ChunkUploadResponseMissingData { file_upload_info: FileUploadInfo },
+    ChunkUploadResponseMissingData { file_upload_info: Box<FileUploadInfo> },
 
     #[snafu(display("Filen did not accept uploaded dummy chunk: {}", reason))]
     DummyChunkNotAccepted { reason: String, backtrace: Backtrace },

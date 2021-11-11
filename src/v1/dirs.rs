@@ -3,7 +3,7 @@ use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use snafu::{Backtrace, ResultExt, Snafu};
-use std::{convert::TryFrom, fmt};
+use std::{fmt, str::FromStr};
 use uuid::Uuid;
 
 #[allow(dead_code)]
@@ -65,7 +65,7 @@ pub enum Error {
 }
 
 /// Identifies listed content target eitner by ID or by special reference.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum ContentKind {
     /// Listed content is a trash folder.
     Trash,
@@ -73,9 +73,10 @@ pub enum ContentKind {
     Folder(Uuid),
 }
 
-impl ContentKind {
-    /// Tries to parse [IdRef] from given string, which must be either "trash" or hyphenated lowercased UUID.
-    pub fn try_parse(trash_or_id: &str) -> Result<ContentKind> {
+impl FromStr for ContentKind {
+    type Err = Error;
+
+    fn from_str(trash_or_id: &str) -> Result<Self, Self::Err> {
         if trash_or_id.eq_ignore_ascii_case("trash") {
             Ok(ContentKind::Trash)
         } else {
@@ -87,20 +88,6 @@ impl ContentKind {
                 .fail(),
             }
         }
-    }
-}
-
-impl TryFrom<String> for ContentKind {
-    type Error = Error;
-    fn try_from(base_or_id: String) -> Result<Self, Self::Error> {
-        ContentKind::try_parse(&base_or_id)
-    }
-}
-
-impl TryFrom<&str> for ContentKind {
-    type Error = Error;
-    fn try_from(base_or_id: &str) -> Result<Self, Self::Error> {
-        ContentKind::try_parse(base_or_id)
     }
 }
 
@@ -801,8 +788,6 @@ pub async fn dir_trash_request_async(
 
 #[cfg(test)]
 mod tests {
-    use std::convert::TryFrom;
-
     use super::*;
     use crate::test_utils::*;
     use once_cell::sync::Lazy;
@@ -1028,7 +1013,7 @@ mod tests {
     fn dir_exists_request_should_have_proper_contract() {
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
-            parent: ParentKind::try_from("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
+            parent: ParentKind::from_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_hashed: NAME_HASHED.to_owned(),
         };
         validate_contract(
@@ -1044,7 +1029,7 @@ mod tests {
     async fn dir_exists_request_async_should_have_proper_contract() {
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
-            parent: ParentKind::try_from("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
+            parent: ParentKind::from_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_hashed: NAME_HASHED.to_owned(),
         };
         validate_contract_async(
