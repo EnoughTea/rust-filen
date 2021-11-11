@@ -296,7 +296,7 @@ pub struct DirContentFile {
 
     /// Filen file storage info.
     #[serde(flatten)]
-    pub file_storage: FileStorageInfo,
+    pub storage: FileStorageInfo,
 
     /// 1 if expire was set when uploading file; 0 otherwise.
     #[serde(

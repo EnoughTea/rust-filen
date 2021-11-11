@@ -208,7 +208,7 @@ pub struct UserSharedFile {
 
     /// Filen file storage info.
     #[serde(flatten)]
-    pub file_storage: FileStorageInfo,
+    pub storage: FileStorageInfo,
 
     /// Determines how file bytes should be encrypted/decrypted.
     /// File is encrypted using roughly the same algorithm as metadata encryption,

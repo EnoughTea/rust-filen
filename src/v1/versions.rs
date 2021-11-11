@@ -51,7 +51,7 @@ pub struct FileArchiveRestoreResponseData {
 
     /// Filen file storage info.
     #[serde(flatten)]
-    pub file_storage: FileStorageInfo,
+    pub storage: FileStorageInfo,
 
     /// Parent folder ID; hyphenated lowercased UUID V4.
     pub parent: Uuid,
@@ -89,7 +89,7 @@ pub struct FileVersion {
 
     /// Filen file storage info.
     #[serde(flatten)]
-    pub file_storage: FileStorageInfo,
+    pub storage: FileStorageInfo,
 
     /// Random alphanumeric string associated with the file. Used for deleting and versioning.
     pub rm: String,
