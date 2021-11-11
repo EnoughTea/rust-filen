@@ -20,6 +20,7 @@ const FILE_RENAME_PATH: &str = "/v1/file/rename";
 const FILE_RESTORE_PATH: &str = "/v1/file/restore";
 const FILE_TRASH_PATH: &str = "/v1/file/trash";
 const RM_PATH: &str = "/v1/rm";
+const USER_DELETE_ALL_PATH: &str = "/v1/user/delete/all";
 const USER_RECENT_PATH: &str = "/v1/user/recent";
 
 #[derive(Snafu, Debug)]
@@ -89,6 +90,9 @@ pub enum Error {
 
     #[snafu(display("Unknown system time error: {}", source))]
     SystemTimeError { source: std::time::SystemTimeError },
+
+    #[snafu(display("{} query failed: {}", USER_DELETE_ALL_PATH, source))]
+    UserDeleteAllQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", USER_RECENT_PATH, source))]
     UserRecentQueryFailed { source: queries::Error },
@@ -480,6 +484,23 @@ pub async fn rm_request_async(payload: &RmRequestPayload, filen_settings: &Filen
     queries::query_filen_api_async(RM_PATH, payload, filen_settings)
         .await
         .context(RmQueryFailed {})
+}
+
+/// Calls [USER_DELETE_ALL_PATH] endpoint. Used to delete *all* user files and folders.
+pub fn user_delete_all_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<UserRecentResponsePayload> {
+    queries::query_filen_api(USER_DELETE_ALL_PATH, &utils::api_key_json(api_key), filen_settings)
+        .context(UserDeleteAllQueryFailed {})
+}
+
+/// Calls [USER_DELETE_ALL_PATH] endpoint. Used to delete *all* user files and folders.
+#[cfg(feature = "async")]
+pub async fn user_delete_all_request_async(
+    api_key: &SecUtf8,
+    filen_settings: &FilenSettings,
+) -> Result<UserRecentResponsePayload> {
+    queries::query_filen_api_async(USER_DELETE_ALL_PATH, &utils::api_key_json(api_key), filen_settings)
+        .await
+        .context(UserDeleteAllQueryFailed {})
 }
 
 /// Calls [USER_RECENT_PATH] endpoint. Used to fetch recent files.
