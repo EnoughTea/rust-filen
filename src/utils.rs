@@ -1,6 +1,8 @@
 //! This module contains general purpose functions (aka dump).
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
+use secstr::SecUtf8;
+use serde_json::{json, Value};
 use uuid::Uuid;
 
 /// Generate random alphanumeric string of the specified length.
@@ -66,6 +68,10 @@ pub(crate) fn filen_file_address_to_api_endpoint(
     ]
     .join("/")
     .replace("//", "/")
+}
+
+pub(crate) fn api_key_json(api_key: &SecUtf8) -> Value {
+    json!({ "apiKey": api_key })
 }
 
 /// This macro generates a simple [std::fmt::Display] implementation using Serde's json! on self.
