@@ -1,0 +1,7 @@
+{
+    "status": true,
+    "message": "Two Factor Authentication enabled.",
+    "data": {
+        "recoveryKeys": "FIXABCDEFGHy87fbfefaCNty94zvSlsb"
+    }
+}

@@ -1,0 +1,7 @@
+{
+    "status": true,
+    "message": "Two Factor Authentication disabled.",
+    "data": {
+        "newKey": "ABCDEFGHD2BDE4LK"
+    }
+}
