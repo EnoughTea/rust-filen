@@ -26,6 +26,7 @@ const FILE_VERSION: u32 = 1;
 const UPLOAD_PATH: &str = "/v1/upload";
 const UPLOAD_DONE_PATH: &str = "/v1/upload/done";
 const UPLOAD_STOP_PATH: &str = "/v1/upload/stop";
+const USER_UNFINISHED_DELETE_PATH: &str = "/v1/user/unfinished/delete";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -72,6 +73,9 @@ pub enum Error {
 
     #[snafu(display("{} query failed: {}", UPLOAD_STOP_PATH, source))]
     UploadStopQueryFailed { source: queries::Error },
+
+    #[snafu(display("{} query failed: {}", USER_UNFINISHED_DELETE_PATH, source))]
+    UserUnfinishedDeleteQueryFailed { source: queries::Error },
 }
 
 /// Response data for [UPLOAD_PATH] endpoint.
@@ -394,6 +398,31 @@ pub async fn encrypt_and_upload_chunk_async(
         api_endpoint,
         chunk_size,
     })
+}
+
+/// Calls [USER_UNFINISHED_DELETE_PATH] endpoint. Used to delete all unfinished file uploads.
+pub fn user_unfinished_delete_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
+    queries::query_filen_api(
+        USER_UNFINISHED_DELETE_PATH,
+        &utils::api_key_json(api_key),
+        filen_settings,
+    )
+    .context(UserUnfinishedDeleteQueryFailed {})
+}
+
+/// Calls [USER_UNFINISHED_DELETE_PATH] endpoint asynchronously. Used to delete all unfinished file uploads.
+#[cfg(feature = "async")]
+pub async fn user_unfinished_delete_request_async(
+    api_key: &SecUtf8,
+    filen_settings: &FilenSettings,
+) -> Result<PlainApiResponse> {
+    queries::query_filen_api_async(
+        USER_UNFINISHED_DELETE_PATH,
+        &utils::api_key_json(api_key),
+        filen_settings,
+    )
+    .await
+    .context(UserUnfinishedDeleteQueryFailed {})
 }
 
 /// Uploads file to Filen by reading file chunks from given reader,
