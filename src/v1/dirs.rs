@@ -216,15 +216,6 @@ api_response_struct!(
     UserBaseFoldersResponsePayload<Option<UserBaseFoldersResponseData>>
 );
 
-/// Used for requests to [USER_DIRS_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UserDirsRequestPayload {
-    /// User-associated Filen API key.
-    #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
-}
-utils::display_from_json!(UserDirsRequestPayload);
-
 /// One of the folders in response data for [USER_DIRS_PATH] endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -619,11 +610,9 @@ pub async fn user_base_folders_request_async(
 /// Calls [USER_DIRS_PATH] endpoint. Used to get a list of user's folders.
 /// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder,
 /// created by Filen's client.
-pub fn user_dirs_request(
-    payload: &UserDirsRequestPayload,
-    filen_settings: &FilenSettings,
-) -> Result<UserDirsResponsePayload> {
-    queries::query_filen_api(USER_DIRS_PATH, payload, filen_settings).context(UserDirsQueryFailed {})
+pub fn user_dirs_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<UserDirsResponsePayload> {
+    queries::query_filen_api(USER_DIRS_PATH, &utils::api_key_json(api_key), filen_settings)
+        .context(UserDirsQueryFailed {})
 }
 
 /// Calls [USER_DIRS_PATH] endpoint asynchronously. Used to get a list of user's folders.
@@ -631,10 +620,10 @@ pub fn user_dirs_request(
 /// created by Filen's client.
 #[cfg(feature = "async")]
 pub async fn user_dirs_request_async(
-    payload: &UserDirsRequestPayload,
+    api_key: &SecUtf8,
     filen_settings: &FilenSettings,
 ) -> Result<UserDirsResponsePayload> {
-    queries::query_filen_api_async(USER_DIRS_PATH, payload, filen_settings)
+    queries::query_filen_api_async(USER_DIRS_PATH, &utils::api_key_json(api_key), filen_settings)
         .await
         .context(UserDirsQueryFailed {})
 }
@@ -861,30 +850,24 @@ mod tests {
 
     #[test]
     fn user_dirs_request_should_have_proper_contract() {
-        let request_payload = UserDirsRequestPayload {
-            api_key: API_KEY.clone(),
-        };
+        let request_payload = utils::api_key_json(&API_KEY);
         validate_contract(
             USER_DIRS_PATH,
             request_payload,
             "tests/resources/responses/user_dirs_default.json",
-            |request_payload, filen_settings| user_dirs_request(&request_payload, &filen_settings),
+            |_, filen_settings| user_dirs_request(&API_KEY, &filen_settings),
         );
     }
 
     #[cfg(feature = "async")]
     #[tokio::test]
     async fn user_dirs_request_async_should_have_proper_contract() {
-        let request_payload = UserDirsRequestPayload {
-            api_key: API_KEY.clone(),
-        };
+        let request_payload = utils::api_key_json(&API_KEY);
         validate_contract_async(
             USER_DIRS_PATH,
             request_payload,
             "tests/resources/responses/user_dirs_default.json",
-            |request_payload, filen_settings| async move {
-                user_dirs_request_async(&request_payload, &filen_settings).await
-            },
+            |_, filen_settings| async move { user_dirs_request_async(&API_KEY, &filen_settings).await },
         )
         .await;
     }

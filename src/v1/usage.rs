@@ -17,15 +17,6 @@ pub enum Error {
     UserSyncGetDataQueryFailed { source: queries::Error },
 }
 
-/// Used for requests to [USER_SYNC_GET_DATA_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UserSyncGetDataRequestPayload {
-    /// User-associated Filen API key.
-    #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
-}
-utils::display_from_json!(UserSyncGetDataRequestPayload);
-
 /// Response data for [USER_SYNC_GET_DATA_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserSyncGetDataResponseData {
@@ -54,15 +45,6 @@ api_response_struct!(
     /// Response for [USER_SYNC_GET_DATA_PATH] endpoint.
     UserSyncGetDataResponsePayload<Option<UserSyncGetDataResponseData>>
 );
-
-/// Used for requests to [USER_USAGE_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UserUsageRequestPayload {
-    /// User-associated Filen API key.
-    #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
-}
-utils::display_from_json!(UserUsageRequestPayload);
 
 /// Response data for [USER_USAGE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -95,38 +77,37 @@ api_response_struct!(UserUsageResponsePayload<Option<UserUsageResponseData>>);
 
 /// Calls [USER_SYNC_GET_DATA] endpoint. Used to fetch user sync storage stats.
 pub fn user_sync_get_data_request(
-    payload: &UserSyncGetDataRequestPayload,
+    api_key: &SecUtf8,
     filen_settings: &FilenSettings,
 ) -> Result<UserSyncGetDataResponsePayload> {
-    queries::query_filen_api(USER_SYNC_GET_DATA_PATH, payload, filen_settings).context(UserSyncGetDataQueryFailed {})
+    queries::query_filen_api(USER_SYNC_GET_DATA_PATH, &utils::api_key_json(api_key), filen_settings)
+        .context(UserSyncGetDataQueryFailed {})
 }
 
 /// Calls [USER_SYNC_GET_DATA] endpoint asynchronously. Used to fetch user sync storage stats.
 #[cfg(feature = "async")]
 pub async fn user_sync_get_data_request_async(
-    payload: &UserSyncGetDataRequestPayload,
+    api_key: &SecUtf8,
     filen_settings: &FilenSettings,
 ) -> Result<UserSyncGetDataResponsePayload> {
-    queries::query_filen_api_async(USER_SYNC_GET_DATA_PATH, payload, filen_settings)
+    queries::query_filen_api_async(USER_SYNC_GET_DATA_PATH, &utils::api_key_json(api_key), filen_settings)
         .await
         .context(UserSyncGetDataQueryFailed {})
 }
 
 /// Calls [USER_USAGE_PATH] endpoint. Used to fetch user general usage stats.
-pub fn user_usage_request(
-    payload: &UserUsageRequestPayload,
-    filen_settings: &FilenSettings,
-) -> Result<UserUsageResponsePayload> {
-    queries::query_filen_api(USER_USAGE_PATH, payload, filen_settings).context(UserUsageQueryFailed {})
+pub fn user_usage_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<UserUsageResponsePayload> {
+    queries::query_filen_api(USER_USAGE_PATH, &utils::api_key_json(api_key), filen_settings)
+        .context(UserUsageQueryFailed {})
 }
 
 /// Calls [USER_USAGE_PATH] endpoint asynchronously. Used to fetch user general usage stats.
 #[cfg(feature = "async")]
 pub async fn user_usage_request_async(
-    payload: &UserUsageRequestPayload,
+    api_key: &SecUtf8,
     filen_settings: &FilenSettings,
 ) -> Result<UserUsageResponsePayload> {
-    queries::query_filen_api_async(USER_USAGE_PATH, payload, filen_settings)
+    queries::query_filen_api_async(USER_USAGE_PATH, &utils::api_key_json(api_key), filen_settings)
         .await
         .context(UserUsageQueryFailed {})
 }

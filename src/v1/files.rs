@@ -329,15 +329,6 @@ pub struct RmRequestPayload {
 }
 utils::display_from_json!(RmRequestPayload);
 
-/// Used for requests to [USER_RECENT_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UserRecentRequestPayload {
-    /// User-associated Filen API key.
-    #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
-}
-utils::display_from_json!(UserRecentRequestPayload);
-
 api_response_struct!(
     /// Response for [USER_RECENT_PATH] endpoint.
     UserRecentResponsePayload<Option<Vec<DirContentFile>>>
@@ -492,20 +483,18 @@ pub async fn rm_request_async(payload: &RmRequestPayload, filen_settings: &Filen
 }
 
 /// Calls [USER_RECENT_PATH] endpoint. Used to fetch recent files.
-pub fn user_recent_request(
-    payload: &UserRecentRequestPayload,
-    filen_settings: &FilenSettings,
-) -> Result<UserRecentResponsePayload> {
-    queries::query_filen_api(USER_RECENT_PATH, payload, filen_settings).context(UserRecentQueryFailed {})
+pub fn user_recent_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<UserRecentResponsePayload> {
+    queries::query_filen_api(USER_RECENT_PATH, &utils::api_key_json(api_key), filen_settings)
+        .context(UserRecentQueryFailed {})
 }
 
 /// Calls [USER_RECENT_PATH] endpoint asynchronously. Used to fetch recent files.
 #[cfg(feature = "async")]
 pub async fn user_recent_request_async(
-    payload: &UserRecentRequestPayload,
+    api_key: &SecUtf8,
     filen_settings: &FilenSettings,
 ) -> Result<UserRecentResponsePayload> {
-    queries::query_filen_api_async(USER_RECENT_PATH, payload, filen_settings)
+    queries::query_filen_api_async(USER_RECENT_PATH, &utils::api_key_json(api_key), filen_settings)
         .await
         .context(UserRecentQueryFailed {})
 }
@@ -561,30 +550,24 @@ mod tests {
 
     #[test]
     fn user_recent_request_should_be_correctly_typed() {
-        let request_payload = UserRecentRequestPayload {
-            api_key: API_KEY.clone(),
-        };
+        let request_payload = utils::api_key_json(&API_KEY);
         validate_contract(
             USER_RECENT_PATH,
             request_payload,
             "tests/resources/responses/user_recent.json",
-            |request_payload, filen_settings| user_recent_request(&request_payload, &filen_settings),
+            |_, filen_settings| user_recent_request(&API_KEY, &filen_settings),
         );
     }
 
     #[cfg(feature = "async")]
     #[tokio::test]
     async fn user_recent_request_async_should_be_correctly_typed() {
-        let request_payload = UserRecentRequestPayload {
-            api_key: API_KEY.clone(),
-        };
+        let request_payload = utils::api_key_json(&API_KEY);
         validate_contract_async(
             USER_RECENT_PATH,
             request_payload,
             "tests/resources/responses/user_recent.json",
-            |request_payload, filen_settings| async move {
-                user_recent_request_async(&request_payload, &filen_settings).await
-            },
+            |_, filen_settings| async move { user_recent_request_async(&API_KEY, &filen_settings).await },
         )
         .await;
     }

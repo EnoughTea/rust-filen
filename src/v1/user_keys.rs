@@ -101,15 +101,6 @@ pub trait HasPublicKey {
     }
 }
 
-/// Used for requests to [USER_KEY_PAIR_INFO_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UserKeyPairInfoRequestPayload {
-    /// User-associated Filen API key.
-    #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
-}
-utils::display_from_json!(UserKeyPairInfoRequestPayload);
-
 /// Response data for [USER_KEY_PAIR_INFO_PATH] endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -289,19 +280,20 @@ api_response_struct!(
 
 /// Calls [USER_KEY_PAIR_INFO_PATH] endpoint. Used to get RSA public/private key pair.
 pub fn user_key_pair_info_request(
-    payload: &UserKeyPairInfoRequestPayload,
+    api_key: &SecUtf8,
     filen_settings: &FilenSettings,
 ) -> Result<UserKeyPairInfoResponsePayload> {
-    queries::query_filen_api(USER_KEY_PAIR_INFO_PATH, payload, filen_settings).context(UserKeyPairInfoQueryFailed {})
+    queries::query_filen_api(USER_KEY_PAIR_INFO_PATH, &utils::api_key_json(api_key), filen_settings)
+        .context(UserKeyPairInfoQueryFailed {})
 }
 
 /// Calls [USER_KEY_PAIR_INFO_PATH] endpoint asynchronously. Used to get RSA public/private key pair.
 #[cfg(feature = "async")]
 pub async fn key_pair_info_request_async(
-    payload: &UserKeyPairInfoRequestPayload,
+    api_key: &SecUtf8,
     filen_settings: &FilenSettings,
 ) -> Result<UserKeyPairInfoResponsePayload> {
-    queries::query_filen_api_async(USER_KEY_PAIR_INFO_PATH, payload, filen_settings)
+    queries::query_filen_api_async(USER_KEY_PAIR_INFO_PATH, &utils::api_key_json(api_key), filen_settings)
         .await
         .context(UserKeyPairInfoQueryFailed {})
 }
@@ -372,7 +364,11 @@ pub async fn user_public_key_get_request_async(
 mod tests {
     use super::*;
     use crate::test_utils::*;
+    use once_cell::sync::Lazy;
     use pretty_assertions::assert_eq;
+
+    static API_KEY: Lazy<SecUtf8> =
+        Lazy::new(|| SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"));
 
     #[test]
     fn decode_public_key_should_return_decoded_bytes() {
@@ -408,30 +404,24 @@ mod tests {
 
     #[test]
     fn user_key_pair_info_request_should_be_correctly_typed() {
-        let request_payload = UserKeyPairInfoRequestPayload {
-            api_key: SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"),
-        };
+        let request_payload = utils::api_key_json(&API_KEY);
         validate_contract(
             USER_KEY_PAIR_INFO_PATH,
             request_payload,
             "tests/resources/responses/user_keyPair_info.json",
-            |request_payload, filen_settings| user_key_pair_info_request(&request_payload, &filen_settings),
+            |_, filen_settings| user_key_pair_info_request(&API_KEY, &filen_settings),
         );
     }
 
     #[cfg(feature = "async")]
     #[tokio::test]
     async fn user_key_pair_info_request_async_should_be_correctly_typed() {
-        let request_payload = UserKeyPairInfoRequestPayload {
-            api_key: SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"),
-        };
+        let request_payload = utils::api_key_json(&API_KEY);
         validate_contract_async(
             USER_KEY_PAIR_INFO_PATH,
             request_payload,
             "tests/resources/responses/user_keyPair_info.json",
-            |request_payload, filen_settings| async move {
-                key_pair_info_request_async(&request_payload, &filen_settings).await
-            },
+            |_, filen_settings| async move { key_pair_info_request_async(&API_KEY, &filen_settings).await },
         )
         .await;
     }

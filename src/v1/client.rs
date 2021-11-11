@@ -104,15 +104,6 @@ impl SyncClientMessageRequestPayload {
     }
 }
 
-/// Used for requests to [TRASH_EMPTY_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct TrashEmptyRequestPayload {
-    /// User-associated Filen API key.
-    #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
-}
-utils::display_from_json!(TrashEmptyRequestPayload);
-
 /// Calls [DIR_COLOR_CHANGE_PATH] endpoint.
 pub fn dir_color_change_request(
     payload: &DirColorChangeRequestPayload,
@@ -171,20 +162,15 @@ pub async fn sync_client_message_request_async(
 }
 
 /// Calls [TRASH_EMPTY_PATH] endpoint. Used to permanently delete all files in the 'Trash' folder.
-pub fn trash_empty_request(
-    payload: &TrashEmptyRequestPayload,
-    filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
-    queries::query_filen_api(TRASH_EMPTY_PATH, payload, filen_settings).context(TrashEmptyQueryFailed {})
+pub fn trash_empty_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
+    queries::query_filen_api(TRASH_EMPTY_PATH, &utils::api_key_json(api_key), filen_settings)
+        .context(TrashEmptyQueryFailed {})
 }
 
 /// Calls [TRASH_EMPTY_PATH] endpoint asynchronously. Used to permanently delete all files in the 'Trash' folder.
 #[cfg(feature = "async")]
-pub async fn trash_empty_request_async(
-    payload: &TrashEmptyRequestPayload,
-    filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
-    queries::query_filen_api_async(TRASH_EMPTY_PATH, payload, filen_settings)
+pub async fn trash_empty_request_async(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
+    queries::query_filen_api_async(TRASH_EMPTY_PATH, &utils::api_key_json(api_key), filen_settings)
         .await
         .context(TrashEmptyQueryFailed {})
 }
