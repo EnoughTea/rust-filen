@@ -10,12 +10,6 @@ const GET_DIR_PATH: &str = "/v1/get/dir";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("Failed to decrypt file metadata for data {}: {}", file_data, source))]
-    DecryptFileMetadataFailed {
-        file_data: SyncedFileData,
-        source: files::Error,
-    },
-
     #[snafu(display("{} query failed: {}", GET_DIR_PATH, source))]
     GetDirQueryFailed { source: queries::Error },
 }
@@ -77,12 +71,9 @@ pub struct SyncedFileData {
 }
 utils::display_from_json!(SyncedFileData);
 
-impl SyncedFileData {
-    /// Decrypt name metadata into actual folder name.
-    pub fn decrypt_file_metadata(&self, master_keys: &[SecUtf8]) -> Result<FileProperties> {
-        FileProperties::decrypt_file_metadata(&self.metadata, master_keys).context(DecryptFileMetadataFailed {
-            file_data: self.clone(),
-        })
+impl HasFileMetadata for SyncedFileData {
+    fn file_metadata_ref(&self) -> &str {
+        &self.metadata
     }
 }
 

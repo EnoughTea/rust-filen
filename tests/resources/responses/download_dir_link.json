@@ -1,0 +1,24 @@
+{
+    "status": true,
+    "message": "Folder and files fetched.",
+    "data": {
+        "folders": [
+            {
+                "uuid": "b013e93f-4c9b-4df3-a6de-093d95f13c57",
+                "name": "U2FsdGVkX19WePLPIKAeFBQaKxnje76S6OIfQ5dNC85k1bptqu6/h/N/C8OJYBfu",
+                "parent": "base"
+            }
+        ],
+        "files": [
+            {
+                "uuid": "35f7b7b2-1904-4db9-8d3e-5bf752d7852d",
+                "bucket": "filen-1",
+                "region": "de-1",
+                "metadata": "U2FsdGVkX1+WMBfVXgDw3R8AicwCxHYfdApjTA3Ytwfu0auFbEtKp2GtabUXNjrRFVhD00rzJO5qctkZs9bS1wgMnFuSyVUsSVUOpQny5cVm+qVP5UW1zAHCgjlDzuupnTkEYREH79a4PxvnZQiUcuBgfFiDYroDirLy6TW1pDioUiSObs9JwIa/7zRjyWtK",
+                "chunks": 1,
+                "parent": "b013e93f-4c9b-4df3-a6de-093d95f13c57",
+                "version": 1
+            }
+        ]
+    }
+}

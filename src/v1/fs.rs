@@ -4,7 +4,7 @@ use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use snafu::{Backtrace, ResultExt, Snafu};
-use std::{num::ParseIntError, str::FromStr};
+use std::{fmt, num::ParseIntError, str::FromStr};
 use strum::{Display, EnumString};
 use uuid::Uuid;
 
@@ -129,6 +129,12 @@ pub struct FileStorageInfo {
     pub chunks: u32,
 }
 
+impl fmt::Display for FileStorageInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}/{} [{} chunks]", self.region, self.bucket, self.chunks)
+    }
+}
+
 /// Represents one of the user folders or some folder under Filen sync folder.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FolderData {
@@ -223,6 +229,20 @@ pub trait HasFileMetadata {
                 metadata: self.file_metadata_ref().to_owned(),
             },
         )
+    }
+}
+
+pub trait HasFileLocation {
+    /// Gets a reference to data defining where file is stored by Filen.
+    fn file_storage_ref(&self) -> &FileStorageInfo;
+
+    /// Gets a reference to file ID.
+    fn uuid_ref(&self) -> &Uuid;
+
+    /// Gets data required to build a URL for a file plus file chunk count.
+    fn get_file_location(&self) -> FileLocation {
+        let storage = self.file_storage_ref();
+        FileLocation::new(&storage.region, &storage.bucket, *self.uuid_ref(), storage.chunks)
     }
 }
 

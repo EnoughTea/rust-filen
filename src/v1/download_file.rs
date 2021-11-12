@@ -44,16 +44,16 @@ pub struct FileLocation {
     pub region: String,
     pub bucket: String,
     pub file_uuid: Uuid,
-    pub chunk_count: u32,
+    pub chunks: u32,
 }
 
 impl FileLocation {
-    pub fn new<S: Into<String>>(region: S, bucket: S, file_uuid: Uuid, chunk_count: u32) -> FileLocation {
+    pub fn new<S: Into<String>>(region: S, bucket: S, file_uuid: Uuid, chunks: u32) -> FileLocation {
         FileLocation {
             region: region.into(),
             bucket: bucket.into(),
             file_uuid,
-            chunk_count,
+            chunks,
         }
     }
 
@@ -67,7 +67,7 @@ impl fmt::Display for FileLocation {
         write!(
             f,
             "{}/{}/{} [{} chunks]",
-            self.region, self.bucket, self.file_uuid, self.chunk_count
+            self.region, self.bucket, self.file_uuid, self.chunks
         )
     }
 }
@@ -193,7 +193,7 @@ pub fn download_and_decrypt_file<W: Write>(
     filen_settings: &FilenSettings,
     writer: &mut std::io::BufWriter<W>,
 ) -> Result<u64> {
-    let written_chunk_lengths = (0..file_location.chunk_count)
+    let written_chunk_lengths = (0..file_location.chunks)
         .map(|chunk_index| {
             let file_chunk_location = file_location.get_file_chunk_location(chunk_index);
             let encrypted_bytes = retry_settings.retry(|| download_file_chunk(&file_chunk_location, filen_settings))?;
@@ -241,7 +241,7 @@ pub async fn download_and_decrypt_file_async<W: Write>(
             Err(err) => Err(err),
         }
     };
-    let batches = batch_chunks(file_location.chunk_count, ASYNC_CHUNK_BATCH_SIZE);
+    let batches = batch_chunks(file_location.chunks, ASYNC_CHUNK_BATCH_SIZE);
     let download_and_decrypt_batches = batches
         .into_iter()
         .enumerate()
