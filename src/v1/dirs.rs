@@ -336,6 +336,12 @@ pub struct DirContentFile {
 }
 utils::display_from_json!(DirContentFile);
 
+impl HasFileMetadata for DirContentFile {
+    fn file_metadata_ref(&self) -> &str {
+        &self.metadata
+    }
+}
+
 /// One of the non-base folders in response data for [DIR_CONTENT_PATH] endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -374,6 +380,12 @@ pub struct DirContentFolder {
     pub is_sync: bool,
 }
 utils::display_from_json!(DirContentFolder);
+
+impl HasLocationName for DirContentFolder {
+    fn name_metadata_ref(&self) -> &str {
+        self.name_metadata.as_ref()
+    }
+}
 
 /// One of the base folders in response data for [DIR_CONTENT_PATH] endpoint.
 #[skip_serializing_none]
@@ -421,6 +433,34 @@ pub struct DirContentResponseData {
     pub page: u32,
 }
 utils::display_from_json!(DirContentResponseData);
+
+impl DirContentResponseData {
+    pub fn decrypt_all_folder_names(
+        &self,
+        last_master_key: &SecUtf8,
+    ) -> Result<Vec<(DirContentFolder, String)>, FsError> {
+        self.folders
+            .iter()
+            .map(|data| {
+                data.decrypt_name_metadata(last_master_key)
+                    .map(|name| (data.clone(), name))
+            })
+            .collect::<Result<Vec<_>, FsError>>()
+    }
+
+    pub fn decrypt_all_file_properties(
+        &self,
+        last_master_key: &SecUtf8,
+    ) -> Result<Vec<(DirContentFile, FileProperties)>, FsError> {
+        self.uploads
+            .iter()
+            .map(|data| {
+                data.decrypt_file_metadata(last_master_key)
+                    .map(|properties| (data.clone(), properties))
+            })
+            .collect::<Result<Vec<_>, FsError>>()
+    }
+}
 
 api_response_struct!(
     /// Response for [USER_DIRS_PATH] endpoint.

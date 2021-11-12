@@ -13,12 +13,6 @@ const DOWNLOAD_DIR_LINK_PATH: &str = "/v1/download/dir/link";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("Failed to decrypt file metadata '{}': {}", metadata, source))]
-    DecryptFileMetadataFailed { metadata: String, source: files::Error },
-
-    #[snafu(display("Failed to decrypt folder name metadata '{}': {}", name_metadata, source))]
-    DecryptFolderNameMetadataFailed { name_metadata: String, source: FsError },
-
     #[snafu(display("Failed to decrypt file mime metadata '{}': {}", metadata, source))]
     DecryptFileMimeMetadataFailed { metadata: String, source: crypto::Error },
 
@@ -110,30 +104,27 @@ pub struct DownloadDirResponseData {
 utils::display_from_json!(DownloadDirResponseData);
 
 impl DownloadDirResponseData {
-    pub fn decrypt_all_folder_names(&self, last_master_key: &SecUtf8) -> Result<Vec<(FolderData, String)>> {
+    pub fn decrypt_all_folder_names(&self, last_master_key: &SecUtf8) -> Result<Vec<(FolderData, String)>, FsError> {
         self.folders
             .iter()
             .map(|data| {
                 data.decrypt_name_metadata(last_master_key)
-                    .context(DecryptFolderNameMetadataFailed {
-                        name_metadata: data.name_metadata.clone(),
-                    })
                     .map(|name| (data.clone(), name))
             })
-            .collect::<Result<Vec<_>>>()
+            .collect::<Result<Vec<_>, FsError>>()
     }
 
     pub fn decrypt_all_file_properties(
         &self,
         last_master_key: &SecUtf8,
-    ) -> Result<Vec<(DownloadedFileData, FileProperties)>> {
+    ) -> Result<Vec<(DownloadedFileData, FileProperties)>, FsError> {
         self.files
             .iter()
             .map(|data| {
                 data.decrypt_file_metadata(last_master_key)
                     .map(|properties| (data.clone(), properties))
             })
-            .collect::<Result<Vec<_>>>()
+            .collect::<Result<Vec<_>, FsError>>()
     }
 }
 
@@ -177,14 +168,13 @@ pub struct DownloadedFileData {
 }
 utils::display_from_json!(DownloadedFileData);
 
-impl DownloadedFileData {
-    /// Decrypts file metadata string.
-    pub fn decrypt_file_metadata(&self, last_master_key: &SecUtf8) -> Result<FileProperties> {
-        FileProperties::decrypt_file_metadata(&self.metadata, last_master_key).context(DecryptFileMetadataFailed {
-            metadata: self.metadata.clone(),
-        })
+impl HasFileMetadata for DownloadedFileData {
+    fn file_metadata_ref(&self) -> &str {
+        &self.metadata
     }
+}
 
+impl DownloadedFileData {
     /// Decrypt name, size and mime metadata. File key is contained within file metadata in
     /// [DownloadedFileData::metadata] field, which can be decrypted with [DownloadedFileData::decrypt_file_metadata]
     /// call.
