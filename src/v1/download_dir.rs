@@ -358,7 +358,9 @@ api_response_struct!(
     DownloadDirResponsePayload<Option<DownloadDirResponseData>>
 );
 
-/// Calls [DOWNLOAD_DIR_LINK_PATH] endpoint.
+/// Calls [DOWNLOAD_DIR_LINK_PATH] endpoint. Used to check contents of a linked folder.
+///
+/// If you are wondering how to find link ID for a folder, check [dir_link_status_request].
 pub fn download_dir_link_request(
     payload: &DownloadDirLinkRequestPayload,
     filen_settings: &FilenSettings,
@@ -366,7 +368,9 @@ pub fn download_dir_link_request(
     queries::query_filen_api(DOWNLOAD_DIR_LINK_PATH, payload, filen_settings).context(DownloadDirLinkQueryFailed {})
 }
 
-/// Calls [DOWNLOAD_DIR_LINK_PATH] endpoint asynchronously.
+/// Calls [DOWNLOAD_DIR_LINK_PATH] endpoint asynchronously. Used to check contents of a linked folder.
+///
+/// If you are wondering how to find link ID for a folder, check [dir_link_status_request].
 #[cfg(feature = "async")]
 pub async fn download_dir_link_request_async(
     payload: &DownloadDirLinkRequestPayload,
