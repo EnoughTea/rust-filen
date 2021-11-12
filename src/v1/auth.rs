@@ -265,7 +265,7 @@ mod tests {
             private_key_metadata: Some("".to_owned()),
         };
 
-        let decrypted_m_keys = response_data.decrypt_master_keys(&[m_key.clone()]).unwrap();
+        let decrypted_m_keys = response_data.decrypt_master_keys_metadata(&m_key).unwrap();
 
         assert_eq!(decrypted_m_keys.len(), 1);
         assert_eq!(decrypted_m_keys[0], m_key);

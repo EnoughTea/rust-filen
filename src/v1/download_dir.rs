@@ -176,22 +176,19 @@ impl FileData {
     /// [DownloadedFileData::metadata] field, which can be decrypted with [DownloadedFileData::decrypt_file_metadata]
     /// call.
     pub fn decrypt_name_size_mime(&self, file_key: &SecUtf8) -> Result<FileNameSizeMime> {
-        let name = crypto::decrypt_metadata_str(&self.name_metadata, file_key.unsecure()).context(
-            DecryptFileNameMetadataFailed {
+        let name =
+            crypto::decrypt_metadata_str(&self.name_metadata, file_key).context(DecryptFileNameMetadataFailed {
                 metadata: self.name_metadata.clone(),
-            },
-        )?;
-        let size_string = &crypto::decrypt_metadata_str(&self.size_metadata, file_key.unsecure()).context(
-            DecryptFileSizeMetadataFailed {
+            })?;
+        let size_string =
+            &crypto::decrypt_metadata_str(&self.size_metadata, file_key).context(DecryptFileSizeMetadataFailed {
                 metadata: self.size_metadata.clone(),
-            },
-        )?;
+            })?;
         let size = str::parse::<u64>(size_string).context(DecryptedSizeIsInvalid { size: size_string })?;
-        let mime = crypto::decrypt_metadata_str(&self.mime_metadata, file_key.unsecure()).context(
-            DecryptFileMimeMetadataFailed {
+        let mime =
+            crypto::decrypt_metadata_str(&self.mime_metadata, file_key).context(DecryptFileMimeMetadataFailed {
                 metadata: self.mime_metadata.clone(),
-            },
-        )?;
+            })?;
         Ok(FileNameSizeMime { name, size, mime })
     }
 

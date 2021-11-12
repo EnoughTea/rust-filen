@@ -210,15 +210,15 @@ pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
 /// Encrypts given data to Filen metadata using given key.
 /// Depending on metadata version, different encryption algos will be used.
 /// Convenience overload of the [encrypt_metadata] for string params.
-pub fn encrypt_metadata_str(data: &str, key: &str, metadata_version: u32) -> Result<String> {
-    encrypt_metadata(data.as_bytes(), key.as_bytes(), metadata_version)
+pub fn encrypt_metadata_str(data: &str, key: &SecUtf8, metadata_version: u32) -> Result<String> {
+    encrypt_metadata(data.as_bytes(), key.unsecure().as_bytes(), metadata_version)
         .and_then(|bytes| String::from_utf8(bytes).context(EncryptedMetadataIsNotUtf8 {}))
 }
 
 /// Decrypts Filen metadata prefiously encrypted with [encrypt_metadata]/[encrypt_metadata_str].
 /// Convenience overload of the [decrypt_metadata] for string params.
-pub fn decrypt_metadata_str(data: &str, key: &str) -> Result<String> {
-    decrypt_metadata(data.as_bytes(), key.as_bytes())
+pub fn decrypt_metadata_str(data: &str, key: &SecUtf8) -> Result<String> {
+    decrypt_metadata(data.as_bytes(), key.unsecure().as_bytes())
         .and_then(|bytes| String::from_utf8(bytes).context(DecryptedMetadataIsNotUtf8 {}))
 }
 
@@ -303,12 +303,12 @@ pub fn encrypt_master_keys_metadata(
         .collect::<Vec<&str>>()
         .join("|");
 
-    encrypt_metadata_str(&master_keys_unsecure, last_master_key.unsecure(), metadata_version)
+    encrypt_metadata_str(&master_keys_unsecure, last_master_key, metadata_version)
 }
 
 /// Helper which decrypts master keys stored in a metadata into a list of key strings,
-/// using one of the specified master keys.
-pub fn decrypt_master_keys_metadata(master_keys_metadata: &str, master_keys: &[SecUtf8]) -> Result<Vec<SecUtf8>> {
+/// using the specified user's last master key.
+pub fn decrypt_master_keys_metadata(master_keys_metadata: &str, last_master_key: &SecUtf8) -> Result<Vec<SecUtf8>> {
     ensure!(
         !master_keys_metadata.is_empty(),
         BadArgument {
@@ -316,8 +316,7 @@ pub fn decrypt_master_keys_metadata(master_keys_metadata: &str, master_keys: &[S
         }
     );
 
-    decrypt_metadata_str_any_key(master_keys_metadata, master_keys)
-        .map(|keys| keys.split('|').map(SecUtf8::from).collect())
+    decrypt_metadata_str(master_keys_metadata, last_master_key).map(|keys| keys.split('|').map(SecUtf8::from).collect())
 }
 
 /// Helper which decrypts user's RSA private key stored in a metadata into key bytes,
@@ -663,7 +662,7 @@ mod tests {
     #[test]
     fn encrypt_rsa_and_decrypt_rsa_should_work_and_have_same_algorithm() {
         let expected_data = "This is Jimmy.";
-        let m_key = "ed8d39b6c2d00ece398199a3e83988f1c4942b24";
+        let m_key = SecUtf8::from("ed8d39b6c2d00ece398199a3e83988f1c4942b24");
         let private_key_file_contents = read_project_file("tests/resources/filen_private_key.txt");
         let private_key_metadata_encrypted = String::from_utf8_lossy(&private_key_file_contents);
         let private_key_decrypted = decrypt_metadata_str(&private_key_metadata_encrypted, &m_key)

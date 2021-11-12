@@ -108,7 +108,7 @@ impl DirLinkAddRequestPayload {
     ) -> DirLinkAddRequestPayload {
         let link_key = utils::random_alphanumeric_string(32);
         let key_metadata = // Should never panic...
-            crypto::encrypt_metadata_str(&link_key, last_master_key.unsecure(), METADATA_VERSION).unwrap();
+            crypto::encrypt_metadata_str(&link_key, last_master_key, METADATA_VERSION).unwrap();
         DirLinkAddRequestPayload {
             api_key,
             download_btn: DownloadBtnState::Enable,

@@ -175,7 +175,7 @@ impl FileProperties {
     /// Encrypts file properties to a metadata string.
     pub fn encrypt_file_metadata(file_properties: &FileProperties, last_master_key: &SecUtf8) -> Result<String> {
         let metadata_json = json!(file_properties).to_string();
-        crypto::encrypt_metadata_str(&metadata_json, last_master_key.unsecure(), METADATA_VERSION).context(
+        crypto::encrypt_metadata_str(&metadata_json, last_master_key, METADATA_VERSION).context(
             EncryptFileMetadataFailed {
                 metadata: metadata_json,
             },
@@ -219,15 +219,15 @@ impl FileProperties {
     }
 
     pub fn name_encrypted(&self) -> String {
-        crypto::encrypt_metadata_str(&self.name, self.key.unsecure(), METADATA_VERSION).unwrap()
+        crypto::encrypt_metadata_str(&self.name, &self.key, METADATA_VERSION).unwrap()
     }
 
     pub fn size_encrypted(&self) -> String {
-        crypto::encrypt_metadata_str(&self.size.to_string(), self.key.unsecure(), METADATA_VERSION).unwrap()
+        crypto::encrypt_metadata_str(&self.size.to_string(), &self.key, METADATA_VERSION).unwrap()
     }
 
     pub fn mime_encrypted(&self) -> String {
-        crypto::encrypt_metadata_str(&self.mime.to_string(), self.key.unsecure(), METADATA_VERSION).unwrap()
+        crypto::encrypt_metadata_str(&self.mime.to_string(), &self.key, METADATA_VERSION).unwrap()
     }
 }
 

@@ -82,8 +82,7 @@ impl SyncClientMessageRequestPayload {
         last_master_key: &SecUtf8,
     ) -> SyncClientMessageRequestPayload {
         let metadata =
-            crypto::encrypt_metadata_str(&json_value.to_string(), last_master_key.unsecure(), METADATA_VERSION)
-                .unwrap();
+            crypto::encrypt_metadata_str(&json_value.to_string(), last_master_key, METADATA_VERSION).unwrap();
         SyncClientMessageRequestPayload {
             api_key,
             args: metadata,

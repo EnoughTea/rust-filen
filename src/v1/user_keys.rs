@@ -52,10 +52,10 @@ pub trait HasMasterKeys {
     fn master_keys_metadata_ref(&self) -> Option<&str>;
 
     /// Decrypts `master_keys_metadata_ref` into a list of key strings, using the specified user's last master key.
-    fn decrypt_master_keys(&self, master_keys: &[SecUtf8]) -> Result<Vec<SecUtf8>> {
+    fn decrypt_master_keys_metadata(&self, last_master_key: &SecUtf8) -> Result<Vec<SecUtf8>> {
         match self.master_keys_metadata_ref() {
             Some(metadata) => {
-                crypto::decrypt_master_keys_metadata(metadata, master_keys).context(DecryptMasterKeysFailed {})
+                crypto::decrypt_master_keys_metadata(metadata, last_master_key).context(DecryptMasterKeysFailed {})
             }
             None => BadArgument {
                 message: "master keys metadata is absent, cannot decrypt None",
@@ -167,10 +167,9 @@ impl UserKeyPairUpdateRequestPayload {
         public_key_bytes: &[u8],
         last_master_key: &SecUtf8,
     ) -> Result<UserKeyPairUpdateRequestPayload> {
-        let private_key_base64 = SecUtf8::from(base64::encode(private_key_bytes.unsecure()));
         let private_key = crypto::encrypt_metadata_str(
-            private_key_base64.unsecure(),
-            last_master_key.unsecure(),
+            &base64::encode(private_key_bytes.unsecure()),
+            last_master_key,
             METADATA_VERSION,
         )
         .map(SecUtf8::from)
@@ -388,7 +387,7 @@ mod tests {
     fn decrypt_private_key_should_return_decrypted_and_decoded_key_bytes() {
         let private_key_file_contents = read_project_file("tests/resources/filen_private_key.txt");
         let private_key_metadata_encrypted = String::from_utf8_lossy(&private_key_file_contents).to_string();
-        let m_key = "ed8d39b6c2d00ece398199a3e83988f1c4942b24";
+        let m_key = SecUtf8::from("ed8d39b6c2d00ece398199a3e83988f1c4942b24");
         let expected = crypto::decrypt_metadata_str(&private_key_metadata_encrypted, &m_key)
             .and_then(|str| Ok(SecVec::from(base64::decode(str).unwrap())))
             .unwrap();

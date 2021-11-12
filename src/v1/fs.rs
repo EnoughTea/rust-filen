@@ -188,7 +188,7 @@ impl LocationNameMetadata {
     /// Puts the given name into Filen-expected JSON and encrypts it into metadata.
     pub fn encrypt_name_to_metadata<S: Into<String>>(name: S, last_master_key: &SecUtf8) -> String {
         let name_json = json!(LocationNameMetadata { name: name.into() }).to_string();
-        crypto::encrypt_metadata_str(&name_json, last_master_key.unsecure(), super::METADATA_VERSION).unwrap()
+        crypto::encrypt_metadata_str(&name_json, last_master_key, super::METADATA_VERSION).unwrap()
     }
 
     /// Decrypt name metadata into actual name.
