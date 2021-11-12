@@ -21,8 +21,7 @@ use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-const FILE_CHUNK_SIZE: u32 = 1024 * 1024; // Hardcoded mostly because Filen also hardcoded chunk size
-const FILE_VERSION: u32 = 1;
+const FILE_CHUNK_SIZE: u32 = 1024 * 1024; // Hardcoded mostly because Filen has hardcoded chunk size as well
 const UPLOAD_PATH: &str = "/v1/upload";
 const UPLOAD_DONE_PATH: &str = "/v1/upload/done";
 const UPLOAD_STOP_PATH: &str = "/v1/upload/stop";
@@ -175,8 +174,10 @@ pub struct FileUploadProperties {
 
 impl FileUploadProperties {
     /// Assigns file upload properties from given [FileProperties], parent folder and user's last master key.
+    /// 'version' determines how file bytes should be encrypted/decrypted, for now Filen uses version = 1 everywhere.
     pub fn from_file_properties(
         file_properties: &FileProperties,
+        version: u32,
         parent_folder_uuid: Uuid,
         last_master_key: &SecUtf8,
     ) -> Result<FileUploadProperties> {
@@ -205,7 +206,7 @@ impl FileUploadProperties {
             upload_key,
             expire: Expire::Never,
             parent_uuid: parent_folder_uuid,
-            version: FILE_VERSION,
+            version,
         })
     }
 
@@ -427,16 +428,20 @@ pub async fn user_unfinished_delete_request_async(
 
 /// Uploads file to Filen by reading file chunks from given reader,
 /// encrypting them and uploading each chunk with additional dummy chunk at the end.
+///
+/// 'version' determines how file bytes should be encrypted/decrypted, for now Filen uses version = 1 everywhere.
 pub fn encrypt_and_upload_file<R: Read + Seek>(
     api_key: &SecUtf8,
     parent_uuid: Uuid,
     file_properties: &FileProperties,
+    version: u32,
     last_master_key: &SecUtf8,
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
     reader: &mut BufReader<R>,
 ) -> Result<FileUploadInfo> {
-    let upload_properties = FileUploadProperties::from_file_properties(file_properties, parent_uuid, last_master_key)?;
+    let upload_properties =
+        FileUploadProperties::from_file_properties(file_properties, version, parent_uuid, last_master_key)?;
     let chunk_upload_responses = upload_chunks(
         api_key,
         FILE_CHUNK_SIZE,
@@ -486,6 +491,8 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
 /// Asynchronously uploads file to Filen by reading file chunks from given reader,
 /// encrypting them and uploading each chunk with additional dummy chunk at the end.
 ///
+/// 'version' determines how file bytes should be encrypted/decrypted, for now Filen uses version = 1 everywhere.
+///
 /// Note that file upload is explicitly retriable and always requires RetrySettings as an argument.
 /// You can pass [crate::NO_RETRIES] if you really want to fail the entire file upload  even if a single chunk
 /// upload request fails temporarily, otherwise [crate::STANDARD_RETRIES] is a better fit.
@@ -494,12 +501,14 @@ pub async fn encrypt_and_upload_file_async<R: Read + Seek>(
     api_key: &SecUtf8,
     parent_uuid: Uuid,
     file_properties: &FileProperties,
+    version: u32,
     last_master_key: &SecUtf8,
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
     reader: &mut BufReader<R>,
 ) -> Result<FileUploadInfo> {
-    let upload_properties = FileUploadProperties::from_file_properties(file_properties, parent_uuid, last_master_key)?;
+    let upload_properties =
+        FileUploadProperties::from_file_properties(file_properties, version, parent_uuid, last_master_key)?;
     let chunk_upload_responses = upload_chunks_async(
         api_key,
         FILE_CHUNK_SIZE,
@@ -699,7 +708,7 @@ mod tests {
     fn uploaded_file_properties_should_produce_query_string_with_expected_parts() {
         let m_key = SecUtf8::from("b49cadfb92e1d7d54e9dd9d33ba9feb2af1f10ae");
         let file_metadata = FileProperties::from_name_size_modified("test.txt", 128, &SystemTime::now()).unwrap();
-        let properties = FileUploadProperties::from_file_properties(&file_metadata, Uuid::nil(), &m_key).unwrap();
+        let properties = FileUploadProperties::from_file_properties(&file_metadata, 1, Uuid::nil(), &m_key).unwrap();
 
         let query_params = properties.to_query_params(0, &SecUtf8::from("some api key"));
         let query_params_2 = properties.to_query_params(0, &SecUtf8::from("some api key"));
