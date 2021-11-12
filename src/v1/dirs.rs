@@ -451,6 +451,30 @@ pub struct DirCreateRequestPayload {
 }
 utils::display_from_json!(DirCreateRequestPayload);
 
+impl DirCreateRequestPayload {
+    /// Payload used for creation of the special Filen sync folder that is created by Filen client
+    /// to store all synced files.
+    /// You should only use this if you are writing your own replacement client.
+    pub fn payload_for_sync_folder_creation(api_key: SecUtf8, last_master_key: &SecUtf8) -> DirCreateRequestPayload {
+        let mut payload = DirCreateRequestPayload::new(api_key, FILEN_SYNC_FOLDER_NAME, last_master_key);
+        payload.dir_type = LocationKind::Sync;
+        payload
+    }
+
+    /// Payload to create a new folder with the specified name.
+    pub fn new(api_key: SecUtf8, name: &str, last_master_key: &SecUtf8) -> DirCreateRequestPayload {
+        let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(name, last_master_key);
+        let name_hashed = LocationNameMetadata::name_hashed(name);
+        DirCreateRequestPayload {
+            api_key,
+            uuid: Uuid::new_v4(),
+            name_metadata,
+            name_hashed,
+            dir_type: LocationKind::Folder,
+        }
+    }
+}
+
 /// Used for requests to [DIR_SUB_CREATE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirSubCreateRequestPayload {
@@ -475,26 +499,17 @@ pub struct DirSubCreateRequestPayload {
 }
 utils::display_from_json!(DirSubCreateRequestPayload);
 
-impl DirCreateRequestPayload {
-    /// Payload used for creation of the special Filen sync folder that is created by Filen client
-    /// to store all synced files.
-    /// You should only use this if you are writing your own replacement client.
-    pub fn payload_for_sync_folder_creation(api_key: SecUtf8, last_master_key: &SecUtf8) -> DirCreateRequestPayload {
-        let mut payload = DirCreateRequestPayload::new(api_key, FILEN_SYNC_FOLDER_NAME, last_master_key);
-        payload.dir_type = LocationKind::Sync;
-        payload
-    }
-
-    /// Payload to create a new folder with the specified name.
-    pub fn new(api_key: SecUtf8, name: &str, last_master_key: &SecUtf8) -> DirCreateRequestPayload {
+impl DirSubCreateRequestPayload {
+    /// Payload to create a new sub-folder with the specified name.
+    pub fn new(api_key: SecUtf8, name: &str, parent: Uuid, last_master_key: &SecUtf8) -> DirSubCreateRequestPayload {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(name, last_master_key);
         let name_hashed = LocationNameMetadata::name_hashed(name);
-        DirCreateRequestPayload {
+        DirSubCreateRequestPayload {
             api_key,
             uuid: Uuid::new_v4(),
             name_metadata,
             name_hashed,
-            dir_type: LocationKind::Folder,
+            parent,
         }
     }
 }
