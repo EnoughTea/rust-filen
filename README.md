@@ -1,25 +1,44 @@
 # Library to call Filen.io API from Rust
 
-[Filen.io](https://filen.io) is a cloud storage provider with an open-source [desktop client](https://github.com/FilenCloudDienste/filen-desktop). My goal is to write a library which calls Filen's API in a meaningful way, and to learn Rust in process. Filen's API is currently undocumented and I try to get it right by studying the client's sources, so take it all with a grain of salt.
+[Filen.io](https://filen.io) is a cloud storage provider with an open-source [desktop client](https://github.com/FilenCloudDienste/filen-desktop). My goal was to write a library which calls Filen's API in a meaningful way, and to learn Rust in process.
+Filen's API is currently undocumented and I try to get it right by studying the client's sources, so take it all with a grain of salt.
 
-This library is **not in a usable state**. It is possible to login, receive user's RSA keys, perform CRUD on user folders, check Filen Sync folder contents and rename/move/trash files, and even download decrypted files, but file uploading and sharing/linking are still not done.
+This library is in a usable yet unpolished state. It is possible to login, receive users RSA keys,
+perform CRUD on files and folders, list Filen Sync folder/trash folder/recent files contents,
+download and decrypt files, encrypt and upload files, and share/link files and folders.
 
-If you're interested, that's how it looks:
+Various user-specific API queries are still unimplemented and documentation is lacking, sorry about that.
+If you need to call missing API query, you can do so with `rust_filen::queries::query_filen_api("/v1/some/uimplemented/api/path", any_serde_serializable_payload, filen_settings)`.
+
+I have not published `rust_filen` yet, but chances are you would want to depend on its sources anyway.
+
+## Optional async
+
+By default, all queries are synchronous and performed with [ureq](https://github.com/algesten/ureq).
+
+If you want, you can enable async versions of every API query and a way to retry them, `RetrySettings::retry_async`.
+To do so, set `features = ["async"]` for this library in your `Cargo.toml`.
+As a result, [reqwest](https://github.com/seanmonstar/reqwest) will be used instead of [ureq](https://github.com/algesten/ureq).
+
 
 ## Some examples
 
-Import all we need for exemplary purposes:
+If you're interested, that's how it all looks. Start by importing all we need for exemplary purposes:
+
 ```rust
-use crate::{*, v1::*};
+use rust_filen::{*, v1::*};
 // All Filen API queries and related structs are in v1::*,
-// while crate::* provides FilenSettings, RetrySettings and crypto functions 
-// to manually encrypt/decrypt Filen metadata, just in case you need them.
+// while rust_filen::* provides FilenSettings and RetrySettings. Also, for advanced usage, there are rust_filen::crypto
+// with crypto-functions to encrypt/decrypt various Filen metadata and
+// rust_filen::queries as a way to define your own Filen API queries.
 use anyhow::bail;  // bail is used for demo purposes, it's not really needed.
-use secstr::SecUtf8;    // ...or crate::secstr::SecUtf8, it re-exports secstr just in case.
+use secstr::SecUtf8;
 ```
 
-There are async versions of every API query, but examples will be blocking, this README is big enough as it is.
-Let's login first.
+While we are on the topic of imports, `rust_filen` re-exports all third-party crates used in public functions.
+Namely `rust_filen::ureq`, `rust_filen::reqwest`, `rust_filen::fure`, `rust_filen::retry`, `rust_filen::secstr` and `rust_filen::uuid`.
+
+Anyway, let's login first.
 
 ### Getting auth info
 
@@ -119,12 +138,19 @@ let default_folder_files_and_properties = download_dir_response_data.decrypt_all
 // Let's say user has a file 'some file.png' located in the default folder. Let's find and download it:
 let (some_file_data, some_file_properties) = default_folder_files_and_properties
     .iter()
-    .find(|(data, properties)| data.parent == default_folder_data.uuid && properties.name == "some file.png")
+    .find(|(data, properties)|
+        data.parent == default_folder_data.uuid && properties.name.eq_ignore_ascii_case("some file.png"))
     .unwrap();
 let file_key = some_file_properties.key.clone();
 // Let's store file in-memory via writer over vec:
 let mut file_buffer = std::io::BufWriter::new(Vec::new());
-let retry_settings = RetrySettings::from_max_tries(7); // Lucky number.
+// STANDARD_RETRIES retry 5 times with 1, 2, 4, 8 and 15 seconds pause between retries and some random jitter.
+// Usually RetrySettings is opt-in, you call RetrySettings::retry yourself when needed for every API query you want retried.
+// But file download/upload are helper methods where providing RetrySettings is mandatory.
+// File is downloaded or uploaded as a sequence of chunks, and any one of them can fail.
+// With external retries, if the last chunk fails, you'll have to redo the entire file.
+// Internal retry logic avoid possible needless work.
+let retry_settings = RetrySettings::STANDARD_RETRIES;
 let sync_file_download_result = download_and_decrypt_file_from_data_and_key(
     &some_file_data,
     &file_key,
@@ -136,4 +162,49 @@ let sync_file_download_result = download_and_decrypt_file_from_data_and_key(
 let file_bytes = sync_file_download_result.map(|_| file_buffer.into_inner().unwrap());
 ```
 
+### Uploading an encrypted file
+
+```rust
+// First let's define the file we will upload:
+let file_path = <std::path::PathBuf as std::str::FromStr>::from_str("D:\\file_path\\some_file.txt").unwrap();
+// Then let's define where the file will be uploaded on Filen. 
+// If you're wondering how you can check Filen folder IDs to choose folder to upload to, check previous section
+// 'Gettings user's default folder' or queries with "dir" in their names,
+// like user_dirs_request() and dir_content_request().
+let parent_folder_id = "cf2af9a0-6f4e-485d-862c-0459f4662cf1"; 
+// Prepare file properties like file size and mime type for Filen.
+// 'some_file.txt' is specified again here, because you can change uploaded file name if you want: 
+let file_properties = FileProperties::from_name_and_local_path("some_file.txt", &file_path).unwrap();
+/// 'file_version' determines how file bytes should be encrypted/decrypted, for now Filen uses version = 1 everywhere.
+let file_version = 1;
+// Now open a file into a reader, so encrypt_and_upload_file() can read file bytes later: 
+let mut file_reader =
+    std::io::BufReader::new(std::fs::File::open(file_path.to_str().unwrap()).expect("Unable to open file"));
+// We're all done:
+let upload_result = encrypt_and_upload_file(
+    &api_key,
+    parent_folder_id,
+    &file_properties,
+    file_version,
+    &last_master_key,
+    &retry_settings,
+    &filen_settings,
+    &mut file_reader,
+);
+```
+
+### There is encrypted metadata everywhere, what to do?
+
+Sooner or later you will encounter properties with "metadata" in their names and encrypted strings for their values.
+Quite often there are helper methods on structs with such properties which can be used to decrypt it easily.
+If not, you should know that "metadata" is a Filen way to encrypt any sensitive info, and there are two general ways of dealing with it:
+
+1. User's data intended only for that user to use, like file properties and folder names, can be decrypted/encrypted with `rust_filen::crypto::decrypt_metadata_str`/ `rust_filen::crypto::encrypt_metadata_str` using user's last master key.
+2. User's data intended to be public, like shared or publicly linked file properties, can be encrypted by `rust_filen::crypto::encrypt_rsa` using target user RSA public key, and decrypted by `rust_filen::crypto::decrypt_rsa` using target user RSA private key file.
+This can be pretty confusing when sharing files. You will need to keep in mind who is currently the sharer and who is the receiver, so receiver's metadata needs to be encrypted with receiver's public key, so it can decipher it later with its private key.
+
+
+### That's all, folks!
+
 This is it for examples, at least for now.
+To dig deeper, you might want to check out https://filen.io/assets/js/fm.min.js and https://filen.io/assets/js/app.min.js for Filen API usage patterns.
