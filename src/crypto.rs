@@ -121,7 +121,8 @@ pub fn derive_key_from_password_256(password: &[u8], salt: &[u8], iterations: u3
     pbkdf2_hash
 }
 
-/// Encrypts file metadata with given key. Depending on metadata version, different encryption algos will be used.
+/// Encrypts given data to Filen metadata using given key.
+/// Depending on metadata version, different encryption algos will be used.
 pub fn encrypt_metadata(data: &[u8], key: &[u8], metadata_version: u32) -> Result<Vec<u8>> {
     if data.is_empty() {
         return Ok(vec![0u8; 0]);
@@ -141,7 +142,35 @@ pub fn encrypt_metadata(data: &[u8], key: &[u8], metadata_version: u32) -> Resul
     }
 }
 
-/// Restores file metadata prefiously encrypted with [encrypt_metadata] and given key.
+/// Decrypts Filen metadata prefiously encrypted with [encrypt_metadata]/[encrypt_metadata_str] and one of the
+/// given keys. Tries to decrypt using given keys until one of them succeeds.
+pub fn decrypt_metadata_any_key(data: &[u8], keys: &[Vec<u8>]) -> Result<Vec<u8>> {
+    ensure!(
+        keys.len() > 0,
+        BadArgument {
+            message: "keys for decrypting metadata cannot be empty",
+        }
+    );
+
+    let mut result = Ok(vec![0u8; 0]);
+    for key in keys {
+        result = decrypt_metadata(data, key);
+        if result.is_ok() {
+            break;
+        }
+    }
+
+    if result.is_ok() {
+        result
+    } else {
+        BadArgument {
+            message: "all given keys failed to decrypt metadata",
+        }
+        .fail()
+    }
+}
+
+/// Decrypts Filen metadata prefiously encrypted with [encrypt_metadata]/[encrypt_metadata_str] and given key.
 pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     fn read_metadata_version(data: &[u8]) -> Result<i32> {
         let possible_salted_mark = &data[..OPENSSL_SALT_PREFIX.len()];
@@ -178,17 +207,29 @@ pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     }
 }
 
-/// Encrypts file metadata with given key. Depending on metadata version, different encryption algos will be used.
+/// Encrypts given data to Filen metadata using given key.
+/// Depending on metadata version, different encryption algos will be used.
 /// Convenience overload of the [encrypt_metadata] for string params.
-pub fn encrypt_metadata_str(data: &str, m_key: &str, metadata_version: u32) -> Result<String> {
-    encrypt_metadata(data.as_bytes(), m_key.as_bytes(), metadata_version)
+pub fn encrypt_metadata_str(data: &str, key: &str, metadata_version: u32) -> Result<String> {
+    encrypt_metadata(data.as_bytes(), key.as_bytes(), metadata_version)
         .and_then(|bytes| String::from_utf8(bytes).context(EncryptedMetadataIsNotUtf8 {}))
 }
 
-/// Restores file metadata prefiously encrypted with [encrypt_metadata].
+/// Decrypts Filen metadata prefiously encrypted with [encrypt_metadata]/[encrypt_metadata_str].
 /// Convenience overload of the [decrypt_metadata] for string params.
-pub fn decrypt_metadata_str(data: &str, m_key: &str) -> Result<String> {
-    decrypt_metadata(data.as_bytes(), m_key.as_bytes())
+pub fn decrypt_metadata_str(data: &str, key: &str) -> Result<String> {
+    decrypt_metadata(data.as_bytes(), key.as_bytes())
+        .and_then(|bytes| String::from_utf8(bytes).context(DecryptedMetadataIsNotUtf8 {}))
+}
+
+/// Decrypts Filen metadata prefiously encrypted with [encrypt_metadata]/[encrypt_metadata_str] and one of the
+/// given keys. Tries to decrypt using given keys until one of them succeeds.
+pub fn decrypt_metadata_str_any_key(data: &str, keys: &[SecUtf8]) -> Result<String> {
+    let keys = keys
+        .iter()
+        .map(|key| key.unsecure().as_bytes().to_vec())
+        .collect::<Vec<Vec<u8>>>();
+    decrypt_metadata_any_key(data.as_bytes(), &keys)
         .and_then(|bytes| String::from_utf8(bytes).context(DecryptedMetadataIsNotUtf8 {}))
 }
 
@@ -250,7 +291,7 @@ pub fn decrypt_file_chunk(
     }
 }
 
-/// Helper which decrypts master keys stored in a metadata into a list of key strings, using specified master key.
+/// Helper which encrypts master keys stored in a metadata into a list of key strings, using specified master key.
 pub fn encrypt_master_keys_metadata(
     master_keys: &[SecUtf8],
     last_master_key: &SecUtf8,
@@ -523,6 +564,39 @@ mod tests {
         let decrypted_metadata_str = String::from_utf8_lossy(&decrypted_metadata);
 
         assert_eq!(decrypted_metadata_str, expected_metadata);
+    }
+
+    #[test]
+    fn decrypt_metadata_v2_should_work_with_several_keys() {
+        let m_key_1 = hash_fn("invalid key").into_bytes();
+        let m_key_2 = hash_fn("test").into_bytes();
+        let m_keys = [m_key_1, m_key_2];
+        let encrypted_metadata = "002CWAZWUt8h5n0Il13bkeirz7uY05vmrO58ZXemzaIGnmy+iLe95hXtwiAWHF4s\
+        9+g7gcj3LmwykWnZzUEZIAu8zIEyqe2J//iKaZOJMSIqGIg05GvVBl9INeqf2ACU7wRE9P7tCI5tKqgEWG/sMqRwPGwbNN\
+        rn3yI8McEqCBdPWNfi6gl8OwzcqUVnMKZI/DPVSkUZQpaN83zCtA=";
+        let expected_metadata = "{\"name\":\"perform.js\",\"size\":156,\"mime\":\"application/javascript\",\
+        \"key\":\"tqNrczqVdTCgFzB1b1gyiQBIYmwDBwa9\",\"lastModified\":499162500}";
+
+        let decrypted_metadata = decrypt_metadata_any_key(encrypted_metadata.as_bytes(), &m_keys).unwrap();
+        let decrypted_metadata_str = String::from_utf8_lossy(&decrypted_metadata);
+
+        assert_eq!(decrypted_metadata_str, expected_metadata);
+    }
+
+    #[test]
+    fn decrypt_metadata_str_v2_should_work_with_several_keys() {
+        let m_key_1 = SecUtf8::from(hash_fn("invalid key"));
+        let m_key_2 = SecUtf8::from(hash_fn("test"));
+        let m_keys = [m_key_1, m_key_2];
+        let encrypted_metadata = "002CWAZWUt8h5n0Il13bkeirz7uY05vmrO58ZXemzaIGnmy+iLe95hXtwiAWHF4s\
+        9+g7gcj3LmwykWnZzUEZIAu8zIEyqe2J//iKaZOJMSIqGIg05GvVBl9INeqf2ACU7wRE9P7tCI5tKqgEWG/sMqRwPGwbNN\
+        rn3yI8McEqCBdPWNfi6gl8OwzcqUVnMKZI/DPVSkUZQpaN83zCtA=";
+        let expected_metadata = "{\"name\":\"perform.js\",\"size\":156,\"mime\":\"application/javascript\",\
+        \"key\":\"tqNrczqVdTCgFzB1b1gyiQBIYmwDBwa9\",\"lastModified\":499162500}";
+
+        let decrypted_metadata = decrypt_metadata_str_any_key(encrypted_metadata, &m_keys).unwrap();
+
+        assert_eq!(decrypted_metadata, expected_metadata);
     }
 
     #[test]

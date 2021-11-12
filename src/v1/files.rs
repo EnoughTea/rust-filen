@@ -126,7 +126,7 @@ impl FileProperties {
         ensure!(
             size > 0,
             BadArgument {
-                message: "File size should be > 0"
+                message: "file size should be > 0"
             }
         );
 

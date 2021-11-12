@@ -58,7 +58,7 @@ pub trait HasMasterKeys {
                 crypto::decrypt_master_keys_metadata(metadata, last_master_key).context(DecryptMasterKeysFailed {})
             }
             None => BadArgument {
-                message: "Master keys metadata is absent, cannot decrypt None",
+                message: "master keys metadata is absent, cannot decrypt None",
             }
             .fail(),
         }
@@ -77,7 +77,7 @@ pub trait HasPrivateKey {
                 crypto::decrypt_private_key_metadata(metadata, last_master_key).context(DecryptPrivateKeyFailed {})
             }
             None => BadArgument {
-                message: "Private key metadata is absent, cannot decrypt None",
+                message: "private key metadata is absent, cannot decrypt None",
             }
             .fail(),
         }
@@ -94,7 +94,7 @@ pub trait HasPublicKey {
         match self.public_key_ref() {
             Some(key) => base64::decode(key).context(DecodePublicKeyFailed {}),
             None => BadArgument {
-                message: "Public key is absent, cannot decode None",
+                message: "public key is absent, cannot decode None",
             }
             .fail(),
         }
@@ -206,7 +206,7 @@ impl MasterKeysFetchRequestPayload {
         ensure!(
             !raw_master_keys.is_empty(),
             BadArgument {
-                message: "Given raw master keys should not be empty"
+                message: "given raw master keys should not be empty"
             }
         );
 
