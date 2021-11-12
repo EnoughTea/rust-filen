@@ -110,7 +110,7 @@ pub struct DownloadDirResponseData {
 utils::display_from_json!(DownloadDirResponseData);
 
 impl DownloadDirResponseData {
-    pub fn decrypt_all_folders(&self, last_master_key: &SecUtf8) -> Result<Vec<(FolderData, String)>> {
+    pub fn decrypt_all_folder_names(&self, last_master_key: &SecUtf8) -> Result<Vec<(FolderData, String)>> {
         self.folders
             .iter()
             .map(|data| {
@@ -123,7 +123,10 @@ impl DownloadDirResponseData {
             .collect::<Result<Vec<_>>>()
     }
 
-    pub fn decrypt_all_files(&self, last_master_key: &SecUtf8) -> Result<Vec<(DownloadedFileData, FileProperties)>> {
+    pub fn decrypt_all_file_properties(
+        &self,
+        last_master_key: &SecUtf8,
+    ) -> Result<Vec<(DownloadedFileData, FileProperties)>> {
         self.files
             .iter()
             .map(|data| {
