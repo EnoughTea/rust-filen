@@ -129,7 +129,7 @@ pub struct FileStorageInfo {
     pub chunks: u32,
 }
 
-/// Folder data for one of the user folders or for one of the folders in Filen sync folder.
+/// Represents one of the user folders or some folder under Filen sync folder.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FolderData {
     /// Folder ID, UUID V4 in hyphenated lowercase format.
@@ -192,12 +192,11 @@ impl LocationNameMetadata {
     }
 
     /// Decrypt name metadata into actual name.
-    pub fn decrypt_name_from_metadata(name_metadata: &str, last_master_key: &SecUtf8) -> Result<String> {
-        let decrypted_name_result = crypto::decrypt_metadata_str(name_metadata, last_master_key.unsecure()).context(
-            DecryptLocationNameFailed {
+    pub fn decrypt_name_from_metadata(name_metadata: &str, master_keys: &[SecUtf8]) -> Result<String> {
+        let decrypted_name_result =
+            crypto::decrypt_metadata_str_any_key(name_metadata, master_keys).context(DecryptLocationNameFailed {
                 metadata: name_metadata.to_owned(),
-            },
-        );
+            });
 
         decrypted_name_result.and_then(|name_metadata| {
             serde_json::from_str::<LocationNameMetadata>(&name_metadata)
@@ -218,8 +217,8 @@ pub trait HasFileMetadata {
     fn file_metadata_ref(&self) -> &str;
 
     /// Decrypts file metadata string.
-    fn decrypt_file_metadata(&self, last_master_key: &SecUtf8) -> Result<FileProperties> {
-        FileProperties::decrypt_file_metadata(self.file_metadata_ref(), last_master_key).context(
+    fn decrypt_file_metadata(&self, master_keys: &[SecUtf8]) -> Result<FileProperties> {
+        FileProperties::decrypt_file_metadata(self.file_metadata_ref(), master_keys).context(
             DecryptFileMetadataFailed {
                 metadata: self.file_metadata_ref().to_owned(),
             },
@@ -233,8 +232,8 @@ pub trait HasLocationName {
     fn name_metadata_ref(&self) -> &str;
 
     /// Decrypts name metadata into a location name.
-    fn decrypt_name_metadata(&self, last_master_key: &SecUtf8) -> Result<String> {
-        LocationNameMetadata::decrypt_name_from_metadata(self.name_metadata_ref(), last_master_key)
+    fn decrypt_name_metadata(&self, master_keys: &[SecUtf8]) -> Result<String> {
+        LocationNameMetadata::decrypt_name_from_metadata(self.name_metadata_ref(), master_keys)
     }
 }
 

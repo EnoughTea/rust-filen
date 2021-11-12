@@ -30,7 +30,7 @@ pub enum Error {
 
     #[snafu(display("download_and_decrypt_file call failed for data {}: {}", file_data, source))]
     DownloadAndDecryptFileFailed {
-        file_data: Box<DownloadedFileData>,
+        file_data: Box<FileData>,
         source: download_file::Error,
     },
 
@@ -99,38 +99,35 @@ pub struct DownloadDirRequestPayload {
 pub struct DownloadDirResponseData {
     pub folders: Vec<FolderData>,
 
-    pub files: Vec<DownloadedFileData>,
+    pub files: Vec<FileData>,
 }
 utils::display_from_json!(DownloadDirResponseData);
 
 impl DownloadDirResponseData {
-    pub fn decrypt_all_folder_names(&self, last_master_key: &SecUtf8) -> Result<Vec<(FolderData, String)>, FsError> {
+    pub fn decrypt_all_folder_names(&self, master_keys: &[SecUtf8]) -> Result<Vec<(FolderData, String)>, FsError> {
         self.folders
             .iter()
-            .map(|data| {
-                data.decrypt_name_metadata(last_master_key)
-                    .map(|name| (data.clone(), name))
-            })
+            .map(|data| data.decrypt_name_metadata(master_keys).map(|name| (data.clone(), name)))
             .collect::<Result<Vec<_>, FsError>>()
     }
 
     pub fn decrypt_all_file_properties(
         &self,
-        last_master_key: &SecUtf8,
-    ) -> Result<Vec<(DownloadedFileData, FileProperties)>, FsError> {
+        master_keys: &[SecUtf8],
+    ) -> Result<Vec<(FileData, FileProperties)>, FsError> {
         self.files
             .iter()
             .map(|data| {
-                data.decrypt_file_metadata(last_master_key)
+                data.decrypt_file_metadata(master_keys)
                     .map(|properties| (data.clone(), properties))
             })
             .collect::<Result<Vec<_>, FsError>>()
     }
 }
 
-/// Folder data for one of the folder in Filen sync folder.
+/// Represents a file downloadable from Filen.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DownloadedFileData {
+pub struct FileData {
     /// File ID, UUID V4 in hyphenated lowercase format.
     pub uuid: Uuid,
 
@@ -166,15 +163,15 @@ pub struct DownloadedFileData {
     /// use [crypto::encrypt_file_data] and [crypto::decrypt_file_data] for the task.
     pub version: u32,
 }
-utils::display_from_json!(DownloadedFileData);
+utils::display_from_json!(FileData);
 
-impl HasFileMetadata for DownloadedFileData {
+impl HasFileMetadata for FileData {
     fn file_metadata_ref(&self) -> &str {
         &self.metadata
     }
 }
 
-impl DownloadedFileData {
+impl FileData {
     /// Decrypt name, size and mime metadata. File key is contained within file metadata in
     /// [DownloadedFileData::metadata] field, which can be decrypted with [DownloadedFileData::decrypt_file_metadata]
     /// call.
@@ -296,7 +293,8 @@ pub async fn download_dir_shared_request_async(
         .context(DownloadDirSharedQueryFailed {})
 }
 
-/// Calls [DOWNLOAD_DIR_PATH] endpoint. Used to get a list of user's folders.
+/// Calls [DOWNLOAD_DIR_PATH] endpoint. Used to get a list of user's folders and files.
+///
 /// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder,
 /// created by Filen's client.
 pub fn download_dir_request(
@@ -306,7 +304,8 @@ pub fn download_dir_request(
     queries::query_filen_api(DOWNLOAD_DIR_PATH, payload, filen_settings).context(DownloadDirQueryFailed {})
 }
 
-/// Calls [DOWNLOAD_DIR_PATH] endpoint asynchronously. Used to get a list of user's folders.
+/// Calls [DOWNLOAD_DIR_PATH] endpoint asynchronously. Used to get a list of user's folders and files.
+///
 /// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder,
 /// created by Filen's client.
 #[cfg(feature = "async")]
@@ -371,7 +370,7 @@ mod tests {
         let data = download_dir_response.data.unwrap();
         let test_file = data.files.get(0).unwrap();
 
-        let test_file_metadata_result = test_file.decrypt_file_metadata(&m_key);
+        let test_file_metadata_result = test_file.decrypt_file_metadata(&[m_key]);
         let test_file_metadata = test_file_metadata_result.unwrap();
         assert_eq!(test_file_metadata.key.unsecure(), "sh1YRHfx22Ij40tQBbt6BgpBlqkzch8Y");
         assert_eq!(test_file_metadata.last_modified, 1383742218);

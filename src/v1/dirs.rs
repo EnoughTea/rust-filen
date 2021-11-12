@@ -437,25 +437,22 @@ utils::display_from_json!(DirContentResponseData);
 impl DirContentResponseData {
     pub fn decrypt_all_folder_names(
         &self,
-        last_master_key: &SecUtf8,
+        master_keys: &[SecUtf8],
     ) -> Result<Vec<(DirContentFolder, String)>, FsError> {
         self.folders
             .iter()
-            .map(|data| {
-                data.decrypt_name_metadata(last_master_key)
-                    .map(|name| (data.clone(), name))
-            })
+            .map(|data| data.decrypt_name_metadata(master_keys).map(|name| (data.clone(), name)))
             .collect::<Result<Vec<_>, FsError>>()
     }
 
     pub fn decrypt_all_file_properties(
         &self,
-        last_master_key: &SecUtf8,
+        master_keys: &[SecUtf8],
     ) -> Result<Vec<(DirContentFile, FileProperties)>, FsError> {
         self.uploads
             .iter()
             .map(|data| {
-                data.decrypt_file_metadata(last_master_key)
+                data.decrypt_file_metadata(master_keys)
                     .map(|properties| (data.clone(), properties))
             })
             .collect::<Result<Vec<_>, FsError>>()
@@ -875,7 +872,8 @@ mod tests {
         let m_key = SecUtf8::from("b49cadfb92e1d7d54e9dd9d33ba9feb2af1f10ae");
         let payload = DirCreateRequestPayload::new(API_KEY.clone(), NAME, &m_key);
 
-        let decrypted_name = LocationNameMetadata::decrypt_name_from_metadata(&payload.name_metadata, &m_key).unwrap();
+        let decrypted_name =
+            LocationNameMetadata::decrypt_name_from_metadata(&payload.name_metadata, &[m_key]).unwrap();
 
         assert_eq!(payload.api_key, *API_KEY);
         assert_eq!(decrypted_name, NAME);

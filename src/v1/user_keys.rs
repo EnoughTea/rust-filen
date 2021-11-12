@@ -52,10 +52,10 @@ pub trait HasMasterKeys {
     fn master_keys_metadata_ref(&self) -> Option<&str>;
 
     /// Decrypts `master_keys_metadata_ref` into a list of key strings, using the specified user's last master key.
-    fn decrypt_master_keys(&self, last_master_key: &SecUtf8) -> Result<Vec<SecUtf8>> {
+    fn decrypt_master_keys(&self, master_keys: &[SecUtf8]) -> Result<Vec<SecUtf8>> {
         match self.master_keys_metadata_ref() {
             Some(metadata) => {
-                crypto::decrypt_master_keys_metadata(metadata, last_master_key).context(DecryptMasterKeysFailed {})
+                crypto::decrypt_master_keys_metadata(metadata, master_keys).context(DecryptMasterKeysFailed {})
             }
             None => BadArgument {
                 message: "master keys metadata is absent, cannot decrypt None",
@@ -71,10 +71,10 @@ pub trait HasPrivateKey {
     fn private_key_metadata_ref(&self) -> Option<&str>;
 
     /// Decrypts `private_key_metadata_ref` into RSA key bytes, using the specified user's last master key.
-    fn decrypt_private_key(&self, last_master_key: &SecUtf8) -> Result<SecVec<u8>> {
+    fn decrypt_private_key(&self, master_keys: &[SecUtf8]) -> Result<SecVec<u8>> {
         match self.private_key_metadata_ref() {
             Some(metadata) => {
-                crypto::decrypt_private_key_metadata(metadata, last_master_key).context(DecryptPrivateKeyFailed {})
+                crypto::decrypt_private_key_metadata(metadata, master_keys).context(DecryptPrivateKeyFailed {})
             }
             None => BadArgument {
                 message: "private key metadata is absent, cannot decrypt None",
@@ -397,7 +397,7 @@ mod tests {
             private_key_metadata: Some(private_key_metadata_encrypted),
         };
 
-        let decrypted_private_key = user_key_pair.decrypt_private_key(&SecUtf8::from(m_key)).unwrap();
+        let decrypted_private_key = user_key_pair.decrypt_private_key(&[SecUtf8::from(m_key)]).unwrap();
 
         assert_eq!(decrypted_private_key.unsecure(), expected.unsecure());
     }

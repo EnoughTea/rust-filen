@@ -139,7 +139,7 @@ pub async fn download_file_chunk_async(
 /// You can pass [crate::NO_RETRIES] if you really want to fail the entire file download even if a single chunk
 /// download request fails temporarily, otherwise [crate::STANDARD_RETRIES] is a better fit.
 pub fn download_and_decrypt_file_from_data_and_key<W: Write>(
-    file_data: &DownloadedFileData,
+    file_data: &FileData,
     file_key: &SecUtf8,
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
@@ -164,7 +164,7 @@ pub fn download_and_decrypt_file_from_data_and_key<W: Write>(
 /// download request fails temporarily, otherwise [crate::STANDARD_RETRIES] is a better fit.
 #[cfg(feature = "async")]
 pub async fn download_and_decrypt_file_from_data_and_key_async<W: Write>(
-    file_data: &DownloadedFileData,
+    file_data: &FileData,
     file_key: &SecUtf8,
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,

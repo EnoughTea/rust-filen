@@ -306,8 +306,9 @@ pub fn encrypt_master_keys_metadata(
     encrypt_metadata_str(&master_keys_unsecure, last_master_key.unsecure(), metadata_version)
 }
 
-/// Helper which decrypts master keys stored in a metadata into a list of key strings, using specified master key.
-pub fn decrypt_master_keys_metadata(master_keys_metadata: &str, last_master_key: &SecUtf8) -> Result<Vec<SecUtf8>> {
+/// Helper which decrypts master keys stored in a metadata into a list of key strings,
+/// using one of the specified master keys.
+pub fn decrypt_master_keys_metadata(master_keys_metadata: &str, master_keys: &[SecUtf8]) -> Result<Vec<SecUtf8>> {
     ensure!(
         !master_keys_metadata.is_empty(),
         BadArgument {
@@ -315,12 +316,13 @@ pub fn decrypt_master_keys_metadata(master_keys_metadata: &str, last_master_key:
         }
     );
 
-    decrypt_metadata_str(master_keys_metadata, last_master_key.unsecure())
+    decrypt_metadata_str_any_key(master_keys_metadata, master_keys)
         .map(|keys| keys.split('|').map(SecUtf8::from).collect())
 }
 
-/// Helper which decrypts user's RSA private key stored in a metadata into key bytes, using specified master key.
-pub fn decrypt_private_key_metadata(private_key_metadata: &str, last_master_key: &SecUtf8) -> Result<SecVec<u8>> {
+/// Helper which decrypts user's RSA private key stored in a metadata into key bytes,
+/// using one of the specified master keys.
+pub fn decrypt_private_key_metadata(private_key_metadata: &str, master_keys: &[SecUtf8]) -> Result<SecVec<u8>> {
     fn decode_base64_to_secvec(string: &str) -> Result<SecVec<u8>> {
         base64::decode(string).context(CannotDecodeBase64 {}).map(SecVec::from)
     }
@@ -332,7 +334,7 @@ pub fn decrypt_private_key_metadata(private_key_metadata: &str, last_master_key:
         }
     );
 
-    decrypt_metadata_str(private_key_metadata, last_master_key.unsecure()).and_then(|str| decode_base64_to_secvec(&str))
+    decrypt_metadata_str_any_key(private_key_metadata, master_keys).and_then(|str| decode_base64_to_secvec(&str))
 }
 
 /// Calculates RSA hash (using SHA512 with OAEP padding) from given data with the specified RSA public key.

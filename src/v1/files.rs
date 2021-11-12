@@ -160,8 +160,8 @@ impl FileProperties {
     }
 
     /// Decrypts file properties from metadata string.
-    pub fn decrypt_file_metadata(metadata: &str, last_master_key: &SecUtf8) -> Result<FileProperties> {
-        crypto::decrypt_metadata_str(metadata, last_master_key.unsecure())
+    pub fn decrypt_file_metadata(metadata: &str, master_keys: &[SecUtf8]) -> Result<FileProperties> {
+        crypto::decrypt_metadata_str_any_key(metadata, master_keys)
             .context(DecryptFileMetadataFailed {
                 metadata: metadata.to_owned(),
             })

@@ -52,7 +52,7 @@ pub struct GetDirResponseData {
 }
 utils::display_from_json!(GetDirResponseData);
 
-/// Folder data for one of the folder in Filen sync folder.
+/// Represents a file stored under Filen sync folder.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct SyncedFileData {
     /// File ID, UUID V4 in hyphenated lowercase format.
@@ -79,8 +79,8 @@ utils::display_from_json!(SyncedFileData);
 
 impl SyncedFileData {
     /// Decrypt name metadata into actual folder name.
-    pub fn decrypt_file_metadata(&self, last_master_key: &SecUtf8) -> Result<FileProperties> {
-        FileProperties::decrypt_file_metadata(&self.metadata, last_master_key).context(DecryptFileMetadataFailed {
+    pub fn decrypt_file_metadata(&self, master_keys: &[SecUtf8]) -> Result<FileProperties> {
+        FileProperties::decrypt_file_metadata(&self.metadata, master_keys).context(DecryptFileMetadataFailed {
             file_data: self.clone(),
         })
     }

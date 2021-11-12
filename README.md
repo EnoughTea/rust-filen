@@ -90,8 +90,9 @@ if !login_response.status || login_response.data.is_none() {
 let login_response_data = login_response.data.unwrap();
 let api_key = login_response_data.api_key;
 let last_master_key = filen_password_and_m_key.m_key;
-// Just using filen_password_and_m_key.m_key everywhere is not correct,
+// Just using filen_password_and_m_key.m_key everywhere as is not correct,
 // but it will work for the demo purposes.
+let user_master_keys = &[last_master_key.clone()];
 ```
 
 ### Gettings user's default folder
@@ -127,9 +128,9 @@ if !download_dir_response.status || download_dir_response.data.is_none() {
         download_dir_response.message
     );
 }
-// Again, this is just a helper method, feel free to decrypt metadata for every [DownloadedFileData] yourself.
+// Again, this is just a helper method, feel free to decrypt metadata for every FileData yourself.
 let download_dir_response_data = download_dir_response.data.unwrap();
-let default_folder_files_and_properties = download_dir_response_data.decrypt_all_files(&last_master_key)?;
+let default_folder_files_and_properties = download_dir_response_data.decrypt_all_file_properties(user_master_keys)?;
 ```
 
 ### Downloading and decrypting a file
