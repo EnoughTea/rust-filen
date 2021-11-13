@@ -247,7 +247,7 @@ impl LocationNameMetadata {
         rsa_public_key_bytes: &[u8],
     ) -> Result<String, crypto::Error> {
         let name_json = json!(LocationNameMetadata { name: name.into() }).to_string();
-        crypto::encrypt_rsa(name_json.as_bytes(), rsa_public_key_bytes).map(|encrypted| base64::encode(encrypted))
+        crypto::encrypt_rsa(name_json.as_bytes(), rsa_public_key_bytes).map(base64::encode)
     }
 
     /// Returns hashed given location name.
@@ -357,7 +357,7 @@ pub trait HasLinkKey {
                 .context(DecryptLinkKeyFailed {
                     metadata: link_key_metadata.to_owned(),
                 })
-                .and_then(|link_key| Ok(SecUtf8::from(link_key))),
+                .map(SecUtf8::from),
             None => BadArgument {
                 message: "link key metadata is absent, cannot decrypt None",
             }

@@ -197,6 +197,7 @@ impl HasLocationName for UserBaseFolder {
 pub struct UserBaseFoldersResponseData {
     pub folders: Vec<UserBaseFolder>,
 }
+utils::display_from_json!(UserBaseFoldersResponseData);
 
 api_response_struct!(
     /// Response for [USER_BASE_FOLDERS_PATH] endpoint.
