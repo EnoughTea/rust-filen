@@ -531,7 +531,6 @@ pub struct DirSubCreateRequestPayload {
     pub name_hashed: String,
 
     /// Parent folder ID.
-    #[serde(rename = "type")]
     pub parent: Uuid,
 
     /// Folder ID; hyphenated lowercased UUID V4.
