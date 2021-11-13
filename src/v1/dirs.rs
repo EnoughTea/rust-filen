@@ -439,25 +439,25 @@ impl DirContentResponseData {
     pub fn decrypt_all_folder_names(
         &self,
         master_keys: &[SecUtf8],
-    ) -> Result<Vec<(DirContentFolder, String)>, FsError> {
+    ) -> Result<Vec<(DirContentFolder, String)>, fs::Error> {
         self.folders
             .iter()
             .map(|data| data.decrypt_name_metadata(master_keys).map(|name| (data.clone(), name)))
-            .collect::<Result<Vec<_>, FsError>>()
+            .collect::<Result<Vec<_>, fs::Error>>()
     }
 
     /// Decrypts all encrypted file properties and associates them with file data.
     pub fn decrypt_all_file_properties(
         &self,
         master_keys: &[SecUtf8],
-    ) -> Result<Vec<(DirContentFile, FileProperties)>, FilesError> {
+    ) -> Result<Vec<(DirContentFile, FileProperties)>, files::Error> {
         self.uploads
             .iter()
             .map(|data| {
                 data.decrypt_file_metadata(master_keys)
                     .map(|properties| (data.clone(), properties))
             })
-            .collect::<Result<Vec<_>, FilesError>>()
+            .collect::<Result<Vec<_>, files::Error>>()
     }
 }
 

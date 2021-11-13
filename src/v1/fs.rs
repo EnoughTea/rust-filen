@@ -201,19 +201,19 @@ pub(crate) struct LocationNameMetadata {
 
 impl LocationNameMetadata {
     /// Puts the given name into Filen-expected JSON and encrypts it into metadata.
-    pub fn encrypt_name_to_metadata<S: Into<String>>(name: S, last_master_key: &SecUtf8) -> String {
+    pub fn encrypt_name_to_metadata<S: Into<String>>(name: S, key: &SecUtf8) -> String {
         let name_json = json!(LocationNameMetadata { name: name.into() }).to_string();
-        crypto::encrypt_metadata_str(&name_json, last_master_key, super::METADATA_VERSION).unwrap()
+        crypto::encrypt_metadata_str(&name_json, key, super::METADATA_VERSION).unwrap()
     }
 
     /// Decrypt name metadata into actual name.
-    pub fn decrypt_name_from_metadata(name_metadata: &str, master_keys: &[SecUtf8]) -> Result<String> {
+    pub fn decrypt_name_from_metadata(name_metadata: &str, keys: &[SecUtf8]) -> Result<String> {
         if name_metadata.eq_ignore_ascii_case("default") {
             return Ok("Default".to_owned());
         }
 
         let decrypted_name_result =
-            crypto::decrypt_metadata_str_any_key(name_metadata, master_keys).context(DecryptLocationNameFailed {
+            crypto::decrypt_metadata_str_any_key(name_metadata, keys).context(DecryptLocationNameFailed {
                 metadata: name_metadata.to_owned(),
             });
 
@@ -222,6 +222,8 @@ impl LocationNameMetadata {
         })
     }
 
+    /// Decrypts location name from a metadata string using RSA private key.
+    /// Assumes given metadata string is base64-encoded.
     pub fn decrypt_name_from_metadata_rsa(name_metadata: &str, rsa_private_key_bytes: &SecVec<u8>) -> Result<String> {
         if name_metadata.eq_ignore_ascii_case("default") {
             return Ok("Default".to_owned());
@@ -236,6 +238,16 @@ impl LocationNameMetadata {
             })?;
 
         LocationNameMetadata::extract_name_from_folder_properties_json(&decrypted_folder_properties_json)
+    }
+
+    /// Encrypts location name to a metadata string using RSA public key of the user with whom item is shared aka receiver.
+    /// Returns base64-encoded bytes.
+    pub fn encrypt_name_to_metadata_rsa<S: Into<String>>(
+        name: S,
+        rsa_public_key_bytes: &[u8],
+    ) -> Result<String, crypto::Error> {
+        let name_json = json!(LocationNameMetadata { name: name.into() }).to_string();
+        crypto::encrypt_rsa(name_json.as_bytes(), rsa_public_key_bytes).map(|encrypted| base64::encode(encrypted))
     }
 
     /// Returns hashed given location name.
@@ -256,7 +268,7 @@ pub trait HasFileMetadata {
     fn file_metadata_ref(&self) -> &str;
 
     /// Decrypts file metadata string using user's master keys.
-    fn decrypt_file_metadata(&self, master_keys: &[SecUtf8]) -> Result<FileProperties, FilesError> {
+    fn decrypt_file_metadata(&self, master_keys: &[SecUtf8]) -> Result<FileProperties, files::Error> {
         FileProperties::decrypt_file_metadata(self.file_metadata_ref(), master_keys)
     }
 }
@@ -268,7 +280,7 @@ pub trait HasSharedFileMetadata {
     fn file_metadata_ref(&self) -> &str;
 
     /// Decrypts file metadata string using user's RSA private key.
-    fn decrypt_file_metadata(&self, rsa_private_key_bytes: &SecVec<u8>) -> Result<FileProperties, FilesError> {
+    fn decrypt_file_metadata(&self, rsa_private_key_bytes: &SecVec<u8>) -> Result<FileProperties, files::Error> {
         FileProperties::decrypt_file_metadata_rsa(self.file_metadata_ref(), rsa_private_key_bytes)
     }
 }
@@ -280,7 +292,7 @@ pub trait HasLinkedFileMetadata {
     fn file_metadata_ref(&self) -> &str;
 
     /// Decrypts file metadata string using link key.
-    fn decrypt_file_metadata(&self, link_key: SecUtf8) -> Result<FileProperties, FilesError> {
+    fn decrypt_file_metadata(&self, link_key: SecUtf8) -> Result<FileProperties, files::Error> {
         FileProperties::decrypt_file_metadata(self.file_metadata_ref(), &[link_key])
     }
 }

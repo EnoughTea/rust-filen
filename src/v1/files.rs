@@ -46,9 +46,6 @@ pub enum Error {
     #[snafu(display("Failed to decrypt file metadata '{}' using RSA: {}", metadata, source))]
     DecryptFileMetadataRsaFailed { metadata: String, source: crypto::Error },
 
-    #[snafu(display("Failed to encrypt file metadata '{}': {}", metadata, source))]
-    EncryptFileMetadataFailed { metadata: String, source: crypto::Error },
-
     #[snafu(display("Failed to encrypt file metadata '{}' using RSA: {}", metadata, source))]
     EncryptFileMetadataRsaFailed { metadata: String, source: crypto::Error },
 
@@ -167,16 +164,12 @@ impl FileProperties {
     }
 
     /// Encrypts file properties to a metadata string.
-    pub fn encrypt_file_metadata(file_properties: &FileProperties, last_master_key: &SecUtf8) -> Result<String> {
+    pub fn encrypt_file_metadata(file_properties: &FileProperties, last_master_key: &SecUtf8) -> String {
         let metadata_json = json!(file_properties).to_string();
-        crypto::encrypt_metadata_str(&metadata_json, last_master_key, METADATA_VERSION).context(
-            EncryptFileMetadataFailed {
-                metadata: metadata_json,
-            },
-        )
+        crypto::encrypt_metadata_str(&metadata_json, last_master_key, METADATA_VERSION).unwrap()
     }
 
-    /// Decrypts file properties from a metadata string using RSA for public sharing.
+    /// Decrypts file properties from a metadata string using RSA private key.
     /// Assumes given metadata string is base64-encoded.
     pub fn decrypt_file_metadata_rsa(metadata: &str, rsa_private_key_bytes: &SecVec<u8>) -> Result<FileProperties> {
         let decoded = base64::decode(metadata).context(CannotDecodeBase64Metadata {
@@ -191,7 +184,8 @@ impl FileProperties {
         })
     }
 
-    /// Encrypts file properties to a metadata string using RSA for public sharing. Returns base64-encoded bytes.
+    /// Encrypts file properties to a metadata string using RSA public key of the user with whom item is shared
+    /// aka receiver. Returns base64-encoded bytes.
     pub fn encrypt_file_metadata_rsa(file_properties: &FileProperties, rsa_public_key_bytes: &[u8]) -> Result<String> {
         let metadata_json = json!(file_properties).to_string();
         let encrypted = crypto::encrypt_rsa(metadata_json.as_bytes(), rsa_public_key_bytes).context(
@@ -202,7 +196,7 @@ impl FileProperties {
         Ok(base64::encode(&encrypted))
     }
 
-    pub fn to_metadata_string(&self, last_master_key: &SecUtf8) -> Result<String> {
+    pub fn to_metadata_string(&self, last_master_key: &SecUtf8) -> String {
         FileProperties::encrypt_file_metadata(self, last_master_key)
     }
 
@@ -290,7 +284,7 @@ impl FileRenameRequestPayload {
     ) -> FileRenameRequestPayload {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(new_file_name, last_master_key);
         let name_hashed = LocationNameMetadata::name_hashed(new_file_name);
-        let metadata = file_metadata.to_metadata_string(last_master_key).unwrap(); // Should never panic...
+        let metadata = file_metadata.to_metadata_string(last_master_key);
         FileRenameRequestPayload {
             api_key,
             uuid,

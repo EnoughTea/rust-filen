@@ -37,11 +37,44 @@ pub struct LinkDirItemRenameRequestPayload {
     #[serde(rename = "linkUUID")]
     pub link_uuid: Uuid,
 
-    /// Folder or file properties, encrypted with RSA public key of the user this item is being shared with,
-    /// base64-encoded.
+    /// Folder or file properties, encrypted with link key.
     pub metadata: String,
 }
 utils::display_from_json!(LinkDirItemRenameRequestPayload);
+
+impl LinkDirItemRenameRequestPayload {
+    pub fn from_file_properties(
+        api_key: SecUtf8,
+        link_uuid: Uuid,
+        file_uuid: Uuid,
+        file_properties: &FileProperties,
+        link_key: &SecUtf8,
+    ) -> LinkDirItemRenameRequestPayload {
+        let metadata = file_properties.to_metadata_string(link_key);
+        LinkDirItemRenameRequestPayload {
+            api_key,
+            metadata,
+            link_uuid,
+            uuid: file_uuid,
+        }
+    }
+
+    pub fn from_folder_name(
+        api_key: SecUtf8,
+        link_uuid: Uuid,
+        folder_uuid: Uuid,
+        folder_name: &str,
+        link_key: &SecUtf8,
+    ) -> LinkDirItemRenameRequestPayload {
+        let metadata = LocationNameMetadata::encrypt_name_to_metadata(folder_name, link_key);
+        LinkDirItemRenameRequestPayload {
+            api_key,
+            metadata,
+            link_uuid,
+            uuid: folder_uuid,
+        }
+    }
+}
 
 /// Used for requests to [LINK_DIR_ITEM_STATUS_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -162,7 +195,7 @@ pub async fn link_dir_item_status_request_async(
         .context(LinkDirItemStatusQueryFailed {})
 }
 
-/// Calls [LINK_DIR_STATUS_PATH] endpoint.
+/// Calls [LINK_DIR_STATUS_PATH] endpoint. Used to check if given folder has links and return them, if any.
 pub fn link_dir_status_request(
     payload: &LinkDirStatusRequestPayload,
     filen_settings: &FilenSettings,
@@ -171,6 +204,7 @@ pub fn link_dir_status_request(
 }
 
 /// Calls [LINK_DIR_STATUS_PATH] endpoint asynchronously.
+/// Used to check if given folder has links and return them, if any.
 #[cfg(feature = "async")]
 pub async fn link_dir_status_request_async(
     payload: &LinkDirStatusRequestPayload,

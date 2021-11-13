@@ -79,6 +79,46 @@ pub struct ShareRequestPayload {
 }
 utils::display_from_json!(ShareRequestPayload);
 
+impl ShareRequestPayload {
+    pub fn from_file_properties(
+        api_key: SecUtf8,
+        file_uuid: Uuid,
+        parent: Uuid,
+        file_properties: &FileProperties,
+        email: String,
+        rsa_public_key_bytes: &[u8],
+    ) -> Result<ShareRequestPayload, files::Error> {
+        let metadata = file_properties.to_metadata_rsa_string(rsa_public_key_bytes)?;
+        Ok(ShareRequestPayload {
+            api_key,
+            email,
+            metadata,
+            parent,
+            share_type: ShareTarget::File,
+            uuid: file_uuid,
+        })
+    }
+
+    pub fn from_folder_name(
+        api_key: SecUtf8,
+        folder_uuid: Uuid,
+        parent: Uuid,
+        folder_name: &str,
+        email: String,
+        rsa_public_key_bytes: &[u8],
+    ) -> Result<ShareRequestPayload, CryptoError> {
+        let metadata = LocationNameMetadata::encrypt_name_to_metadata_rsa(folder_name, rsa_public_key_bytes)?;
+        Ok(ShareRequestPayload {
+            api_key,
+            email,
+            metadata,
+            parent,
+            share_type: ShareTarget::Folder,
+            uuid: folder_uuid,
+        })
+    }
+}
+
 /// Used for requests to [SHARE_DIR_STATUS_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ShareDirStatusRequestPayload {
@@ -116,7 +156,7 @@ pub struct ShareDirStatusResponseData {
     /// True if the specified folder is shared; false otherwise.
     pub sharing: bool,
 
-    /// Emails and public keys of the users the folder is shared with. Empty if folder is not shared.
+    /// Emails and public keys of 'receivers', the users the folder is shared with. Empty if folder is not shared.
     #[serde(default)]
     pub users: Vec<UserEmailWithPublicKey>,
 }
@@ -182,7 +222,7 @@ pub struct UserSharedOutRequestPayload {
 
     /// ID of the user with whom items are shared.
     #[serde(rename = "receiverId")]
-    pub receiver_id: u32,
+    pub receiver_id: u64,
 
     // TODO: There is no way to tell its purpose from sources, need to ask Dwynr later.
     /// This flag is always set to true.
@@ -254,7 +294,7 @@ pub struct UserSharedFolder {
     pub uuid: Uuid,
 
     /// Folder metadata. For shared-in listings, it is encrypted with RSA public key of the user
-    /// this item is being shared with aka sharer, base64-encoded.
+    /// this item is being shared with aka receiver, base64-encoded.
     /// For shared-out listings, it is encrypted with current user's last master key, as usual.
     pub metadata: String,
 
@@ -380,13 +420,47 @@ pub struct UserSharedItemRenameRequestPayload {
     /// ID of the user with whom item is shared.
     /// Set to 0 when renaming is done from the perspective of the user with whom item is shared aka receiver.
     #[serde(rename = "receiverId")]
-    pub receiver_id: u32,
+    pub receiver_id: u64,
 
     /// Folder or file properties, encrypted with RSA public key of the user with whom item is shared aka receiver,
     /// base64-encoded.
     pub metadata: String,
 }
 utils::display_from_json!(UserSharedItemRenameRequestPayload);
+
+impl UserSharedItemRenameRequestPayload {
+    pub fn from_file_properties(
+        api_key: SecUtf8,
+        receiver_id: u64,
+        file_uuid: Uuid,
+        file_properties: &FileProperties,
+        rsa_public_key_bytes: &[u8],
+    ) -> Result<UserSharedItemRenameRequestPayload, files::Error> {
+        let metadata = file_properties.to_metadata_rsa_string(rsa_public_key_bytes)?;
+        Ok(UserSharedItemRenameRequestPayload {
+            api_key,
+            uuid: file_uuid,
+            receiver_id,
+            metadata,
+        })
+    }
+
+    pub fn from_folder_name(
+        api_key: SecUtf8,
+        receiver_id: u64,
+        folder_uuid: Uuid,
+        folder_name: &str,
+        rsa_public_key_bytes: &[u8],
+    ) -> Result<UserSharedItemRenameRequestPayload, CryptoError> {
+        let metadata = LocationNameMetadata::encrypt_name_to_metadata_rsa(folder_name, rsa_public_key_bytes)?;
+        Ok(UserSharedItemRenameRequestPayload {
+            api_key,
+            uuid: folder_uuid,
+            receiver_id,
+            metadata,
+        })
+    }
+}
 
 /// Used for requests to [USER_SHARED_ITEM_IN_REMOVE_PATH] and [USER_SHARED_ITEM_OUT_REMOVE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -398,7 +472,7 @@ pub struct UserSharedItemRemoveRequestPayload {
     /// ID of the user this item is being shared with.
     /// Set to 0 when removing is done from the perspective of the user with whom item is shared aka receiver.
     #[serde(rename = "receiverId")]
-    pub receiver_id: u32,
+    pub receiver_id: u64,
 
     /// ID of the shared item; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -453,7 +527,8 @@ api_response_struct!(
     UserSharedItemStatusResponsePayload<Option<UserSharedItemStatusResponseData>>
 );
 
-/// Calls [SHARE_DIR_STATUS_PATH] endpoint.
+/// Calls [SHARE_DIR_STATUS_PATH] endpoint. Used to check if given folder is shared and return 'receivers',
+/// the users the folder is shared with, if any.
 pub fn share_dir_status_request(
     payload: &ShareDirStatusRequestPayload,
     filen_settings: &FilenSettings,
@@ -461,7 +536,8 @@ pub fn share_dir_status_request(
     queries::query_filen_api(SHARE_DIR_STATUS_PATH, payload, filen_settings).context(ShareDirStatusQueryFailed {})
 }
 
-/// Calls [SHARE_DIR_STATUS_PATH] endpoint asynchronously.
+/// Calls [SHARE_DIR_STATUS_PATH] endpoint asynchronously. Used to check if given folder is shared and return 'receivers',
+/// the users the folder is shared with, if any.
 #[cfg(feature = "async")]
 pub async fn share_dir_status_request_async(
     payload: &ShareDirStatusRequestPayload,
@@ -472,12 +548,12 @@ pub async fn share_dir_status_request_async(
         .context(ShareDirStatusQueryFailed {})
 }
 
-/// Calls [SHARE_PATH] endpoint.
+/// Calls [SHARE_PATH] endpoint. Used to share a file or folder.
 pub fn share_request(payload: &ShareRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
     queries::query_filen_api(SHARE_PATH, payload, filen_settings).context(ShareQueryFailed {})
 }
 
-/// Calls [SHARE_PATH] endpoint asynchronously.
+/// Calls [SHARE_PATH] endpoint asynchronously. Used to share a file or folder.
 #[cfg(feature = "async")]
 pub async fn share_request_async(
     payload: &ShareRequestPayload,

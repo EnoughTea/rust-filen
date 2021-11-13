@@ -425,7 +425,7 @@ utils::display_from_json!(FileRenamedInfo);
 
 impl FileRenamedInfo {
     /// Decrypts old file metadata string.
-    fn decrypt_old_file_metadata(&self, master_keys: &[SecUtf8]) -> Result<FileProperties, FilesError> {
+    fn decrypt_old_file_metadata(&self, master_keys: &[SecUtf8]) -> Result<FileProperties, files::Error> {
         FileProperties::decrypt_file_metadata(&self.old_metadata, master_keys)
     }
 }
@@ -572,7 +572,7 @@ utils::display_from_json!(FolderRenamedInfo);
 
 impl FolderRenamedInfo {
     /// Decrypts old name metadata into a location name.
-    fn decrypt_old_name_metadata(&self, master_keys: &[SecUtf8]) -> Result<String, FsError> {
+    fn decrypt_old_name_metadata(&self, master_keys: &[SecUtf8]) -> Result<String, fs::Error> {
         LocationNameMetadata::decrypt_name_from_metadata(&self.old_name_metadata, master_keys)
     }
 }

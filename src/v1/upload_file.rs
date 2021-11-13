@@ -54,9 +54,6 @@ pub enum Error {
     #[snafu(display("Filen did not accept uploaded dummy chunk: {}", reason))]
     DummyChunkNotAccepted { reason: String, backtrace: Backtrace },
 
-    #[snafu(display("Failed to encrypt file metadata: {}", source))]
-    EncryptFileMetadataFailed { source: files::Error },
-
     #[snafu(display("Cannot read file chunks due to IO error: {}", source))]
     SeekReadError { source: std::io::Error },
 
@@ -180,20 +177,18 @@ impl FileUploadProperties {
         version: u32,
         parent_folder_uuid: Uuid,
         last_master_key: &SecUtf8,
-    ) -> Result<FileUploadProperties> {
+    ) -> FileUploadProperties {
         let rm = utils::random_alphanumeric_string(32);
         let upload_key = utils::random_alphanumeric_string(32);
 
-        let file_metadata_encrypted = file_properties
-            .to_metadata_string(last_master_key)
-            .context(EncryptFileMetadataFailed {})?;
+        let file_metadata_encrypted = file_properties.to_metadata_string(last_master_key);
         let name_metadata_encrypted = file_properties.name_encrypted();
         let size_metadata_encrypted = file_properties.size_encrypted();
         let mime_metadata_encrypted = file_properties.mime_encrypted();
         let name_hashed = LocationNameMetadata::name_hashed(&file_properties.name);
 
         let file_chunks = calculate_chunk_count(FILE_CHUNK_SIZE, file_properties.size);
-        Ok(FileUploadProperties {
+        FileUploadProperties {
             uuid: Uuid::new_v4(),
             name_metadata: name_metadata_encrypted,
             name_hashed,
@@ -207,7 +202,7 @@ impl FileUploadProperties {
             expire: Expire::Never,
             parent_uuid: parent_folder_uuid,
             version,
-        })
+        }
     }
 
     /// Produces percent-encoded string of query parameters for Filen upload endpoint, using this properties.
@@ -441,7 +436,7 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
     reader: &mut BufReader<R>,
 ) -> Result<FileUploadInfo> {
     let upload_properties =
-        FileUploadProperties::from_file_properties(file_properties, version, parent_uuid, last_master_key)?;
+        FileUploadProperties::from_file_properties(file_properties, version, parent_uuid, last_master_key);
     let chunk_upload_responses = upload_chunks(
         api_key,
         FILE_CHUNK_SIZE,
@@ -508,7 +503,7 @@ pub async fn encrypt_and_upload_file_async<R: Read + Seek>(
     reader: &mut BufReader<R>,
 ) -> Result<FileUploadInfo> {
     let upload_properties =
-        FileUploadProperties::from_file_properties(file_properties, version, parent_uuid, last_master_key)?;
+        FileUploadProperties::from_file_properties(file_properties, version, parent_uuid, last_master_key);
     let chunk_upload_responses = upload_chunks_async(
         api_key,
         FILE_CHUNK_SIZE,
@@ -708,7 +703,7 @@ mod tests {
     fn uploaded_file_properties_should_produce_query_string_with_expected_parts() {
         let m_key = SecUtf8::from("b49cadfb92e1d7d54e9dd9d33ba9feb2af1f10ae");
         let file_metadata = FileProperties::from_name_size_modified("test.txt", 128, &SystemTime::now()).unwrap();
-        let properties = FileUploadProperties::from_file_properties(&file_metadata, 1, Uuid::nil(), &m_key).unwrap();
+        let properties = FileUploadProperties::from_file_properties(&file_metadata, 1, Uuid::nil(), &m_key);
 
         let query_params = properties.to_query_params(0, &SecUtf8::from("some api key"));
         let query_params_2 = properties.to_query_params(0, &SecUtf8::from("some api key"));

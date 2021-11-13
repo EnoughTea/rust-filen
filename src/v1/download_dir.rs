@@ -349,24 +349,24 @@ pub struct DownloadDirResponseData {
 utils::display_from_json!(DownloadDirResponseData);
 
 impl DownloadDirResponseData {
-    pub fn decrypt_all_folder_names(&self, master_keys: &[SecUtf8]) -> Result<Vec<(FolderData, String)>, FsError> {
+    pub fn decrypt_all_folder_names(&self, master_keys: &[SecUtf8]) -> Result<Vec<(FolderData, String)>, fs::Error> {
         self.folders
             .iter()
             .map(|data| data.decrypt_name_metadata(master_keys).map(|name| (data.clone(), name)))
-            .collect::<Result<Vec<_>, FsError>>()
+            .collect::<Result<Vec<_>, fs::Error>>()
     }
 
     pub fn decrypt_all_file_properties(
         &self,
         master_keys: &[SecUtf8],
-    ) -> Result<Vec<(FileData, FileProperties)>, FilesError> {
+    ) -> Result<Vec<(FileData, FileProperties)>, files::Error> {
         self.files
             .iter()
             .map(|data| {
                 data.decrypt_file_metadata(master_keys)
                     .map(|properties| (data.clone(), properties))
             })
-            .collect::<Result<Vec<_>, FilesError>>()
+            .collect::<Result<Vec<_>, files::Error>>()
     }
 }
 

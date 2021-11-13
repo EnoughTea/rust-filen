@@ -1,10 +1,10 @@
 pub use {
-    auth::Error as AuthError, client::Error as ClientError, dir_links::Error as DirLinksError,
-    dirs::Error as DirsError, download_dir::Error as DownloadDirError, download_file::Error as DownloadFileError,
-    events::Error as EventsError, file_links::Error as FileLinksError, files::Error as FilesError,
-    fs::Error as FsError, links::Error as LinksError, share::Error as ShareError, sync_dir::Error as SyncDirError,
-    upload_file::Error as UploadFileError, usage::Error as UsageError, user_keys::Error as UserKeysError,
-    versions::Error as VersionsError,
+    auth::Error as AuthError, client::Error as ClientError, crypto::Error as CryptoError,
+    dir_links::Error as DirLinksError, dirs::Error as DirsError, download_dir::Error as DownloadDirError,
+    download_file::Error as DownloadFileError, events::Error as EventsError, file_links::Error as FileLinksError,
+    files::Error as FilesError, fs::Error as FsError, links::Error as LinksError, share::Error as ShareError,
+    sync_dir::Error as SyncDirError, upload_file::Error as UploadFileError, usage::Error as UsageError,
+    user_keys::Error as UserKeysError, versions::Error as VersionsError,
 };
 
 pub use {
