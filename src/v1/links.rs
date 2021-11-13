@@ -13,6 +13,9 @@ const LINK_DIR_STATUS_PATH: &str = "/v1/link/dir/status";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
+    #[snafu(display("Failed to decrypt link key '{}': {}", link_key, source))]
+    DecryptLinkKeyFailed { link_key: String, source: crypto::Error },
+
     #[snafu(display("{} query failed: {}", LINK_DIR_ITEM_RENAME_PATH, source))]
     LinkDirItemRenameQueryFailed { source: queries::Error },
 
@@ -97,6 +100,17 @@ pub struct LinkIdWithKey {
     pub link_uuid: Uuid,
 }
 utils::display_from_json!(LinkIdWithKey);
+
+impl LinkIdWithKey {
+    /// Decrypts link key using user's master keys.
+    pub fn decrypt_link_key(&self, master_keys: &[SecUtf8]) -> Result<SecUtf8> {
+        crypto::decrypt_metadata_str_any_key(&self.link_key, master_keys)
+            .context(DecryptLinkKeyFailed {
+                link_key: self.link_key.clone(),
+            })
+            .and_then(|link_key| Ok(SecUtf8::from(link_key)))
+    }
+}
 
 /// Response data for [LINK_DIR_STATUS_PATH] endpoint.
 #[skip_serializing_none]
