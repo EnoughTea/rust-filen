@@ -15,6 +15,7 @@ pub use {
 use crate::{crypto, utils};
 use once_cell::sync::Lazy;
 use serde::*;
+use serde_with::skip_serializing_none;
 use strum::{Display, EnumString};
 use uuid::Uuid;
 
@@ -41,6 +42,7 @@ const METADATA_VERSION: u32 = 1;
 pub static EMPTY_PASSWORD_HASH: Lazy<String> = Lazy::new(|| crypto::hash_fn(&PasswordState::Empty.to_string()));
 
 /// Contains just the response status and corresponding message.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct PlainApiResponse {
     /// True when API call was successful; false otherwise.

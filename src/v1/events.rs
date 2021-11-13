@@ -446,6 +446,7 @@ user_event_struct!(
     FileRmUserEvent<FileParentlessEventInfo>
 );
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FileSharedInfo {
     /// File ID; hyphenated lowercased UUID V4.
@@ -493,6 +494,7 @@ user_event_struct!(
     FileUploadedUserEvent<DownloadableFileEventInfo>
 );
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FolderColorChangedInfo {
     /// Folder ID; hyphenated lowercased UUID V4.
@@ -593,6 +595,7 @@ user_event_struct!(
     FolderRestoredUserEvent<FolderEventInfo>
 );
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FolderSharedEventInfo {
     /// Folder ID; hyphenated lowercased UUID V4.
@@ -626,6 +629,7 @@ user_event_struct!(
     FolderSharedUserEvent<FolderSharedEventInfo>
 );
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FolderTrashEventInfo {
     /// Folder ID; hyphenated lowercased UUID V4.

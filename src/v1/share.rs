@@ -232,6 +232,7 @@ pub struct UserSharedOutRequestPayload {
 utils::display_from_json!(UserSharedOutRequestPayload);
 
 /// One of the files in response data for [USER_SHARED_IN] or [USER_SHARED_OUT_PATH] endpoint.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserSharedFile {
     /// File ID, UUID V4 in hyphenated lowercase format.
@@ -288,6 +289,7 @@ pub struct UserSharedFile {
 utils::display_from_json!(UserSharedFile);
 
 /// One of the files in response data for [USER_SHARED_IN] or [USER_SHARED_OUT_PATH] endpoint.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserSharedFolder {
     /// Folder ID, UUID V4 in hyphenated lowercase format.
