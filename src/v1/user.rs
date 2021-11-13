@@ -8,12 +8,16 @@ use snafu::{ResultExt, Snafu};
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 const USER_GET_ACCOUNT_PATH: &str = "/v1/user/get/account";
+const USER_GET_SETTINGS_PATH: &str = "/v1/user/get/settings";
 const USER_INFO_PATH: &str = "/v1/user/info";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display("{} query failed: {}", USER_GET_ACCOUNT_PATH, source))]
     UserGetAccountQueryFailed { source: queries::Error },
+
+    #[snafu(display("{} query failed: {}", USER_GET_SETTINGS_PATH, source))]
+    UserGetSettingsQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", USER_INFO_PATH, source))]
     UserInfoQueryFailed { source: queries::Error },
@@ -169,6 +173,51 @@ pub struct UserGetAccountResponsePayload {
 }
 utils::display_from_json!(UserGetAccountResponsePayload);
 
+/// Response data for [USER_GET_SETTINGS_PATH] endpoint.
+#[skip_serializing_none]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct UserGetSettingsResponseData {
+    /// User's email.
+    pub email: String,
+
+    #[serde(rename = "twoFactorKey")]
+    pub two_factor_key: String,
+
+    /// True if user has enabled 2FA; false otherwise.
+    #[serde(
+        rename = "twoFactorEnabled",
+        deserialize_with = "bool_from_int",
+        serialize_with = "bool_to_int"
+    )]
+    pub two_factor_enabled: bool,
+
+    /// Versioned files count.
+    #[serde(rename = "versionedFiles")]
+    pub versioned_files: u64,
+
+    /// Storage bytes used by versioned files.
+    #[serde(rename = "versionedStorage")]
+    pub versioned_storage: u64,
+
+    /// Unfinished uploads count.
+    #[serde(rename = "unfinishedFiles")]
+    pub unfinished_files: u64,
+
+    /// Storage bytes used by unfinished files.
+    #[serde(rename = "unfinishedStorage")]
+    pub unfinished_storage: u64,
+
+    /// Storage bytes used by uploaded unversioned files.
+    #[serde(rename = "storageUsed")]
+    pub storage_used: u64,
+}
+utils::display_from_json!(UserGetSettingsResponseData);
+
+api_response_struct!(
+    /// Response for [USER_GET_SETTINGS_PATH] endpoint.
+    UserGetSettingsResponsePayload<Option<UserGetSettingsResponseData>>
+);
+
 /// Response data for [USER_INFO_PATH] endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -204,6 +253,7 @@ api_response_struct!(
 );
 
 /// Calls [USER_GET_ACCOUNT_PATH] endpoint.
+/// Used to get various account-associated data, such as plans, invoices, referrals.
 pub fn user_get_account_request(
     api_key: &SecUtf8,
     filen_settings: &FilenSettings,
@@ -213,6 +263,7 @@ pub fn user_get_account_request(
 }
 
 /// Calls [USER_GET_ACCOUNT_PATH] endpoint asynchronously.
+/// Used to get various account-associated data, such as plans, invoices, referrals.
 #[cfg(feature = "async")]
 pub async fn user_get_account_request_async(
     api_key: &SecUtf8,
@@ -221,6 +272,27 @@ pub async fn user_get_account_request_async(
     queries::query_filen_api_async(USER_GET_ACCOUNT_PATH, &utils::api_key_json(api_key), filen_settings)
         .await
         .context(UserGetAccountQueryFailed {})
+}
+
+/// Calls [USER_GET_SETTINGS_PATH] endpoint. Used to 2FA settings, versioned and unfinished storage sizes.
+pub fn user_get_settings_request(
+    api_key: &SecUtf8,
+    filen_settings: &FilenSettings,
+) -> Result<UserGetSettingsResponsePayload> {
+    queries::query_filen_api(USER_GET_SETTINGS_PATH, &utils::api_key_json(api_key), filen_settings)
+        .context(UserGetSettingsQueryFailed {})
+}
+
+/// Calls [USER_GET_SETTINGS_PATH] endpoint asynchronously.
+/// Used to 2FA settings, versioned and unfinished storage sizes.
+#[cfg(feature = "async")]
+pub async fn user_get_settings_request_async(
+    api_key: &SecUtf8,
+    filen_settings: &FilenSettings,
+) -> Result<UserGetSettingsResponsePayload> {
+    queries::query_filen_api_async(USER_GET_SETTINGS_PATH, &utils::api_key_json(api_key), filen_settings)
+        .await
+        .context(UserGetSettingsQueryFailed {})
 }
 
 /// Calls [USER_INFO_PATH] endpoint.
@@ -268,6 +340,28 @@ mod tests {
             &utils::api_key_json(&API_KEY),
             "tests/resources/responses/user_get_account.json",
             |_, filen_settings| async move { user_get_account_request_async(&API_KEY, &filen_settings).await },
+        )
+        .await;
+    }
+
+    #[test]
+    fn user_get_settings_request_should_have_proper_contract() {
+        validate_contract(
+            USER_GET_SETTINGS_PATH,
+            &utils::api_key_json(&API_KEY),
+            "tests/resources/responses/user_get_settings.json",
+            |_, filen_settings| user_get_settings_request(&API_KEY, &filen_settings),
+        );
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn user_get_settings_request_async_should_have_proper_contract() {
+        validate_contract_async(
+            USER_GET_SETTINGS_PATH,
+            &utils::api_key_json(&API_KEY),
+            "tests/resources/responses/user_get_settings.json",
+            |_, filen_settings| async move { user_get_settings_request_async(&API_KEY, &filen_settings).await },
         )
         .await;
     }

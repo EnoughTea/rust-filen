@@ -1,0 +1,14 @@
+{
+    "status": true,
+    "message": "User settings page fetched.",
+    "data": {
+        "email": "test@test.com",
+        "twoFactorKey": "1234567890LIZ3PY",
+        "twoFactorEnabled": 0,
+        "versionedFiles": 1,
+        "versionedStorage": 133648,
+        "unfinishedFiles": 18,
+        "unfinishedStorage": 95638592,
+        "storageUsed": 15055381
+    }
+}
