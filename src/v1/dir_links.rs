@@ -287,6 +287,12 @@ pub struct DirLinkStatusResponseData {
 }
 utils::display_from_json!(DirLinkStatusResponseData);
 
+impl HasLinkKey for DirLinkStatusResponseData {
+    fn link_key_metadata_ref(&self) -> Option<&str> {
+        self.key.as_deref()
+    }
+}
+
 api_response_struct!(
     /// Response for [DIR_LINK_STATUS_PATH] endpoint.
     DirLinkStatusResponsePayload<Option<DirLinkStatusResponseData>>

@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{crypto, filen_settings::FilenSettings, queries, utils, v1::*};
-use secstr::SecUtf8;
+use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use snafu::{ensure, Backtrace, ResultExt, Snafu};
@@ -32,12 +32,6 @@ pub enum Error {
     CannotDecodeBase64Metadata {
         metadata: String,
         source: base64::DecodeError,
-    },
-
-    #[snafu(display("Decrypted metadata is not a valid UTF-8 string"))]
-    DecryptedMetadataIsNotUtf8 {
-        metadata: String,
-        source: std::string::FromUtf8Error,
     },
 
     #[snafu(display("Failed to deserialize file metadata '{}': {}", metadata, source))]
@@ -184,17 +178,15 @@ impl FileProperties {
 
     /// Decrypts file properties from a metadata string using RSA for public sharing.
     /// Assumes given metadata string is base64-encoded.
-    pub fn decrypt_file_metadata_rsa(metadata: &str, rsa_private_key_bytes: &[u8]) -> Result<FileProperties> {
+    pub fn decrypt_file_metadata_rsa(metadata: &str, rsa_private_key_bytes: &SecVec<u8>) -> Result<FileProperties> {
         let decoded = base64::decode(metadata).context(CannotDecodeBase64Metadata {
             metadata: metadata.to_owned(),
         })?;
-        let decrypted = crypto::decrypt_rsa(&decoded, rsa_private_key_bytes).context(DecryptFileMetadataRsaFailed {
-            metadata: metadata.to_owned(),
-        })?;
-        let file_properties_json = String::from_utf8(decrypted).context(DecryptedMetadataIsNotUtf8 {
-            metadata: metadata.to_owned(),
-        })?;
-        serde_json::from_str::<FileProperties>(&file_properties_json).context(DeserializeFileMetadataFailed {
+        let decrypted =
+            crypto::decrypt_rsa(&decoded, rsa_private_key_bytes.unsecure()).context(DecryptFileMetadataRsaFailed {
+                metadata: metadata.to_owned(),
+            })?;
+        serde_json::from_slice::<FileProperties>(&decrypted).context(DeserializeFileMetadataFailed {
             metadata: metadata.to_owned(),
         })
     }

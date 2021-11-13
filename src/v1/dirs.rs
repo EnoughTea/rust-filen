@@ -318,7 +318,7 @@ pub struct DirContentFile {
     pub timestamp: u64,
 
     /// Timestamp when file was moved to trash. Only set when listing contents using [ContentKind::Trash],
-    /// otherwise would be None since file was not moved to trash yet.
+    /// otherwise would be None since file has not been moved to trash yet.
     #[serde(rename = "trashTimestamp")]
     pub trash_timestamp: Option<u64>,
 

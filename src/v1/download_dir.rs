@@ -34,6 +34,12 @@ pub enum Error {
         source: download_file::Error,
     },
 
+    #[snafu(display("Download and decrypt operation failed for linked file {}: {}", file_data, source))]
+    DownloadAndDecryptLinkedFileFailed {
+        file_data: Box<LinkedFileData>,
+        source: download_file::Error,
+    },
+
     #[snafu(display("Download and decrypt operation failed for shared file {}: {}", file_data, source))]
     DownloadAndDecryptSharedFileFailed {
         file_data: Box<SharedFileData>,
@@ -64,12 +70,123 @@ pub struct DownloadDirLinkRequestPayload {
     pub password: String,
 }
 
+/// Represents one of the linked folders.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct LinkedFolderData {
+    /// Folder ID, UUID V4 in hyphenated lowercase format.
+    pub uuid: Uuid,
+
+    /// Metadata containing folder name; encrypted using user's public key, so use user's private key for decrypt.
+    #[serde(rename = "name")]
+    pub name_metadata: String,
+
+    /// Either parent folder ID (hyphenated lowercased UUID V4) or "base" when folder is located in the base folder,
+    /// also known as 'cloud drive'.
+    pub parent: ParentKind,
+}
+utils::display_from_json!(LinkedFolderData);
+
+impl HasLinkedLocationName for LinkedFolderData {
+    /// Decrypts name metadata into a folder name.
+    fn name_metadata_ref(&self) -> &str {
+        &self.name_metadata
+    }
+}
+
+/// Represents a linked file downloadable from Filen.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct LinkedFileData {
+    /// File ID, UUID V4 in hyphenated lowercase format.
+    pub uuid: Uuid,
+
+    /// Filen file storage info.
+    #[serde(flatten)]
+    pub storage: FileStorageInfo,
+
+    /// Parent folder ID, UUID V4 in hyphenated lowercase format.
+    pub parent: Uuid,
+
+    /// File metadata.
+    pub metadata: String,
+
+    /// Determines how file bytes should be encrypted/decrypted.
+    /// File is encrypted using roughly the same algorithm as metadata encryption,
+    /// use [crypto::encrypt_file_data] and [crypto::decrypt_file_data] for the task.
+    pub version: u32,
+}
+utils::display_from_json!(LinkedFileData);
+
+impl HasLinkedFileMetadata for LinkedFileData {
+    fn file_metadata_ref(&self) -> &str {
+        &self.metadata
+    }
+}
+
+impl HasFileLocation for LinkedFileData {
+    fn file_storage_ref(&self) -> &FileStorageInfo {
+        &self.storage
+    }
+
+    fn uuid_ref(&self) -> &Uuid {
+        &self.uuid
+    }
+}
+
+impl LinkedFileData {
+    // TODO: download_and_decrypt_file and download_and_decrypt_file_async should be extracted to a trait,
+    // but Rust does not support async in traits yet.
+
+    /// Uses this file's properties to call [download_and_decrypt_file].
+    pub fn download_and_decrypt_file<W: Write>(
+        &self,
+        file_key: &SecUtf8,
+        retry_settings: &RetrySettings,
+        filen_settings: &FilenSettings,
+        writer: &mut std::io::BufWriter<W>,
+    ) -> Result<u64> {
+        download_and_decrypt_file(
+            &self.get_file_location(),
+            self.version,
+            file_key,
+            retry_settings,
+            filen_settings,
+            writer,
+        )
+        .context(DownloadAndDecryptLinkedFileFailed {
+            file_data: self.clone(),
+        })
+    }
+
+    /// Uses this file's properties to call [download_and_decrypt_file_async].
+    #[cfg(feature = "async")]
+    pub async fn download_and_decrypt_file_async<W: Write>(
+        &self,
+        file_key: &SecUtf8,
+        retry_settings: &RetrySettings,
+        filen_settings: &FilenSettings,
+        writer: &mut std::io::BufWriter<W>,
+    ) -> Result<u64> {
+        download_and_decrypt_file_async(
+            &self.get_file_location(),
+            self.version,
+            file_key,
+            retry_settings,
+            filen_settings,
+            writer,
+        )
+        .await
+        .context(DownloadAndDecryptLinkedFileFailed {
+            file_data: self.clone(),
+        })
+    }
+}
+
 /// Response data for [DOWNLOAD_DIR_LINK_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DownloadDirLinkResponseData {
-    pub folders: Vec<FolderData>,
+    pub folders: Vec<LinkedFolderData>,
 
-    pub files: Vec<SharedFileData>,
+    pub files: Vec<LinkedFileData>,
 }
 utils::display_from_json!(DownloadDirLinkResponseData);
 
@@ -87,6 +204,29 @@ pub struct DownloadDirSharedRequestPayload {
 
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
+}
+
+/// Represents one of the shared folders.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct SharedFolderData {
+    /// Folder ID, UUID V4 in hyphenated lowercase format.
+    pub uuid: Uuid,
+
+    /// Metadata containing folder name; encrypted using user's public key, so use user's private key for decrypt.
+    #[serde(rename = "name")]
+    pub name_metadata: String,
+
+    /// Either parent folder ID (hyphenated lowercased UUID V4) or "base" when folder is located in the base folder,
+    /// also known as 'cloud drive'.
+    pub parent: ParentKind,
+}
+utils::display_from_json!(SharedFolderData);
+
+impl HasSharedLocationName for SharedFolderData {
+    /// Decrypts name metadata into a folder name.
+    fn name_metadata_ref(&self) -> &str {
+        &self.name_metadata
+    }
 }
 
 /// Represents a shared file downloadable from Filen.
@@ -112,7 +252,7 @@ pub struct SharedFileData {
 }
 utils::display_from_json!(SharedFileData);
 
-impl HasFileMetadata for SharedFileData {
+impl HasSharedFileMetadata for SharedFileData {
     fn file_metadata_ref(&self) -> &str {
         &self.metadata
     }
@@ -177,7 +317,7 @@ impl SharedFileData {
 /// Response data for [DOWNLOAD_DIR_SHARED_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DownloadDirSharedResponseData {
-    pub folders: Vec<FolderData>,
+    pub folders: Vec<SharedFolderData>,
 
     pub files: Vec<SharedFileData>,
 }

@@ -145,6 +145,10 @@ pub fn encrypt_metadata(data: &[u8], key: &[u8], metadata_version: u32) -> Resul
 /// Decrypts Filen metadata prefiously encrypted with [encrypt_metadata]/[encrypt_metadata_str] and one of the
 /// given keys. Tries to decrypt using given keys until one of them succeeds.
 pub fn decrypt_metadata_any_key(data: &[u8], keys: &[Vec<u8>]) -> Result<Vec<u8>> {
+    if data.is_empty() {
+        return Ok(vec![0u8; 0]);
+    }
+
     ensure!(
         !keys.is_empty(),
         BadArgument {
@@ -225,6 +229,10 @@ pub fn decrypt_metadata_str(data: &str, key: &SecUtf8) -> Result<String> {
 /// Decrypts Filen metadata prefiously encrypted with [encrypt_metadata]/[encrypt_metadata_str] and one of the
 /// given keys. Tries to decrypt using given keys until one of them succeeds.
 pub fn decrypt_metadata_str_any_key(data: &str, keys: &[SecUtf8]) -> Result<String> {
+    if data.is_empty() {
+        return Ok(String::new());
+    }
+
     let keys = keys
         .iter()
         .map(|key| key.unsecure().as_bytes().to_vec())

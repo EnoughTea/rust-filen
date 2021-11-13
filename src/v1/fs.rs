@@ -1,6 +1,6 @@
 //! Contains structures common for Filen file&folder API.
 use crate::{crypto, utils, v1::*};
-use secstr::SecUtf8;
+use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use snafu::{Backtrace, ResultExt, Snafu};
@@ -12,11 +12,29 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("Failed to deserialize location name: {}", source))]
-    DeserializeLocationNameFailed { source: serde_json::Error },
+    #[snafu(display("Caller provided invalid argument: {}", message))]
+    BadArgument { message: String, backtrace: Backtrace },
+
+    #[snafu(display("Expected metadata to be base64-encoded, but cannot decode it as such"))]
+    CannotDecodeBase64Metadata {
+        metadata: String,
+        source: base64::DecodeError,
+    },
+
+    #[snafu(display(
+        "Expected \"base\" or hyphenated lowercased UUID, got unknown string of length: {}",
+        string_length
+    ))]
+    CannotParseParentKindFromString { string_length: usize, backtrace: Backtrace },
+
+    #[snafu(display("Failed to decrypt link key '{}': {}", metadata, source))]
+    DecryptLinkKeyFailed { metadata: String, source: crypto::Error },
 
     #[snafu(display("Failed to decrypt location name {}: {}", metadata, source))]
     DecryptLocationNameFailed { metadata: String, source: crypto::Error },
+
+    #[snafu(display("Failed to deserialize location name: {}", source))]
+    DeserializeLocationNameFailed { source: serde_json::Error },
 
     #[snafu(display("Expire duration value '{}' is too short to be valid", value))]
     DurationIsTooShort { value: String, backtrace: Backtrace },
@@ -26,12 +44,6 @@ pub enum Error {
 
     #[snafu(display("Expire duration value '{}' is not a number: {}", value, source))]
     DurationValueIsNotNum { value: String, source: ParseIntError },
-
-    #[snafu(display(
-        "Expected \"base\" or hyphenated lowercased UUID, got unknown string of length: {}",
-        string_length
-    ))]
-    CannotParseParentKindFromString { string_length: usize, backtrace: Backtrace },
 }
 
 /// Public link or file chunk expiration time.
@@ -196,21 +208,45 @@ impl LocationNameMetadata {
 
     /// Decrypt name metadata into actual name.
     pub fn decrypt_name_from_metadata(name_metadata: &str, master_keys: &[SecUtf8]) -> Result<String> {
+        if name_metadata.eq_ignore_ascii_case("default") {
+            return Ok("Default".to_owned());
+        }
+
         let decrypted_name_result =
             crypto::decrypt_metadata_str_any_key(name_metadata, master_keys).context(DecryptLocationNameFailed {
                 metadata: name_metadata.to_owned(),
             });
 
         decrypted_name_result.and_then(|name_metadata| {
-            serde_json::from_str::<LocationNameMetadata>(&name_metadata)
-                .context(DeserializeLocationNameFailed {})
-                .map(|typed| typed.name)
+            LocationNameMetadata::extract_name_from_folder_properties_json(name_metadata.as_bytes())
         })
+    }
+
+    pub fn decrypt_name_from_metadata_rsa(name_metadata: &str, rsa_private_key_bytes: &SecVec<u8>) -> Result<String> {
+        if name_metadata.eq_ignore_ascii_case("default") {
+            return Ok("Default".to_owned());
+        }
+
+        let decoded = base64::decode(name_metadata).context(CannotDecodeBase64Metadata {
+            metadata: name_metadata.to_owned(),
+        })?;
+        let decrypted_folder_properties_json = crypto::decrypt_rsa(&decoded, rsa_private_key_bytes.unsecure())
+            .context(DecryptLocationNameFailed {
+                metadata: name_metadata.to_owned(),
+            })?;
+
+        LocationNameMetadata::extract_name_from_folder_properties_json(&decrypted_folder_properties_json)
     }
 
     /// Returns hashed given location name.
     pub fn name_hashed(name: &str) -> String {
         crypto::hash_fn(&name.to_lowercase())
+    }
+
+    pub(crate) fn extract_name_from_folder_properties_json(folder_properties_json_bytes: &[u8]) -> Result<String> {
+        serde_json::from_slice::<LocationNameMetadata>(folder_properties_json_bytes)
+            .context(DeserializeLocationNameFailed {})
+            .map(|typed| typed.name)
     }
 }
 
@@ -219,9 +255,33 @@ pub trait HasFileMetadata {
     /// Gets a reference to file metadata, if present.
     fn file_metadata_ref(&self) -> &str;
 
-    /// Decrypts file metadata string.
+    /// Decrypts file metadata string using user's master keys.
     fn decrypt_file_metadata(&self, master_keys: &[SecUtf8]) -> Result<FileProperties, FilesError> {
         FileProperties::decrypt_file_metadata(self.file_metadata_ref(), master_keys)
+    }
+}
+
+/// Implement this trait to add decryption of a metadata containing Filen's file properties JSON,
+/// encrypted using user's public key.
+pub trait HasSharedFileMetadata {
+    /// Gets a reference to file metadata, if present.
+    fn file_metadata_ref(&self) -> &str;
+
+    /// Decrypts file metadata string using user's RSA private key.
+    fn decrypt_file_metadata(&self, rsa_private_key_bytes: &SecVec<u8>) -> Result<FileProperties, FilesError> {
+        FileProperties::decrypt_file_metadata_rsa(self.file_metadata_ref(), rsa_private_key_bytes)
+    }
+}
+
+/// Implement this trait to add decryption of a metadata containing Filen's file properties JSON,
+/// encrypted using link key.
+pub trait HasLinkedFileMetadata {
+    /// Gets a reference to file metadata, if present.
+    fn file_metadata_ref(&self) -> &str;
+
+    /// Decrypts file metadata string using link key.
+    fn decrypt_file_metadata(&self, link_key: SecUtf8) -> Result<FileProperties, FilesError> {
+        FileProperties::decrypt_file_metadata(self.file_metadata_ref(), &[link_key])
     }
 }
 
@@ -244,9 +304,53 @@ pub trait HasLocationName {
     /// Returns reference to a string containing metadata with Filen's name JSON.
     fn name_metadata_ref(&self) -> &str;
 
-    /// Decrypts name metadata into a location name.
+    /// Decrypts name metadata into a location name using user's master keys.
     fn decrypt_name_metadata(&self, master_keys: &[SecUtf8]) -> Result<String> {
         LocationNameMetadata::decrypt_name_from_metadata(self.name_metadata_ref(), master_keys)
+    }
+}
+
+/// Implement this trait to add decryption of a metadata containing Filen's name JSON: { "name": "some name value" },
+/// encrypted using user's public key.
+pub trait HasSharedLocationName {
+    /// Returns reference to a string containing metadata with Filen's name JSON.
+    fn name_metadata_ref(&self) -> &str;
+
+    /// Decrypts name metadata into a location name using user's RSA private key.
+    fn decrypt_name_metadata(&self, rsa_private_key_bytes: &SecVec<u8>) -> Result<String> {
+        LocationNameMetadata::decrypt_name_from_metadata_rsa(self.name_metadata_ref(), rsa_private_key_bytes)
+    }
+}
+
+/// Implement this trait to add decryption of a metadata containing Filen's name JSON: { "name": "some name value" },
+/// encrypted using link key.
+pub trait HasLinkedLocationName {
+    /// Returns reference to a string containing metadata with Filen's name JSON.
+    fn name_metadata_ref(&self) -> &str;
+
+    /// Decrypts name metadata into a location name using link key.
+    fn decrypt_name_metadata(&self, link_key: SecUtf8) -> Result<String> {
+        LocationNameMetadata::decrypt_name_from_metadata(self.name_metadata_ref(), &[link_key])
+    }
+}
+
+pub trait HasLinkKey {
+    /// Returns reference to a string containing link key metadata.
+    fn link_key_metadata_ref(&self) -> Option<&str>;
+
+    /// Decrypts link key using user's master keys.
+    fn decrypt_link_key(&self, master_keys: &[SecUtf8]) -> Result<SecUtf8> {
+        match self.link_key_metadata_ref() {
+            Some(link_key_metadata) => crypto::decrypt_metadata_str_any_key(link_key_metadata, master_keys)
+                .context(DecryptLinkKeyFailed {
+                    metadata: link_key_metadata.to_owned(),
+                })
+                .and_then(|link_key| Ok(SecUtf8::from(link_key))),
+            None => BadArgument {
+                message: "link key metadata is absent, cannot decrypt None",
+            }
+            .fail(),
+        }
     }
 }
 
