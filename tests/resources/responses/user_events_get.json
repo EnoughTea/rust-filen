@@ -1,0 +1,16 @@
+{
+    "status": true,
+    "message": "Event info fetched.",
+    "data": {
+        "id": 11215524,
+        "uuid": "76983c3c-bdc5-46b1-a996-1ab6f09a8810",
+        "type": "fileTrash",
+        "info": {
+            "uuid": "dd2a4716-e2b4-46f5-a25a-6fcad9c7bb69",
+            "metadata": "U2FsdGVkX19awiWS87MLJyzjqDOAfe6CKNNooruvvBnK5YhBg/qp6vDjCfsvsOfL87KJtD6hrcPWFHsYuABKEZAKLSDwxAu1xMyAGX8p1cV1PaAIe4ks2rdWBpHXh3bfF1NHEEuAB5tGvSNLvdZ4XFVILFM9IXX/YJ4mvHRo1Ketcktbr4sIo6bA+4XSCD0C",
+            "ip": "127.0.0.1",
+            "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.114 Safari/537.36"
+        },
+        "timestamp": 1636584564
+    }
+}

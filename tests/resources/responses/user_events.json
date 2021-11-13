@@ -194,7 +194,7 @@
                 "uuid": "25d441a9-019d-4ce7-96af-717bff8f8b4e",
                 "type": "emailChangeAttempt",
                 "info": {
-                    "email": "enough.coffee@gmail.com",
+                    "email": "test2@test.com",
                     "ip": "127.0.0.1",
                     "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.114 Safari/537.36"
                 },

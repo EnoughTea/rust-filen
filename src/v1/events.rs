@@ -12,6 +12,7 @@ use uuid::Uuid;
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 const USER_EVENTS_PATH: &str = "/v1/user/events";
+const USER_EVENTS_GET_PATH: &str = "/v1/user/events/get";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -23,6 +24,9 @@ pub enum Error {
 
     #[snafu(display("{} query failed: {}", USER_EVENTS_PATH, source))]
     UserEventsQueryFailed { source: queries::Error },
+
+    #[snafu(display("{} query failed: {}", USER_EVENTS_GET_PATH, source))]
+    UserEventsGetQueryFailed { source: queries::Error },
 }
 
 /// Type of an user event.
@@ -906,6 +910,22 @@ api_response_struct!(
     UserEventsResponsePayload<Option<UserEventsResponseData>>
 );
 
+/// Used for requests to [USER_EVENTS_GET_PATH] endpoint.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct UserEventsGetRequestPayload {
+    /// User-associated Filen API key.
+    #[serde(rename = "apiKey")]
+    pub api_key: SecUtf8,
+
+    /// Event UUID; hyphenated lowercased UUID V4.
+    pub uuid: Uuid,
+}
+
+api_response_struct!(
+    /// Response for [USER_EVENTS_GET_PATH] endpoint.
+    UserEventsGetResponsePayload<Option<UserEvent>>
+);
+
 /// Calls [USER_EVENTS_PATH] endpoint.
 pub fn user_events_request(
     payload: &UserEventsRequestPayload,
@@ -923,6 +943,25 @@ pub async fn user_events_request_async(
     queries::query_filen_api_async(USER_EVENTS_PATH, payload, filen_settings)
         .await
         .context(UserEventsQueryFailed {})
+}
+
+/// Calls [USER_EVENTS_GET_PATH] endpoint.
+pub fn user_events_get_request(
+    payload: &UserEventsGetRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<UserEventsGetResponsePayload> {
+    queries::query_filen_api(USER_EVENTS_GET_PATH, payload, filen_settings).context(UserEventsGetQueryFailed {})
+}
+
+/// Calls [USER_EVENTS_GET_PATH] endpoint asynchronously.
+#[cfg(feature = "async")]
+pub async fn user_events_get_request_async(
+    payload: &UserEventsGetRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<UserEventsGetResponsePayload> {
+    queries::query_filen_api_async(USER_EVENTS_GET_PATH, payload, filen_settings)
+        .await
+        .context(UserEventsGetQueryFailed {})
 }
 
 macro_rules! user_event_struct {
@@ -1045,6 +1084,38 @@ mod tests {
             "tests/resources/responses/user_events.json",
             |request_payload, filen_settings| async move {
                 user_events_request_async(&request_payload, &filen_settings).await
+            },
+        )
+        .await;
+    }
+
+    #[test]
+    fn user_events_get_request_should_have_proper_contract() {
+        let request_payload = UserEventsGetRequestPayload {
+            api_key: API_KEY.clone(),
+            uuid: Uuid::nil(),
+        };
+        validate_contract(
+            USER_EVENTS_GET_PATH,
+            request_payload,
+            "tests/resources/responses/user_events_get.json",
+            |request_payload, filen_settings| user_events_get_request(&request_payload, &filen_settings),
+        );
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn user_events_get_request_async_should_have_proper_contract() {
+        let request_payload = UserEventsGetRequestPayload {
+            api_key: API_KEY.clone(),
+            uuid: Uuid::nil(),
+        };
+        validate_contract_async(
+            USER_EVENTS_GET_PATH,
+            request_payload,
+            "tests/resources/responses/user_events_get.json",
+            |request_payload, filen_settings| async move {
+                user_events_get_request_async(&request_payload, &filen_settings).await
             },
         )
         .await;
