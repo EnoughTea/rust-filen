@@ -1,10 +1,12 @@
 use crate::{crypto, filen_settings::*, queries, utils, v1::*};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use snafu::{ResultExt, Snafu};
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
+const CURRENT_VERSIONS_PATH: &str = "/v1/currentVersions";
 const DIR_COLOR_CHANGE_PATH: &str = "/v1/dir/color/change";
 const ITEM_FAVORITE_PATH: &str = "/v1/item/favorite";
 const SYNC_CLIENT_MESSAGE_PATH: &str = "/v1/sync/client/message";
@@ -12,11 +14,14 @@ const TRASH_EMPTY_PATH: &str = "/v1/trash/empty";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("{} query failed: {}", DIR_COLOR_CHANGE_PATH, source))]
-    DirColorChangeQueryFailed { source: queries::Error },
-
     #[snafu(display("Cannot serialize data struct to JSON: {}", source))]
     CannotSerializeDataToJson { source: serde_json::Error },
+
+    #[snafu(display("{} query failed: {}", CURRENT_VERSIONS_PATH, source))]
+    CurrentVersionsQueryFailed { source: queries::Error },
+
+    #[snafu(display("{} query failed: {}", DIR_COLOR_CHANGE_PATH, source))]
+    DirColorChangeQueryFailed { source: queries::Error },
 
     #[snafu(display("{} query failed: {}", ITEM_FAVORITE_PATH, source))]
     ItemFavoriteQueryFailed { source: queries::Error },
@@ -28,6 +33,23 @@ pub enum Error {
     TrashEmptyQueryFailed { source: queries::Error },
 }
 
+/// Response data for [CURRENT_VERSIONS_PATH] endpoint.
+#[skip_serializing_none]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct CurrentVersionsResponseData {
+    /// Filen's desktop client version.
+    pub desktop: String,
+
+    /// Filen's mobile client version.
+    pub mobile: String,
+}
+utils::display_from_json!(CurrentVersionsResponseData);
+
+api_response_struct!(
+    /// Response for [CURRENT_VERSIONS_PATH] endpoint.
+    CurrentVersionsResponsePayload<Option<CurrentVersionsResponseData>>
+);
+
 /// Used for requests to [DIR_COLOR_CHANGE_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirColorChangeRequestPayload {
@@ -38,7 +60,7 @@ pub struct DirColorChangeRequestPayload {
     /// Folder color name.
     pub color: LocationColor,
 
-    /// Folder ID.
+    /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
 utils::display_from_json!(DirColorChangeRequestPayload);
@@ -50,7 +72,7 @@ pub struct ItemFavoriteRequestPayload {
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 
-    /// ID of item to set favorite for.
+    /// ID of item to set favorite for; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 
     /// What is favorited: a "file" or "folder"?
@@ -101,6 +123,19 @@ impl SyncClientMessageRequestPayload {
             last_master_key,
         ))
     }
+}
+
+/// Calls [CURRENT_VERSIONS_PATH] endpoint. Used to fetch latest Filen client versions.
+pub fn current_versions_request(filen_settings: &FilenSettings) -> Result<CurrentVersionsResponsePayload> {
+    queries::query_filen_api(CURRENT_VERSIONS_PATH, &json!(""), filen_settings).context(CurrentVersionsQueryFailed {})
+}
+
+/// Calls [CURRENT_VERSIONS_PATH] endpoint asynchronously. Used to fetch latest Filen client versions.
+#[cfg(feature = "async")]
+pub async fn current_versions_request_async(filen_settings: &FilenSettings) -> Result<CurrentVersionsResponsePayload> {
+    queries::query_filen_api_async(CURRENT_VERSIONS_PATH, &json!(""), filen_settings)
+        .await
+        .context(CurrentVersionsQueryFailed {})
 }
 
 /// Calls [DIR_COLOR_CHANGE_PATH] endpoint.
@@ -172,4 +207,37 @@ pub async fn trash_empty_request_async(api_key: &SecUtf8, filen_settings: &Filen
     queries::query_filen_api_async(TRASH_EMPTY_PATH, &utils::api_key_json(api_key), filen_settings)
         .await
         .context(TrashEmptyQueryFailed {})
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::*;
+    use once_cell::sync::Lazy;
+    use secstr::SecUtf8;
+
+    static API_KEY: Lazy<SecUtf8> =
+        Lazy::new(|| SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"));
+
+    #[test]
+    fn current_versions_request_should_have_proper_contract() {
+        validate_contract(
+            CURRENT_VERSIONS_PATH,
+            json!(""),
+            "tests/resources/responses/current_versions.json",
+            |_, filen_settings| current_versions_request(&filen_settings),
+        );
+    }
+
+    #[cfg(feature = "async")]
+    #[tokio::test]
+    async fn user_dirs_request_async_should_have_proper_contract() {
+        validate_contract_async(
+            CURRENT_VERSIONS_PATH,
+            json!(""),
+            "tests/resources/responses/current_versions.json",
+            |_, filen_settings| async move { current_versions_request_async(&filen_settings).await },
+        )
+        .await;
+    }
 }
