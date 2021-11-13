@@ -1,0 +1,48 @@
+{
+    "status": true,
+    "message": "Account data fetched.",
+    "data": {
+        "email": "test@test.com",
+        "uploads": 3,
+        "storage": 2342048,
+        "maxStorage": 118111600640,
+        "isPremium": 1,
+        "plans": [],
+        "invoices": [],
+        "subsInvoices": [
+            {
+                "id": "4ad681e2-0360-4923-b1f3-836263d69d7e",
+                "subId": "827049ff-ef3e-421b-bde9-51674f381b42",
+                "planName": "Starter monthly",
+                "planCost": 0.99,
+                "gateway": "paypal",
+                "timestamp": 1636832227
+            }
+        ],
+        "subs": [
+            {
+                "id": "827049ff-ef3e-421b-bde9-51674f381b42",
+                "planId": 11,
+                "planName": "Starter monthly",
+                "planCost": 0.99,
+                "gateway": "paypal",
+                "storage": 107374182400,
+                "activated": 1,
+                "cancelled": 1,
+                "startTimestamp": 1636832282,
+                "cancelTimestamp": 1639424248
+            }
+        ],
+        "referCount": 0,
+        "referStorage": 0,
+        "refLimit": 3,
+        "refStorage": 10737418240,
+        "refId": "419345a4c56c55ba30671ab8c25d2a73",
+        "affId": "299a56f305d92549c138b35ccd552152",
+        "affRate": 0.1,
+        "affCount": 0,
+        "affEarnings": 0,
+        "affBalance": 0,
+        "avatarURL": "https://down.filen.io/de-1/filen-1/avatars/5757bbec-3e4b-4ae1-9cb8-976efd4cbbd0-1636587164.jpg"
+    }
+}

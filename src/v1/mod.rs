@@ -4,12 +4,12 @@ pub use {
     download_file::Error as DownloadFileError, events::Error as EventsError, file_links::Error as FileLinksError,
     files::Error as FilesError, fs::Error as FsError, links::Error as LinksError, share::Error as ShareError,
     sync_dir::Error as SyncDirError, upload_file::Error as UploadFileError, usage::Error as UsageError,
-    user_keys::Error as UserKeysError, versions::Error as VersionsError,
+    user::Error as UserError, user_keys::Error as UserKeysError, versions::Error as VersionsError,
 };
 
 pub use {
     auth::*, client::*, dir_links::*, dirs::*, download_dir::*, download_file::*, events::*, file_links::*, files::*,
-    fs::*, links::*, share::*, sync_dir::*, upload_file::*, usage::*, user_keys::*, versions::*,
+    fs::*, links::*, share::*, sync_dir::*, upload_file::*, usage::*, user::*, user_keys::*, versions::*,
 };
 
 use crate::{crypto, utils};
@@ -34,6 +34,7 @@ mod share;
 mod sync_dir;
 mod upload_file;
 mod usage;
+mod user;
 mod user_keys;
 mod versions;
 

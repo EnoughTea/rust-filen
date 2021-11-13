@@ -1,0 +1,11 @@
+{
+    "status": true,
+    "message": "User data fetched.",
+    "data": {
+        "email": "test@test.com",
+        "maxStorage": 10737418240,
+        "storageUsed": 2158016,
+        "isPremium": 0,
+        "avatarURL": "https://down.filen.io/de-1/filen-1/avatars/2904a997-8c0b-4b7f-baf1-a57fa4f11705-1636586650.jpg"
+    }
+}
