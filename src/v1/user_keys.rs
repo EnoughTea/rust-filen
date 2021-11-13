@@ -288,7 +288,7 @@ pub fn user_key_pair_info_request(
 
 /// Calls [USER_KEY_PAIR_INFO_PATH] endpoint asynchronously. Used to get RSA public/private key pair.
 #[cfg(feature = "async")]
-pub async fn key_pair_info_request_async(
+pub async fn user_key_pair_info_request_async(
     api_key: &SecUtf8,
     filen_settings: &FilenSettings,
 ) -> Result<UserKeyPairInfoResponsePayload> {
@@ -297,7 +297,7 @@ pub async fn key_pair_info_request_async(
         .context(UserKeyPairInfoQueryFailed {})
 }
 
-/// Calls [KEY_PAIR_UPDATE_PATH] endpoint. Used to set user's RSA public/private key pair.
+/// Calls [USER_KEY_PAIR_UPDATE_PATH] endpoint. Used to set user's RSA public/private key pair.
 pub fn user_key_pair_update_request(
     payload: &UserKeyPairUpdateRequestPayload,
     filen_settings: &FilenSettings,
@@ -306,9 +306,9 @@ pub fn user_key_pair_update_request(
         .context(UserKeyPairUpdateQueryFailed {})
 }
 
-/// Calls [KEY_PAIR_UPDATE_PATH] endpoint asynchronously. Used to set user's RSA public/private key pair.
+/// Calls [USER_KEY_PAIR_UPDATE_PATH] endpoint asynchronously. Used to set user's RSA public/private key pair.
 #[cfg(feature = "async")]
-pub async fn key_pair_update_request_async(
+pub async fn user_key_pair_update_request_async(
     payload: &UserKeyPairUpdateRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainApiResponse> {
@@ -317,8 +317,8 @@ pub async fn key_pair_update_request_async(
         .context(UserKeyPairUpdateQueryFailed {})
 }
 
-/// Calls [MASTER_KEYS_PATH] endpoint. Used to get/update user's master keys.
-/// My guess is via that method new user master keys, passed in request payload, get joined with current
+/// Calls [USER_MASTER_KEYS_PATH] endpoint. Used to get/update user's master keys.
+/// With that method new user master keys, passed in request payload, get joined with current
 /// Filen-known user master keys, and resulting master keys chain is returned in response payload.
 pub fn user_master_keys_request(
     payload: &MasterKeysFetchRequestPayload,
@@ -327,8 +327,8 @@ pub fn user_master_keys_request(
     queries::query_filen_api(USER_MASTER_KEYS_PATH, payload, filen_settings).context(UserMasterKeysQueryFailed {})
 }
 
-/// Calls [MASTER_KEYS_PATH] endpoint asynchronously. Used to get/update user's master keys.
-/// My guess is via that method new user master keys, passed in request payload, get joined with current
+/// Calls [USER_MASTER_KEYS_PATH] endpoint asynchronously. Used to get/update user's master keys.
+/// With that method new user master keys, passed in request payload, get joined with current
 /// Filen-known user master keys, and resulting master keys chain is returned in response payload.
 #[cfg(feature = "async")]
 pub async fn user_master_keys_request_async(
@@ -420,7 +420,7 @@ mod tests {
             USER_KEY_PAIR_INFO_PATH,
             request_payload,
             "tests/resources/responses/user_keyPair_info.json",
-            |_, filen_settings| async move { key_pair_info_request_async(&API_KEY, &filen_settings).await },
+            |_, filen_settings| async move { user_key_pair_info_request_async(&API_KEY, &filen_settings).await },
         )
         .await;
     }

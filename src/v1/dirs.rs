@@ -435,6 +435,7 @@ pub struct DirContentResponseData {
 utils::display_from_json!(DirContentResponseData);
 
 impl DirContentResponseData {
+    /// Decrypts all encrypted folder names and associates them with folder data.
     pub fn decrypt_all_folder_names(
         &self,
         master_keys: &[SecUtf8],
@@ -445,6 +446,7 @@ impl DirContentResponseData {
             .collect::<Result<Vec<_>, FsError>>()
     }
 
+    /// Decrypts all encrypted file properties and associates them with file data.
     pub fn decrypt_all_file_properties(
         &self,
         master_keys: &[SecUtf8],
