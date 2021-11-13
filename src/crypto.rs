@@ -146,7 +146,7 @@ pub fn encrypt_metadata(data: &[u8], key: &[u8], metadata_version: u32) -> Resul
 /// given keys. Tries to decrypt using given keys until one of them succeeds.
 pub fn decrypt_metadata_any_key(data: &[u8], keys: &[Vec<u8>]) -> Result<Vec<u8>> {
     ensure!(
-        keys.len() > 0,
+        !keys.is_empty(),
         BadArgument {
             message: "keys for decrypting metadata cannot be empty",
         }
