@@ -293,9 +293,9 @@ impl HasLinkKey for DirLinkStatusResponseData {
     }
 }
 
-api_response_struct!(
+response_payload!(
     /// Response for [DIR_LINK_STATUS_PATH] endpoint.
-    DirLinkStatusResponsePayload<Option<DirLinkStatusResponseData>>
+    DirLinkStatusResponsePayload<DirLinkStatusResponseData>
 );
 
 /// Calls [DIR_LINK_ADD_PATH] endpoint. Used to add a folder or a file to a folder link.
@@ -304,7 +304,7 @@ api_response_struct!(
 pub fn dir_link_add_request(
     payload: &DirLinkAddRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(DIR_LINK_ADD_PATH, payload, filen_settings).context(DirLinkAddQueryFailed {})
 }
 
@@ -315,7 +315,7 @@ pub fn dir_link_add_request(
 pub async fn dir_link_add_request_async(
     payload: &DirLinkAddRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_LINK_ADD_PATH, payload, filen_settings)
         .await
         .context(DirLinkAddQueryFailed {})
@@ -327,7 +327,7 @@ pub async fn dir_link_add_request_async(
 pub fn dir_link_edit_request(
     payload: &DirLinkEditRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(DIR_LINK_EDIT_PATH, payload, filen_settings).context(DirLinkEditQueryFailed {})
 }
 
@@ -338,7 +338,7 @@ pub fn dir_link_edit_request(
 pub async fn dir_link_edit_request_async(
     payload: &DirLinkEditRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_LINK_EDIT_PATH, payload, filen_settings)
         .await
         .context(DirLinkEditQueryFailed {})
@@ -348,7 +348,7 @@ pub async fn dir_link_edit_request_async(
 pub fn dir_link_remove_request(
     payload: &DirLinkRemoveRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(DIR_LINK_REMOVE_PATH, payload, filen_settings).context(DirLinkRemoveQueryFailed {})
 }
 
@@ -357,7 +357,7 @@ pub fn dir_link_remove_request(
 pub async fn dir_link_remove_request_async(
     payload: &DirLinkRemoveRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_LINK_REMOVE_PATH, payload, filen_settings)
         .await
         .context(DirLinkRemoveQueryFailed {})

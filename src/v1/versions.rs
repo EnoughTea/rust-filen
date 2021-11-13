@@ -73,9 +73,9 @@ pub struct FileArchiveRestoreResponseData {
 }
 utils::display_from_json!(FileArchiveRestoreResponseData);
 
-api_response_struct!(
+response_payload!(
     /// Response for [FILE_ARCHIVE_RESTORE_PATH] endpoint.
-    FileArchiveRestoreResponsePayload<Option<FileArchiveRestoreResponseData>>
+    FileArchiveRestoreResponsePayload<FileArchiveRestoreResponseData>
 );
 
 /// File version info.
@@ -125,9 +125,9 @@ pub struct FileVersionsResponseData {
 }
 utils::display_from_json!(FileVersionsResponseData);
 
-api_response_struct!(
+response_payload!(
     /// Response for [FILE_VERSIONS_PATH] endpoint.
-    FileVersionsResponsePayload<Option<FileVersionsResponseData>>
+    FileVersionsResponsePayload<FileVersionsResponseData>
 );
 
 /// Calls [FILE_ARCHIVE_RESTORE_PATH] endpoint. Used to get versions of the given file.

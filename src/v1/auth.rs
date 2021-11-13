@@ -1,11 +1,9 @@
-use crate::{crypto, filen_settings::FilenSettings, queries, utils};
+use crate::{crypto, filen_settings::FilenSettings, queries, utils, v1::*};
 use easy_hasher::easy_hasher::sha512;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use snafu::{Backtrace, ResultExt, Snafu};
-
-use super::{api_response_struct, HasMasterKeys, HasPrivateKey};
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -122,9 +120,9 @@ impl AuthInfoResponseData {
     }
 }
 
-api_response_struct!(
+response_payload!(
     /// Response for [AUTH_INFO_PATH] endpoint.
-    AuthInfoResponsePayload<Option<AuthInfoResponseData>>
+    AuthInfoResponsePayload<AuthInfoResponseData>
 );
 
 /// Used for requests to [LOGIN_PATH] endpoint.
@@ -185,9 +183,9 @@ impl HasPrivateKey for LoginResponseData {
     }
 }
 
-api_response_struct!(
+response_payload!(
     /// Response for [LOGIN_PATH] endpoint.
-    LoginResponsePayload<Option<LoginResponseData>>
+    LoginResponsePayload<LoginResponseData>
 );
 
 /// Calls [AUTH_INFO_PATH] endpoint. Used to get used auth version and Filen salt.

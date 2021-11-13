@@ -77,9 +77,9 @@ impl HasFileMetadata for SyncedFileData {
     }
 }
 
-api_response_struct!(
+response_payload!(
     /// Response for [GET_DIR_PATH] endpoint.
-    GetDirResponsePayload<Option<GetDirResponseData>>
+    GetDirResponsePayload<GetDirResponseData>
 );
 
 /// Calls [GET_DIR_PATH] endpoint. It fetches the entire Filen sync folder contents, with option

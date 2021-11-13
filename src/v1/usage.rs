@@ -41,9 +41,9 @@ pub struct UserSyncGetDataResponseData {
 }
 utils::display_from_json!(UserSyncGetDataResponseData);
 
-api_response_struct!(
+response_payload!(
     /// Response for [USER_SYNC_GET_DATA_PATH] endpoint.
-    UserSyncGetDataResponsePayload<Option<UserSyncGetDataResponseData>>
+    UserSyncGetDataResponsePayload<UserSyncGetDataResponseData>
 );
 
 /// Response data for [USER_USAGE_PATH] endpoint.
@@ -73,7 +73,10 @@ pub struct UserUsageResponseData {
 }
 utils::display_from_json!(UserUsageResponseData);
 
-api_response_struct!(UserUsageResponsePayload<Option<UserUsageResponseData>>);
+response_payload!(
+    /// Response for [USER_USAGE_PATH] endpoint.
+    UserUsageResponsePayload<UserUsageResponseData>
+);
 
 /// Calls [USER_SYNC_GET_DATA] endpoint. Used to fetch user sync storage stats.
 pub fn user_sync_get_data_request(

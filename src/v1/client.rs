@@ -45,9 +45,9 @@ pub struct CurrentVersionsResponseData {
 }
 utils::display_from_json!(CurrentVersionsResponseData);
 
-api_response_struct!(
+response_payload!(
     /// Response for [CURRENT_VERSIONS_PATH] endpoint.
-    CurrentVersionsResponsePayload<Option<CurrentVersionsResponseData>>
+    CurrentVersionsResponsePayload<CurrentVersionsResponseData>
 );
 
 /// Used for requests to [DIR_COLOR_CHANGE_PATH] endpoint.
@@ -142,7 +142,7 @@ pub async fn current_versions_request_async(filen_settings: &FilenSettings) -> R
 pub fn dir_color_change_request(
     payload: &DirColorChangeRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(DIR_COLOR_CHANGE_PATH, payload, filen_settings).context(DirColorChangeQueryFailed {})
 }
 
@@ -151,7 +151,7 @@ pub fn dir_color_change_request(
 pub async fn dir_color_change_request_async(
     payload: &DirColorChangeRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_COLOR_CHANGE_PATH, payload, filen_settings)
         .await
         .context(DirColorChangeQueryFailed {})
@@ -161,7 +161,7 @@ pub async fn dir_color_change_request_async(
 pub fn item_favorite_request(
     payload: &ItemFavoriteRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(ITEM_FAVORITE_PATH, payload, filen_settings).context(ItemFavoriteQueryFailed {})
 }
 
@@ -170,7 +170,7 @@ pub fn item_favorite_request(
 pub async fn item_favorite_request_async(
     payload: &ItemFavoriteRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(ITEM_FAVORITE_PATH, payload, filen_settings)
         .await
         .context(ItemFavoriteQueryFailed {})
@@ -180,7 +180,7 @@ pub async fn item_favorite_request_async(
 pub fn sync_client_message_request(
     payload: &SyncClientMessageRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(SYNC_CLIENT_MESSAGE_PATH, payload, filen_settings).context(SyncClientMessageQueryFailed {})
 }
 
@@ -189,21 +189,24 @@ pub fn sync_client_message_request(
 pub async fn sync_client_message_request_async(
     payload: &SyncClientMessageRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(SYNC_CLIENT_MESSAGE_PATH, payload, filen_settings)
         .await
         .context(SyncClientMessageQueryFailed {})
 }
 
 /// Calls [TRASH_EMPTY_PATH] endpoint. Used to permanently delete all files in the 'Trash' folder.
-pub fn trash_empty_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
+pub fn trash_empty_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<PlainResponsePayload> {
     queries::query_filen_api(TRASH_EMPTY_PATH, &utils::api_key_json(api_key), filen_settings)
         .context(TrashEmptyQueryFailed {})
 }
 
 /// Calls [TRASH_EMPTY_PATH] endpoint asynchronously. Used to permanently delete all files in the 'Trash' folder.
 #[cfg(feature = "async")]
-pub async fn trash_empty_request_async(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
+pub async fn trash_empty_request_async(
+    api_key: &SecUtf8,
+    filen_settings: &FilenSettings,
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(TRASH_EMPTY_PATH, &utils::api_key_json(api_key), filen_settings)
         .await
         .context(TrashEmptyQueryFailed {})

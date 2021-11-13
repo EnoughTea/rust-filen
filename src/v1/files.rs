@@ -319,9 +319,9 @@ pub struct RmRequestPayload {
 }
 utils::display_from_json!(RmRequestPayload);
 
-api_response_struct!(
+response_payload!(
     /// Response for [USER_RECENT_PATH] endpoint.
-    UserRecentResponsePayload<Option<Vec<DirContentFile>>>
+    UserRecentResponsePayload<Vec<DirContentFile>>
 );
 
 /// Calls [FILE_ARCHIVE_PATH] endpoint.
@@ -330,7 +330,7 @@ api_response_struct!(
 pub fn file_archive_request(
     payload: &FileArchiveRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(FILE_ARCHIVE_PATH, payload, filen_settings).context(FileArchieveQueryFailed {})
 }
 
@@ -341,7 +341,7 @@ pub fn file_archive_request(
 pub async fn file_archive_request_async(
     payload: &FileArchiveRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(FILE_ARCHIVE_PATH, payload, filen_settings)
         .await
         .context(FileArchieveQueryFailed {})
@@ -374,7 +374,10 @@ pub async fn file_exists_request_async(
 ///
 /// If file is moved into a linked and/or shared folder, don't forget to call [dir_link_add_request]
 /// and/or [share_request] after a successfull move.
-pub fn file_move_request(payload: &FileMoveRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
+pub fn file_move_request(
+    payload: &FileMoveRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(FILE_MOVE_PATH, payload, filen_settings).context(FileMoveQueryFailed {})
 }
 
@@ -388,7 +391,7 @@ pub fn file_move_request(payload: &FileMoveRequestPayload, filen_settings: &File
 pub async fn file_move_request_async(
     payload: &FileMoveRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(FILE_MOVE_PATH, payload, filen_settings)
         .await
         .context(FileMoveQueryFailed {})
@@ -400,7 +403,7 @@ pub async fn file_move_request_async(
 pub fn file_rename_request(
     payload: &FileRenameRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(FILE_RENAME_PATH, payload, filen_settings).context(FileRenameQueryFailed {})
 }
 
@@ -411,7 +414,7 @@ pub fn file_rename_request(
 pub async fn file_rename_request_async(
     payload: &FileRenameRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(FILE_RENAME_PATH, payload, filen_settings)
         .await
         .context(FileRenameQueryFailed {})
@@ -421,7 +424,7 @@ pub async fn file_rename_request_async(
 pub fn file_restore_request(
     payload: &FileRestoreRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(FILE_RESTORE_PATH, payload, filen_settings).context(FileRestoreQueryFailed {})
 }
 
@@ -430,7 +433,7 @@ pub fn file_restore_request(
 pub async fn file_restore_request_async(
     payload: &FileRestoreRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(FILE_RESTORE_PATH, payload, filen_settings)
         .await
         .context(FileRestoreQueryFailed {})
@@ -442,7 +445,7 @@ pub async fn file_restore_request_async(
 pub fn file_trash_request(
     payload: &LocationTrashRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(FILE_TRASH_PATH, payload, filen_settings).context(FileTrashQueryFailed {})
 }
 
@@ -453,20 +456,23 @@ pub fn file_trash_request(
 pub async fn file_trash_request_async(
     payload: &LocationTrashRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(FILE_TRASH_PATH, payload, filen_settings)
         .await
         .context(FileTrashQueryFailed {})
 }
 
 /// Calls [RM_PATH] endpoint. Used to delete file.
-pub fn rm_request(payload: &RmRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
+pub fn rm_request(payload: &RmRequestPayload, filen_settings: &FilenSettings) -> Result<PlainResponsePayload> {
     queries::query_filen_api(RM_PATH, payload, filen_settings).context(RmQueryFailed {})
 }
 
 /// Calls [RM_PATH] endpoint asynchronously. Used to delete file.
 #[cfg(feature = "async")]
-pub async fn rm_request_async(payload: &RmRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
+pub async fn rm_request_async(
+    payload: &RmRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(RM_PATH, payload, filen_settings)
         .await
         .context(RmQueryFailed {})

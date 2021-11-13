@@ -190,9 +190,9 @@ pub struct DownloadDirLinkResponseData {
 }
 utils::display_from_json!(DownloadDirLinkResponseData);
 
-api_response_struct!(
+response_payload!(
     /// Response for [DOWNLOAD_DIR_LINK_PATH] endpoint.
-    DownloadDirLinkResponsePayload<Option<DownloadDirLinkResponseData>>
+    DownloadDirLinkResponsePayload<DownloadDirLinkResponseData>
 );
 
 /// Used for requests to [DOWNLOAD_DIR_SHARED_PATH] endpoint.
@@ -323,9 +323,9 @@ pub struct DownloadDirSharedResponseData {
 }
 utils::display_from_json!(DownloadDirSharedResponseData);
 
-api_response_struct!(
+response_payload!(
     /// Response for [DOWNLOAD_DIR_SHARED_PATH] endpoint.
-    DownloadDirSharedResponsePayload<Option<DownloadDirSharedResponseData>>
+    DownloadDirSharedResponsePayload<DownloadDirSharedResponseData>
 );
 
 /// Used for requests to [DOWNLOAD_DIR_PATH] endpoint.
@@ -493,9 +493,9 @@ pub struct FileNameSizeMime {
     pub mime: String,
 }
 
-api_response_struct!(
+response_payload!(
     /// Response for [DOWNLOAD_DIR_PATH] endpoint.
-    DownloadDirResponsePayload<Option<DownloadDirResponseData>>
+    DownloadDirResponsePayload<DownloadDirResponseData>
 );
 
 /// Calls [DOWNLOAD_DIR_LINK_PATH] endpoint. Used to check contents of a linked folder.
@@ -569,12 +569,10 @@ pub async fn download_dir_request_async(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::test_utils::*;
     use once_cell::sync::Lazy;
     use secstr::SecUtf8;
-
-    use crate::test_utils::*;
-
-    use super::*;
 
     static API_KEY: Lazy<SecUtf8> =
         Lazy::new(|| SecUtf8::from("bYZmrwdVEbHJSqeA0RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM10CDnklpFq6"));

@@ -199,9 +199,9 @@ pub struct UserBaseFoldersResponseData {
 }
 utils::display_from_json!(UserBaseFoldersResponseData);
 
-api_response_struct!(
+response_payload!(
     /// Response for [USER_BASE_FOLDERS_PATH] endpoint.
-    UserBaseFoldersResponsePayload<Option<UserBaseFoldersResponseData>>
+    UserBaseFoldersResponsePayload<UserBaseFoldersResponseData>
 );
 
 /// One of the folders in response data for [USER_DIRS_PATH] endpoint.
@@ -247,14 +247,16 @@ impl HasLocationName for UserDirData {
     }
 }
 
-api_response_struct!(
+response_payload!(
     /// Response for [USER_DIRS_PATH] endpoint.
     UserDirsResponsePayload<Vec<UserDirData>>
 );
 
 impl UserDirsResponsePayload {
     pub fn find_default_folder(&self) -> Option<UserDirData> {
-        self.data.iter().find(|dir_data| dir_data.default).cloned()
+        self.data
+            .as_ref()
+            .and_then(|data| data.iter().find(|dir_data| dir_data.default).cloned())
     }
 }
 
@@ -462,9 +464,9 @@ impl DirContentResponseData {
     }
 }
 
-api_response_struct!(
+response_payload!(
     /// Response for [USER_DIRS_PATH] endpoint.
-    DirContentResponsePayload<Option<DirContentResponseData>>
+    DirContentResponsePayload<DirContentResponseData>
 );
 
 /// Used for requests to [DIR_CREATE_PATH] endpoint.
@@ -685,20 +687,20 @@ pub async fn dir_content_request_async(
         .context(DirContentQueryFailed {})
 }
 
-/// Calls [DIR_CREATE_PATH] endpoint. Creates parentless folder that you need to move yourself later.
+/// Calls [DIR_CREATE_PATH] endpoint. Creates parentless 'base' folder.
 pub fn dir_create_request(
     payload: &DirCreateRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(DIR_CREATE_PATH, payload, filen_settings).context(DirCreateQueryFailed {})
 }
 
-/// Calls [DIR_CREATE_PATH] endpoint asynchronously. Creates parentless folder that you need to move yourself later.
+/// Calls [DIR_CREATE_PATH] endpoint asynchronously. Creates parentless 'base' folder.
 #[cfg(feature = "async")]
 pub async fn dir_create_request_async(
     payload: &DirCreateRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_CREATE_PATH, payload, filen_settings)
         .await
         .context(DirCreateQueryFailed {})
@@ -708,7 +710,7 @@ pub async fn dir_create_request_async(
 pub fn dir_sub_create_request(
     payload: &DirSubCreateRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(DIR_SUB_CREATE_PATH, payload, filen_settings).context(DirSubCreateQueryFailed {})
 }
 
@@ -717,7 +719,7 @@ pub fn dir_sub_create_request(
 pub async fn dir_sub_create_request_async(
     payload: &DirSubCreateRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_SUB_CREATE_PATH, payload, filen_settings)
         .await
         .context(DirSubCreateQueryFailed {})
@@ -750,7 +752,10 @@ pub async fn dir_exists_request_async(
 ///
 /// If folder is moved into a linked and/or shared folder, don't forget to call [dir_link_add_request]
 /// and/or [share_request] after a successfull move.
-pub fn dir_move_request(payload: &DirMoveRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
+pub fn dir_move_request(
+    payload: &DirMoveRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(DIR_MOVE_PATH, payload, filen_settings).context(DirMoveQueryFailed {})
 }
 
@@ -764,7 +769,7 @@ pub fn dir_move_request(payload: &DirMoveRequestPayload, filen_settings: &FilenS
 pub async fn dir_move_request_async(
     payload: &DirMoveRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_MOVE_PATH, payload, filen_settings)
         .await
         .context(DirMoveQueryFailed {})
@@ -776,7 +781,7 @@ pub async fn dir_move_request_async(
 pub fn dir_rename_request(
     payload: &DirRenameRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(DIR_RENAME_PATH, payload, filen_settings).context(DirRenameQueryFailed {})
 }
 
@@ -787,7 +792,7 @@ pub fn dir_rename_request(
 pub async fn dir_rename_request_async(
     payload: &DirRenameRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_RENAME_PATH, payload, filen_settings)
         .await
         .context(DirRenameQueryFailed {})
@@ -797,7 +802,7 @@ pub async fn dir_rename_request_async(
 pub fn dir_restore_request(
     payload: &DirRestoreRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(DIR_RESTORE_PATH, payload, filen_settings).context(DirRestoreQueryFailed {})
 }
 
@@ -806,7 +811,7 @@ pub fn dir_restore_request(
 pub async fn dir_restore_request_async(
     payload: &DirRestoreRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_RESTORE_PATH, payload, filen_settings)
         .await
         .context(DirRestoreQueryFailed {})
@@ -818,7 +823,7 @@ pub async fn dir_restore_request_async(
 pub fn dir_trash_request(
     payload: &LocationTrashRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(DIR_TRASH_PATH, payload, filen_settings).context(DirTrashQueryFailed {})
 }
 
@@ -829,7 +834,7 @@ pub fn dir_trash_request(
 pub async fn dir_trash_request_async(
     payload: &LocationTrashRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_TRASH_PATH, payload, filen_settings)
         .await
         .context(DirTrashQueryFailed {})

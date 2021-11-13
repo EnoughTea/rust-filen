@@ -1,10 +1,8 @@
-use crate::{crypto, filen_settings::FilenSettings, queries, utils};
+use crate::{crypto, filen_settings::FilenSettings, queries, utils, v1::*};
 use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use snafu::{ensure, Backtrace, ResultExt, Snafu};
-
-use super::{api_response_struct, PlainApiResponse, METADATA_VERSION};
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -134,9 +132,9 @@ impl HasPublicKey for UserKeyPairInfoResponseData {
     }
 }
 
-api_response_struct!(
+response_payload!(
     /// Response for [USER_KEY_PAIR_INFO_PATH] endpoint.
-    UserKeyPairInfoResponsePayload<Option<UserKeyPairInfoResponseData>>
+    UserKeyPairInfoResponsePayload<UserKeyPairInfoResponseData>
 );
 
 /// Used for requests to [USER_KEY_PAIR_UPDATE_PATH] endpoint.
@@ -240,9 +238,9 @@ impl HasMasterKeys for MasterKeysFetchResponseData {
     }
 }
 
-api_response_struct!(
+response_payload!(
     /// Response for [USER_MASTER_KEYS_PATH] endpoint.
-    MasterKeysFetchResponsePayload<Option<MasterKeysFetchResponseData>>
+    MasterKeysFetchResponsePayload<MasterKeysFetchResponseData>
 );
 
 /// Used for requests to [USER_PUBLIC_KEY_GET_PATH] endpoint.
@@ -272,9 +270,9 @@ impl HasPublicKey for UserPublicKeyGetResponseData {
     }
 }
 
-api_response_struct!(
+response_payload!(
     /// Response for [USER_PUBLIC_KEY_GET_PATH] endpoint.
-    UserPublicKeyGetResponsePayload<Option<UserPublicKeyGetResponseData>>
+    UserPublicKeyGetResponsePayload<UserPublicKeyGetResponseData>
 );
 
 /// Calls [USER_KEY_PAIR_INFO_PATH] endpoint. Used to get RSA public/private key pair.
@@ -301,7 +299,7 @@ pub async fn user_key_pair_info_request_async(
 pub fn user_key_pair_update_request(
     payload: &UserKeyPairUpdateRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(USER_KEY_PAIR_UPDATE_PATH, payload, filen_settings)
         .context(UserKeyPairUpdateQueryFailed {})
 }
@@ -311,7 +309,7 @@ pub fn user_key_pair_update_request(
 pub async fn user_key_pair_update_request_async(
     payload: &UserKeyPairUpdateRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(USER_KEY_PAIR_UPDATE_PATH, payload, filen_settings)
         .await
         .context(UserKeyPairUpdateQueryFailed {})

@@ -1,4 +1,3 @@
-use super::api_response_struct;
 use crate::{filen_settings::*, queries, utils, v1::*};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
@@ -173,6 +172,22 @@ pub struct UserGetAccountResponsePayload {
 }
 utils::display_from_json!(UserGetAccountResponsePayload);
 
+impl HasPlainResponse for UserGetAccountResponsePayload {
+    fn status_ref(&self) -> bool {
+        self.status
+    }
+
+    fn message_ref(&self) -> Option<&str> {
+        self.message.as_deref()
+    }
+}
+
+impl HasDataOption<UserGetAccountResponseData> for UserGetAccountResponsePayload {
+    fn data_ref(&self) -> Option<&UserGetAccountResponseData> {
+        self.data.as_ref()
+    }
+}
+
 /// Response data for [USER_GET_SETTINGS_PATH] endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -213,9 +228,9 @@ pub struct UserGetSettingsResponseData {
 }
 utils::display_from_json!(UserGetSettingsResponseData);
 
-api_response_struct!(
+response_payload!(
     /// Response for [USER_GET_SETTINGS_PATH] endpoint.
-    UserGetSettingsResponsePayload<Option<UserGetSettingsResponseData>>
+    UserGetSettingsResponsePayload<UserGetSettingsResponseData>
 );
 
 /// Response data for [USER_INFO_PATH] endpoint.
@@ -247,9 +262,9 @@ pub struct UserInfoResponseData {
 }
 utils::display_from_json!(UserInfoResponseData);
 
-api_response_struct!(
+response_payload!(
     /// Response for [USER_INFO_PATH] endpoint.
-    UserInfoResponsePayload<Option<UserInfoResponseData>>
+    UserInfoResponsePayload<UserInfoResponseData>
 );
 
 /// Calls [USER_GET_ACCOUNT_PATH] endpoint.

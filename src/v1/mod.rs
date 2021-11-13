@@ -16,6 +16,7 @@ use crate::{crypto, utils};
 use once_cell::sync::Lazy;
 use serde::*;
 use serde_with::skip_serializing_none;
+use snafu::{Backtrace, Snafu};
 use strum::{Display, EnumString};
 use uuid::Uuid;
 
@@ -38,21 +39,59 @@ mod user;
 mod user_keys;
 mod versions;
 
+type Result<T, E = Error> = std::result::Result<T, E>;
+
 const METADATA_VERSION: u32 = 1;
 
 pub static EMPTY_PASSWORD_HASH: Lazy<String> = Lazy::new(|| crypto::hash_fn(&PasswordState::Empty.to_string()));
 
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("Filen response does not contain 'data'"))]
+    FilenResponseHasNoData { backtrace: Backtrace },
+}
+
+/// Common trait for all Filen API responses.
+pub trait HasPlainResponse {
+    /// True when API call was successful; false otherwise.
+    fn status_ref(&self) -> bool;
+
+    /// Filen reason for success or failure.
+    fn message_ref(&self) -> Option<&str>;
+}
+
 /// Contains just the response status and corresponding message.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct PlainApiResponse {
+pub struct PlainResponsePayload {
     /// True when API call was successful; false otherwise.
     pub status: bool,
 
     /// Filen reason for success or failure.
     pub message: Option<String>,
 }
-utils::display_from_json!(PlainApiResponse);
+utils::display_from_json!(PlainResponsePayload);
+
+impl HasPlainResponse for PlainResponsePayload {
+    fn status_ref(&self) -> bool {
+        self.status
+    }
+
+    fn message_ref(&self) -> Option<&str> {
+        self.message.as_deref()
+    }
+}
+
+pub trait HasDataOption<D> {
+    fn data_ref(&self) -> Option<&D>;
+
+    fn data_or_err(&self) -> Result<&D> {
+        match self.data_ref() {
+            Some(data) => Ok(data),
+            None => FilenResponseHasNoData {}.fail(),
+        }
+    }
+}
 
 /// Serves as a flag for password-protection.
 #[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
@@ -134,20 +173,20 @@ where
     }
 }
 
-/// This macro generates a struct to parse Filen API response into.
+/// This macro generates a struct used to parse Filen API response.
 ///
 /// Filen API uses mostly the same format for all its responses, successfull or not.
-/// Status and message fields are always present, while data field can be returned on success,
+/// Status is always present, message is almost always present, while data field can be returned on success,
 /// when said success implies getting some data.
 ///
 /// To use, pass generated struct name and contained data type:
 /// ```
-/// api_response_struct!(
+/// api_response_struct_option!(
 ///     /// Response for some endpoint.
-///     SomeResponsePayload<Option<SomeResponseData>>
+///     SomeResponsePayload<SomeOptionalResponseData>
 /// );
 /// ```
-macro_rules! api_response_struct {
+macro_rules! response_payload {
     (
         $(#[$meta:meta])*
         $struct_name:ident<$response_data_type:ty>
@@ -163,10 +202,26 @@ macro_rules! api_response_struct {
             pub message: Option<String>,
 
             /// Resulting data.
-            pub data: $response_data_type,
+            pub data: Option<$response_data_type>,
+        }
+
+        impl crate::v1::HasPlainResponse for $struct_name {
+            fn status_ref(&self) -> bool {
+                self.status
+            }
+
+            fn message_ref(&self) -> Option<&str> {
+                self.message.as_deref()
+            }
+        }
+
+        impl HasDataOption<$response_data_type> for $struct_name {
+            fn data_ref(&self) -> Option<&$response_data_type> {
+                self.data.as_ref()
+            }
         }
 
         crate::utils::display_from_json!($struct_name);
     }
 }
-pub(crate) use api_response_struct;
+pub(crate) use response_payload;

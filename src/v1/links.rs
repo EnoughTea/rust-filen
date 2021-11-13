@@ -101,9 +101,9 @@ pub struct LinkDirItemStatusResponseData {
 }
 utils::display_from_json!(LinkDirItemStatusResponseData);
 
-api_response_struct!(
+response_payload!(
     /// Response for [LINK_DIR_ITEM_STATUS_PATH] endpoint.
-    LinkDirItemStatusResponsePayload<Option<LinkDirItemStatusResponseData>>
+    LinkDirItemStatusResponsePayload<LinkDirItemStatusResponseData>
 );
 
 /// Used for requests to [LINK_DIR_STATUS_PATH] endpoint.
@@ -150,16 +150,16 @@ pub struct LinkDirStatusResponseData {
 }
 utils::display_from_json!(LinkDirStatusResponseData);
 
-api_response_struct!(
+response_payload!(
     /// Response for [LINK_DIR_STATUS_PATH] endpoint.
-    LinkDirStatusResponsePayload<Option<LinkDirStatusResponseData>>
+    LinkDirStatusResponsePayload<LinkDirStatusResponseData>
 );
 
 /// Calls [LINK_DIR_ITEM_RENAME_PATH] endpoint.
 pub fn link_dir_item_rename_request(
     payload: &LinkDirItemRenameRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(LINK_DIR_ITEM_RENAME_PATH, payload, filen_settings)
         .context(LinkDirItemRenameQueryFailed {})
 }
@@ -169,7 +169,7 @@ pub fn link_dir_item_rename_request(
 pub async fn link_dir_item_rename_request_async(
     payload: &LinkDirItemRenameRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(LINK_DIR_ITEM_RENAME_PATH, payload, filen_settings)
         .await
         .context(LinkDirItemRenameQueryFailed {})

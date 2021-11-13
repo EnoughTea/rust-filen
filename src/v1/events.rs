@@ -925,9 +925,9 @@ pub struct UserEventsResponseData {
 }
 utils::display_from_json!(UserEventsResponseData);
 
-api_response_struct!(
+response_payload!(
     /// Response for [USER_EVENTS_PATH] endpoint.
-    UserEventsResponsePayload<Option<UserEventsResponseData>>
+    UserEventsResponsePayload<UserEventsResponseData>
 );
 
 /// Used for requests to [USER_EVENTS_GET_PATH] endpoint.
@@ -941,9 +941,9 @@ pub struct UserEventsGetRequestPayload {
     pub uuid: Uuid,
 }
 
-api_response_struct!(
+response_payload!(
     /// Response for [USER_EVENTS_GET_PATH] endpoint.
-    UserEventsGetResponsePayload<Option<UserEvent>>
+    UserEventsGetResponsePayload<UserEvent>
 );
 
 /// Calls [USER_EVENTS_PATH] endpoint.

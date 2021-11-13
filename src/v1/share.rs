@@ -162,9 +162,9 @@ pub struct ShareDirStatusResponseData {
 }
 utils::display_from_json!(ShareDirStatusResponseData);
 
-api_response_struct!(
+response_payload!(
     /// Response for [SHARE_DIR_STATUS_PATH] endpoint.
-    ShareDirStatusResponsePayload<Option<ShareDirStatusResponseData>>
+    ShareDirStatusResponsePayload<ShareDirStatusResponseData>
 );
 
 #[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
@@ -404,9 +404,9 @@ pub struct UserSharedInOrOutResponseData {
 }
 utils::display_from_json!(UserSharedInOrOutResponseData);
 
-api_response_struct!(
+response_payload!(
     /// Response for [USER_SHARED_IN] or [USER_SHARED_OUT_PATH] endpoint.
-    UserSharedInOrOutResponsePayload<Option<UserSharedInOrOutResponseData>>
+    UserSharedInOrOutResponsePayload<UserSharedInOrOutResponseData>
 );
 
 /// Used for requests to [USER_SHARED_ITEM_RENAME_PATH] endpoint.
@@ -524,9 +524,9 @@ pub struct UserSharedItemStatusResponseData {
 }
 utils::display_from_json!(UserSharedItemStatusResponseData);
 
-api_response_struct!(
+response_payload!(
     /// Response for [USER_SHARED_ITEM_STATUS_PATH] endpoint.
-    UserSharedItemStatusResponsePayload<Option<UserSharedItemStatusResponseData>>
+    UserSharedItemStatusResponsePayload<UserSharedItemStatusResponseData>
 );
 
 /// Calls [SHARE_DIR_STATUS_PATH] endpoint. Used to check if given folder is shared and return 'receivers',
@@ -551,7 +551,7 @@ pub async fn share_dir_status_request_async(
 }
 
 /// Calls [SHARE_PATH] endpoint. Used to share a file or folder.
-pub fn share_request(payload: &ShareRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
+pub fn share_request(payload: &ShareRequestPayload, filen_settings: &FilenSettings) -> Result<PlainResponsePayload> {
     queries::query_filen_api(SHARE_PATH, payload, filen_settings).context(ShareQueryFailed {})
 }
 
@@ -560,7 +560,7 @@ pub fn share_request(payload: &ShareRequestPayload, filen_settings: &FilenSettin
 pub async fn share_request_async(
     payload: &ShareRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(SHARE_PATH, payload, filen_settings)
         .await
         .context(ShareQueryFailed {})
@@ -613,7 +613,7 @@ pub async fn user_shared_out_request_async(
 pub fn user_shared_item_in_remove_request(
     payload: &UserSharedItemRemoveRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(USER_SHARED_ITEM_IN_REMOVE_PATH, payload, filen_settings)
         .context(UserSharedItemInRemoveQueryFailed {})
 }
@@ -624,7 +624,7 @@ pub fn user_shared_item_in_remove_request(
 pub async fn user_shared_item_in_rename_request_async(
     payload: &UserSharedItemRemoveRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(USER_SHARED_ITEM_IN_REMOVE_PATH, payload, filen_settings)
         .await
         .context(UserSharedItemInRemoveQueryFailed {})
@@ -635,7 +635,7 @@ pub async fn user_shared_item_in_rename_request_async(
 pub fn user_shared_item_out_remove_request(
     payload: &UserSharedItemRemoveRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(USER_SHARED_ITEM_OUT_REMOVE_PATH, payload, filen_settings)
         .context(UserSharedItemOutRemoveQueryFailed {})
 }
@@ -646,7 +646,7 @@ pub fn user_shared_item_out_remove_request(
 pub async fn user_shared_item_out_remove_request_async(
     payload: &UserSharedItemRemoveRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(USER_SHARED_ITEM_OUT_REMOVE_PATH, payload, filen_settings)
         .await
         .context(UserSharedItemOutRemoveQueryFailed {})
@@ -656,7 +656,7 @@ pub async fn user_shared_item_out_remove_request_async(
 pub fn user_shared_item_rename_request(
     payload: &UserSharedItemRenameRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(USER_SHARED_ITEM_RENAME_PATH, payload, filen_settings)
         .context(UserSharedItemRenameQueryFailed {})
 }
@@ -666,7 +666,7 @@ pub fn user_shared_item_rename_request(
 pub async fn user_shared_item_rename_request_async(
     payload: &UserSharedItemRenameRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(USER_SHARED_ITEM_RENAME_PATH, payload, filen_settings)
         .await
         .context(UserSharedItemRenameQueryFailed {})

@@ -95,9 +95,9 @@ pub struct UploadFileChunkResponseData {
     #[serde(rename = "deleteTimestamp")]
     pub delete_timestamp: u64,
 }
-api_response_struct!(
+response_payload!(
     /// Response for [UPLOAD_PATH] endpoint.
-    UploadFileChunkResponsePayload<Option<UploadFileChunkResponseData>>
+    UploadFileChunkResponsePayload<UploadFileChunkResponseData>
 );
 
 /// Used for requests to [UPLOAD_DONE_PATH] endpoint.
@@ -240,14 +240,14 @@ utils::display_from_json!(FileUploadProperties);
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FileUploadInfo {
     pub properties: FileUploadProperties,
-    pub mark_done_response: PlainApiResponse,
+    pub mark_done_response: PlainResponsePayload,
     pub chunk_responses: Vec<UploadFileChunkResponsePayload>,
 }
 
 impl FileUploadInfo {
     pub fn new(
         upload_properties: FileUploadProperties,
-        mark_done_response: PlainApiResponse,
+        mark_done_response: PlainResponsePayload,
         chunk_responses: Vec<UploadFileChunkResponsePayload>,
     ) -> FileUploadInfo {
         FileUploadInfo {
@@ -296,7 +296,7 @@ utils::display_from_json!(FileUploadInfo);
 pub fn upload_done_request(
     payload: &UploadDoneRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(UPLOAD_DONE_PATH, payload, filen_settings).context(UploadDoneQueryFailed {})
 }
 
@@ -306,7 +306,7 @@ pub fn upload_done_request(
 pub async fn upload_done_request_async(
     payload: &UploadDoneRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(UPLOAD_DONE_PATH, payload, filen_settings)
         .await
         .context(UploadDoneQueryFailed {})
@@ -317,7 +317,7 @@ pub async fn upload_done_request_async(
 pub fn upload_stop_request(
     payload: &UploadStopRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(UPLOAD_STOP_PATH, payload, filen_settings).context(UploadStopQueryFailed {})
 }
 
@@ -327,7 +327,7 @@ pub fn upload_stop_request(
 pub async fn upload_stop_request_async(
     payload: &UploadStopRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(UPLOAD_STOP_PATH, payload, filen_settings)
         .await
         .context(UploadStopQueryFailed {})
@@ -397,7 +397,10 @@ pub async fn encrypt_and_upload_chunk_async(
 }
 
 /// Calls [USER_UNFINISHED_DELETE_PATH] endpoint. Used to delete all unfinished file uploads.
-pub fn user_unfinished_delete_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
+pub fn user_unfinished_delete_request(
+    api_key: &SecUtf8,
+    filen_settings: &FilenSettings,
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(
         USER_UNFINISHED_DELETE_PATH,
         &utils::api_key_json(api_key),
@@ -411,7 +414,7 @@ pub fn user_unfinished_delete_request(api_key: &SecUtf8, filen_settings: &FilenS
 pub async fn user_unfinished_delete_request_async(
     api_key: &SecUtf8,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(
         USER_UNFINISHED_DELETE_PATH,
         &utils::api_key_json(api_key),

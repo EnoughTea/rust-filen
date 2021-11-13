@@ -109,13 +109,16 @@ pub struct LinkStatusResponseData {
 }
 utils::display_from_json!(LinkStatusResponseData);
 
-api_response_struct!(
+response_payload!(
     /// Response for [LINK_STATUS_PATH] endpoint.
-    LinkStatusResponsePayload<Option<LinkStatusResponseData>>
+    LinkStatusResponsePayload<LinkStatusResponseData>
 );
 
 /// Calls [LINK_EDIT_PATH] endpoint. Used to edit given file link.
-pub fn link_edit_request(payload: &LinkEditRequestPayload, filen_settings: &FilenSettings) -> Result<PlainApiResponse> {
+pub fn link_edit_request(
+    payload: &LinkEditRequestPayload,
+    filen_settings: &FilenSettings,
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api(LINK_EDIT_PATH, payload, filen_settings).context(LinkEditQueryFailed {})
 }
 
@@ -124,7 +127,7 @@ pub fn link_edit_request(payload: &LinkEditRequestPayload, filen_settings: &File
 pub async fn link_edit_request_async(
     payload: &LinkEditRequestPayload,
     filen_settings: &FilenSettings,
-) -> Result<PlainApiResponse> {
+) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(LINK_EDIT_PATH, payload, filen_settings)
         .await
         .context(LinkEditQueryFailed {})

@@ -419,9 +419,9 @@ pub struct LocationExistsResponseData {
 }
 utils::display_from_json!(LocationExistsResponseData);
 
-api_response_struct!(
+response_payload!(
     /// Response for [DIR_EXISTS_PATH] or [FILE_TRASH_PATH] endpoint.
-    LocationExistsResponsePayload<Option<LocationExistsResponseData>>
+    LocationExistsResponsePayload<LocationExistsResponseData>
 );
 
 /// Identifies parent eitner by ID or by indirect reference.
