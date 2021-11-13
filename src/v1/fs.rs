@@ -15,9 +15,6 @@ pub enum Error {
     #[snafu(display("Failed to deserialize location name: {}", source))]
     DeserializeLocationNameFailed { source: serde_json::Error },
 
-    #[snafu(display("Failed to decrypt file metadata '{}': {}", metadata, source))]
-    DecryptFileMetadataFailed { metadata: String, source: files::Error },
-
     #[snafu(display("Failed to decrypt location name {}: {}", metadata, source))]
     DecryptLocationNameFailed { metadata: String, source: crypto::Error },
 
@@ -223,12 +220,8 @@ pub trait HasFileMetadata {
     fn file_metadata_ref(&self) -> &str;
 
     /// Decrypts file metadata string.
-    fn decrypt_file_metadata(&self, master_keys: &[SecUtf8]) -> Result<FileProperties> {
-        FileProperties::decrypt_file_metadata(self.file_metadata_ref(), master_keys).context(
-            DecryptFileMetadataFailed {
-                metadata: self.file_metadata_ref().to_owned(),
-            },
-        )
+    fn decrypt_file_metadata(&self, master_keys: &[SecUtf8]) -> Result<FileProperties, FilesError> {
+        FileProperties::decrypt_file_metadata(self.file_metadata_ref(), master_keys)
     }
 }
 

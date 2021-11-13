@@ -448,14 +448,14 @@ impl DirContentResponseData {
     pub fn decrypt_all_file_properties(
         &self,
         master_keys: &[SecUtf8],
-    ) -> Result<Vec<(DirContentFile, FileProperties)>, FsError> {
+    ) -> Result<Vec<(DirContentFile, FileProperties)>, FilesError> {
         self.uploads
             .iter()
             .map(|data| {
                 data.decrypt_file_metadata(master_keys)
                     .map(|properties| (data.clone(), properties))
             })
-            .collect::<Result<Vec<_>, FsError>>()
+            .collect::<Result<Vec<_>, FilesError>>()
     }
 }
 

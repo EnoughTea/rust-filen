@@ -219,14 +219,14 @@ impl DownloadDirResponseData {
     pub fn decrypt_all_file_properties(
         &self,
         master_keys: &[SecUtf8],
-    ) -> Result<Vec<(FileData, FileProperties)>, FsError> {
+    ) -> Result<Vec<(FileData, FileProperties)>, FilesError> {
         self.files
             .iter()
             .map(|data| {
                 data.decrypt_file_metadata(master_keys)
                     .map(|properties| (data.clone(), properties))
             })
-            .collect::<Result<Vec<_>, FsError>>()
+            .collect::<Result<Vec<_>, FilesError>>()
     }
 }
 
