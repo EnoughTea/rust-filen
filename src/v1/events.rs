@@ -319,6 +319,22 @@ user_event_struct!(
 );
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct CodeRedeemedEventInfo {
+    /// Redeemed code.
+    pub code: String,
+
+    /// User's IP and User-Agent.
+    #[serde(flatten)]
+    pub fingerprint: UserFingerprint,
+}
+utils::display_from_json!(CodeRedeemedEventInfo);
+
+user_event_struct!(
+    /// Event emitted after user has redeemed a promocode.
+    CodeRedeemedUserEvent<CodeRedeemedEventInfo>
+);
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct EmailChangeAttemptInfo {
     /// New email.
     pub email: String,
@@ -726,7 +742,7 @@ user_event_struct!(
 #[serde(untagged)]
 pub enum UserEvent {
     BaseFolderCreated(BaseFolderCreatedUserEvent),
-    CodeRedeemed(PlainUserEvent), // TODO: Check in real life
+    CodeRedeemed(CodeRedeemedUserEvent),
     DeleteAll(PlainUserEvent),
     DeleteUnfinished(PlainUserEvent),
     DeleteVersioned(PlainUserEvent),
@@ -756,7 +772,7 @@ pub enum UserEvent {
     RemovedSharedInItems(RemovedSharedInItemsUserEvent),
     RemovedSharedOutItems(RemovedSharedOutItemsUserEvent),
     SubFolderCreated(SubFolderCreatedUserEvent),
-    RequestAccountDeletion(PlainUserEvent), // TODO: Check in real life
+    RequestAccountDeletion(PlainUserEvent),
     TrashEmptied(PlainUserEvent),
     VersionedFileRestored(VersionedFileRestoredUserEvent),
     Unknown(PlainUserEvent),
@@ -782,8 +798,8 @@ impl<'de> Deserialize<'de> for UserEvent {
             UserEventKind::BaseFolderCreated => BaseFolderCreatedEventInfo::deserialize(&helper.info)
                 .map(|ei| UserEvent::BaseFolderCreated(BaseFolderCreatedUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
-            UserEventKind::CodeRedeemed => UserFingerprint::deserialize(&helper.info)
-                .map(|ei| UserEvent::CodeRedeemed(PlainUserEvent::from_helper_and_info(helper, ei)))
+            UserEventKind::CodeRedeemed => CodeRedeemedEventInfo::deserialize(&helper.info)
+                .map(|ei| UserEvent::CodeRedeemed(CodeRedeemedUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::DeleteAll => UserFingerprint::deserialize(&helper.info)
                 .map(|ei| UserEvent::DeleteAll(PlainUserEvent::from_helper_and_info(helper, ei)))
