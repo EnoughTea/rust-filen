@@ -1,14 +1,15 @@
 pub use {
     auth::Error as AuthError, client::Error as ClientError, dir_links::Error as DirLinksError,
     dirs::Error as DirsError, download_dir::Error as DownloadDirError, download_file::Error as DownloadFileError,
-    file_links::Error as FileLinksError, files::Error as FilesError, fs::Error as FsError, links::Error as LinksError,
-    share::Error as ShareError, sync_dir::Error as SyncDirError, upload_file::Error as UploadFileError,
-    usage::Error as UsageError, user_keys::Error as UserKeysError, versions::Error as VersionsError,
+    events::Error as EventsError, file_links::Error as FileLinksError, files::Error as FilesError,
+    fs::Error as FsError, links::Error as LinksError, share::Error as ShareError, sync_dir::Error as SyncDirError,
+    upload_file::Error as UploadFileError, usage::Error as UsageError, user_keys::Error as UserKeysError,
+    versions::Error as VersionsError,
 };
 
 pub use {
-    auth::*, client::*, dir_links::*, dirs::*, download_dir::*, download_file::*, file_links::*, files::*, fs::*,
-    links::*, share::*, sync_dir::*, upload_file::*, usage::*, user_keys::*, versions::*,
+    auth::*, client::*, dir_links::*, dirs::*, download_dir::*, download_file::*, events::*, file_links::*, files::*,
+    fs::*, links::*, share::*, sync_dir::*, upload_file::*, usage::*, user_keys::*, versions::*,
 };
 
 use crate::{crypto, utils};
@@ -23,6 +24,7 @@ mod dir_links;
 mod dirs;
 mod download_dir;
 mod download_file;
+mod events;
 mod file_links;
 mod files;
 mod fs;
