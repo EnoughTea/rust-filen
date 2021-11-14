@@ -7,7 +7,7 @@ description = "Rust interface for Filen.io API"
 homepage = "https://github.com/EnoughTea/rust-filen"
 repository = "https://github.com/EnoughTea/rust-filen"
 readme = "README.md"
-keywords = ["filen.io", "api"]
+keywords = ["api", "filen"]
 categories = ["api-bindings", "web-programming::http-client"]
 edition = "2018"
 
