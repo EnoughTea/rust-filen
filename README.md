@@ -262,16 +262,20 @@ if !create_folder_result.status {
 }
 ```
 
-
 ### There is encrypted metadata everywhere, what to do?
 
 Sooner or later you will encounter properties with "metadata" in their names and encrypted strings for their values.
 Quite often there are helper methods on structs with such properties which can be used to decrypt it easily.
-If not, you should know that "metadata" is a Filen way to encrypt any sensitive info, and there are two general ways of dealing with it:
+If not, you should know that "metadata" is a Filen way to encrypt any sensitive info, and there are 3 general ways of dealing with it:
 
 1. User's data intended only for that user to use, like file properties and folder names, can be decrypted/encrypted with `rust_filen::crypto::decrypt_metadata_str`/ `rust_filen::crypto::encrypt_metadata_str` using user's last master key.
-2. User's data intended to be public, like shared or publicly linked file properties, can be encrypted by `rust_filen::crypto::encrypt_rsa` using target user RSA public key, and decrypted by `rust_filen::crypto::decrypt_rsa` using target user RSA private key file.
-This can be pretty confusing when sharing files. You will need to keep in mind who is currently the sharer and who is the receiver, so receiver's metadata needs to be encrypted with receiver's public key, so it can decipher it later with its private key.
+2. User's data intended to be public, like shared or publicly linked file properties. Shared item metadata can be encrypted by `rust_filen::crypto::encrypt_rsa` using target user RSA public key, and decrypted by `rust_filen::crypto::decrypt_rsa` using target user RSA private key file. This can be pretty confusing when sharing files. You will need to keep in mind who is currently the sharer and who is the receiver, so receiver's metadata needs to be encrypted with receiver's public key, so it can decipher it later with its private key.
+3. Linked item metadata is treated like user's private data in list item #1, only with link key instead of user's last master key.
+
+Check `FileProperties::encrypt_file_metadata(_rsa)`/`FileProperties::decrypt_file_metadata(_rsa)`
+for a convenient way to encrypt&decrypt file properties. Note that folder properties consist of just folder name, so
+`LocationNameMetadata::encrypt_name_to_metadata(_rsa)`/`LocationNameMetadata::decrypt_name_to_metadata(_rsa)`
+can be used to encrypt&decrypt folder/file names.
 
 
 ### That's all, folks!
