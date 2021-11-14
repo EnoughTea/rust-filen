@@ -155,11 +155,29 @@ where
     }
 }
 
+pub(crate) fn optional_bool_from_int<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(Option::<i32>::deserialize(deserializer)?.map(|int| if int == 0 { false } else { true }))
+}
+
+pub(crate) fn optional_bool_to_int<S>(value: &Option<bool>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let converted = value.map(|boolean| if boolean { 1 } else { 0 });
+    match converted {
+        Some(int_value) => serializer.serialize_some(&int_value),
+        None => serializer.serialize_none(),
+    }
+}
+
 pub(crate) fn optional_uuid_from_empty_string<'de, D>(deserializer: D) -> Result<Option<Uuid>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let value = Option::<String>::deserialize(deserializer)?.unwrap_or_else(|| "".to_owned());
+    let value = Option::<String>::deserialize(deserializer)?.unwrap_or_default();
     if value.is_empty() {
         Ok(None)
     } else {

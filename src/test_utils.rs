@@ -1,4 +1,6 @@
 //! This module contains helper functions for tests (aka test dump).
+#![doc(hidden)]
+
 use crate::filen_settings::FilenSettings;
 use camino::Utf8PathBuf;
 use httpmock::Method::POST;

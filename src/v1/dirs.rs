@@ -267,7 +267,7 @@ pub struct DirContentRequestPayload {
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 
-    /// Folder ID; hyphenated lowercased UUID V4.
+    /// 'trash' or folder ID; hyphenated lowercased UUID V4.
     pub uuid: ContentKind,
 
     /// A string containing 'path' to the listed folder as JSON array:
@@ -284,6 +284,19 @@ pub struct DirContentRequestPayload {
     pub app: bool,
 }
 utils::display_from_json!(DirContentRequestPayload);
+
+impl DirContentRequestPayload {
+    pub fn new(api_key: SecUtf8, folder_uuid: ContentKind) -> DirContentRequestPayload {
+        let folders = format!("[\"{}\"]", folder_uuid);
+        DirContentRequestPayload {
+            api_key,
+            uuid: folder_uuid,
+            folders,
+            page: 1,
+            app: true,
+        }
+    }
+}
 
 /// One of the files in response data for [DIR_CONTENT_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -356,8 +369,8 @@ pub struct DirContentFolder {
     #[serde(rename = "name")]
     pub name_metadata: String,
 
-    /// Parent folder; always present, since base folders are returned in separate `folders_info` array.
-    pub parent: Uuid,
+    /// Parent folder ID. None for trashed folders, for non-trashed folders should always be present.
+    pub parent: Option<Uuid>,
 
     /// Folder color name; None means default yellow color.
     pub color: Option<LocationColor>,
@@ -369,18 +382,28 @@ pub struct DirContentFolder {
     #[serde(deserialize_with = "bool_from_int", serialize_with = "bool_to_int")]
     pub favorited: bool,
 
-    /// True if this is a default Filen folder; false otherwise.
-    #[serde(deserialize_with = "bool_from_int", serialize_with = "bool_to_int")]
-    pub is_default: bool,
+    /// True if this is a default Filen folder; false otherwise. None for folders in 'trash'.
+    #[serde(default)]
+    #[serde(deserialize_with = "optional_bool_from_int", serialize_with = "optional_bool_to_int")]
+    pub is_default: Option<bool>,
 
-    /// True if this is a Filen sync folder; false otherwise.
+    /// True if this is a Filen sync folder; false otherwise. None for folders in 'trash'.
     ///
     /// Filen sync folder is a special unique folder that is created by Filen client to store all synced files.
     /// If user never used Filen client, no sync folder would exist.
     ///
     /// Filen sync folder is always named "Filen Sync" and created with a special type: "sync".
-    #[serde(deserialize_with = "bool_from_int", serialize_with = "bool_to_int")]
-    pub is_sync: bool,
+    #[serde(default)]
+    #[serde(deserialize_with = "optional_bool_from_int", serialize_with = "optional_bool_to_int")]
+    pub is_sync: Option<bool>,
+
+    #[serde(default)]
+    #[serde(deserialize_with = "optional_bool_from_int", serialize_with = "optional_bool_to_int")]
+    pub trash_parent: Option<bool>,
+
+    /// Timestamp when folder was moved to trash. Only set when listing contents using [ContentKind::Trash],
+    /// otherwise would be None since folder has not been moved to trash yet.
+    pub trash_timestamp: Option<u64>,
 }
 utils::display_from_json!(DirContentFolder);
 
@@ -394,10 +417,10 @@ impl HasLocationName for DirContentFolder {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DirContentFolderInfo {
-    /// Base folder ID; hyphenated lowercased UUID V4.
-    pub uuid: Uuid,
+    /// 'trash' or folder ID; hyphenated lowercased UUID V4.
+    pub uuid: ContentKind,
 
-    /// Metadata containing JSON with folder name: { "name": <name value> }
+    /// "Trash" or metadata containing or JSON with folder name: { "name": <name value> }
     #[serde(rename = "name")]
     pub name_metadata: String,
 

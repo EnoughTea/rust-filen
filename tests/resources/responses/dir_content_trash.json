@@ -532,8 +532,34 @@
                 "favorited": 0
             }
         ],
-        "folders": [],
-        "foldersInfo": [],
+        "folders": [
+            {
+                "uuid": "cb951bd6-163d-48cb-907b-23853690a21e",
+                "name": "U2FsdGVkX18Ae63u7pZD2FfGttZJlkXZWNb5YA5Vhs7Wgu05BblRoHFJCtvgFLuEsvrGcI4wrwS+DbZRif0GaQ==",
+                "parent": "cf2af9a0-6f4e-485d-862c-0459f4662cf1",
+                "color": null,
+                "timestamp": 1636840507,
+                "trash_parent": 1,
+                "trash_timestamp": 1639432515,
+                "favorited": 0
+            },
+            {
+                "uuid": "b7c0206c-9453-4955-b507-7aa0680d855d",
+                "name": "U2FsdGVkX1+Cg2kipru106rHAvTS1iu9L9QUXgzCLRA3A+8X0g8YPaavz4QDJ8E+",
+                "parent": null,
+                "color": null,
+                "timestamp": 1636840658,
+                "trash_parent": 1,
+                "trash_timestamp": 1639432673,
+                "favorited": 0
+            }
+        ],
+        "foldersInfo": [
+            {
+                "uuid": "trash",
+                "name": "Trash"
+            }
+        ],
         "totalUploads": 33,
         "startAt": 0,
         "perPage": 999999999,

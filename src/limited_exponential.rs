@@ -1,3 +1,5 @@
+#![doc(hidden)]
+
 use crate::retry_settings::RetrySettings;
 use std::time::Duration;
 

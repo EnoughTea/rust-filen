@@ -1,3 +1,5 @@
+#![doc(hidden)]
+
 /// Represents single file chunk bounds, defined by chunk starting byte and chunk length.
 /// Also stores this chunk's index in its file.
 #[derive(Copy, Clone, Debug)]

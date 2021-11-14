@@ -1,4 +1,6 @@
 //! This module contains general purpose functions (aka dump).
+#![doc(hidden)]
+
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use secstr::SecUtf8;
