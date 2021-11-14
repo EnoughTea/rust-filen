@@ -45,6 +45,9 @@ pub enum Error {
     #[snafu(display("Filen did not accept at least one uploaded file chunk: {}", reason))]
     ChunkNotAccepted { reason: String, backtrace: Backtrace },
 
+    #[snafu(display("Filen could not mark file upload as done: {}", reason))]
+    CouldNotMarkDone { reason: String, backtrace: Backtrace },
+
     #[snafu(display(
         "Not all uploaded chunks with status == true actually had data: {}",
         file_upload_info
@@ -244,25 +247,18 @@ utils::display_from_json!(FileUploadProperties);
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FileUploadInfo {
     pub properties: FileUploadProperties,
-    pub mark_done_response: PlainResponsePayload,
     pub chunk_responses: Vec<UploadFileChunkResponsePayload>,
 }
 
 impl FileUploadInfo {
     pub fn new(
         upload_properties: FileUploadProperties,
-        mark_done_response: PlainResponsePayload,
         chunk_responses: Vec<UploadFileChunkResponsePayload>,
     ) -> FileUploadInfo {
         FileUploadInfo {
             properties: upload_properties,
-            mark_done_response,
             chunk_responses,
         }
-    }
-
-    pub fn is_uploaded_successfully(&self) -> bool {
-        self.mark_done_response.status
     }
 
     /// Retrieves uploaded file chunks locations, taking them from [FileUploadInfo::chunk_responses].
@@ -471,11 +467,14 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
                 };
                 let mark_done_response =
                     retry_settings.retry(|| upload_done_request(&upload_done_payload, filen_settings))?;
-                Ok(FileUploadInfo::new(
-                    upload_properties,
-                    mark_done_response,
-                    chunk_upload_responses,
-                ))
+                if mark_done_response.status {
+                    Ok(FileUploadInfo::new(upload_properties, chunk_upload_responses))
+                } else {
+                    CouldNotMarkDone {
+                        reason: format!("{:?}", mark_done_response.message),
+                    }
+                    .fail()
+                }
             } else {
                 DummyChunkNotAccepted {
                     reason: dummy_chunk_response
@@ -540,11 +539,14 @@ pub async fn encrypt_and_upload_file_async<R: Read + Seek>(
             let mark_done_response = retry_settings
                 .retry_async(|| upload_done_request_async(&upload_done_payload, filen_settings))
                 .await?;
-            Ok(FileUploadInfo::new(
-                upload_properties,
-                mark_done_response,
-                chunk_upload_responses,
-            ))
+            if mark_done_response.status {
+                Ok(FileUploadInfo::new(upload_properties, chunk_upload_responses))
+            } else {
+                CouldNotMarkDone {
+                    reason: format!("{:?}", mark_done_response.message),
+                }
+                .fail()
+            }
         } else {
             DummyChunkNotAccepted {
                 reason: dummy_chunk_response
