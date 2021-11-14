@@ -1091,7 +1091,7 @@ mod tests {
     fn dir_exists_request_should_have_proper_contract() {
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
-            parent: ParentKind::from_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
+            parent: ParentOrBase::from_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_hashed: NAME_HASHED.to_owned(),
         };
         validate_contract(
@@ -1107,7 +1107,7 @@ mod tests {
     async fn dir_exists_request_async_should_have_proper_contract() {
         let request_payload = LocationExistsRequestPayload {
             api_key: API_KEY.clone(),
-            parent: ParentKind::from_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
+            parent: ParentOrBase::from_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_hashed: NAME_HASHED.to_owned(),
         };
         validate_contract_async(

@@ -82,7 +82,7 @@ pub struct LinkedFolderData {
 
     /// Either parent folder ID (hyphenated lowercased UUID V4) or "base" when folder is located in the base folder,
     /// also known as 'cloud drive'.
-    pub parent: ParentKind,
+    pub parent: ParentOrBase,
 }
 utils::display_from_json!(LinkedFolderData);
 
@@ -218,7 +218,7 @@ pub struct SharedFolderData {
 
     /// Either parent folder ID (hyphenated lowercased UUID V4) or "base" when folder is located in the base folder,
     /// also known as 'cloud drive'.
-    pub parent: ParentKind,
+    pub parent: ParentOrBase,
 }
 utils::display_from_json!(SharedFolderData);
 

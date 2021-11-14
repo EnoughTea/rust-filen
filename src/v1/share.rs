@@ -68,7 +68,7 @@ pub struct ShareRequestPayload {
     pub metadata: String,
 
     /// ID of the parent folder of the shared item.
-    pub parent: Uuid,
+    pub parent: ParentOrNone,
 
     /// Determines whether a file or a folder is being shared.
     #[serde(rename = "type")]
@@ -83,7 +83,7 @@ impl ShareRequestPayload {
     pub fn from_file_properties(
         api_key: SecUtf8,
         file_uuid: Uuid,
-        parent: Uuid,
+        parent: ParentOrNone,
         file_properties: &FileProperties,
         email: String,
         rsa_public_key_bytes: &[u8],
@@ -102,7 +102,7 @@ impl ShareRequestPayload {
     pub fn from_folder_name(
         api_key: SecUtf8,
         folder_uuid: Uuid,
-        parent: Uuid,
+        parent: ParentOrNone,
         folder_name: &str,
         email: String,
         rsa_public_key_bytes: &[u8],

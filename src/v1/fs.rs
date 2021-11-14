@@ -25,7 +25,13 @@ pub enum Error {
         "Expected \"base\" or hyphenated lowercased UUID, got unknown string of length: {}",
         string_length
     ))]
-    CannotParseParentKindFromString { string_length: usize, backtrace: Backtrace },
+    CannotParseParentOrBaseFromString { string_length: usize, backtrace: Backtrace },
+
+    #[snafu(display(
+        "Expected \"none\" or hyphenated lowercased UUID, got unknown string of length: {}",
+        string_length
+    ))]
+    CannotParseParentOrNoneFromString { string_length: usize, backtrace: Backtrace },
 
     #[snafu(display("Failed to decrypt link key '{}': {}", metadata, source))]
     DecryptLinkKeyFailed { metadata: String, source: crypto::Error },
@@ -156,7 +162,7 @@ pub struct FolderData {
 
     /// Either parent folder ID (hyphenated lowercased UUID V4) or "base" when folder is located in the base folder,
     /// also known as 'cloud drive'.
-    pub parent: ParentKind,
+    pub parent: ParentOrBase,
 }
 utils::display_from_json!(FolderData);
 
@@ -387,7 +393,7 @@ pub struct LocationExistsRequestPayload {
 
     /// Either parent folder ID (hyphenated lowercased UUID V4) or "base" when folder is located in the base folder,
     /// also known as 'cloud drive'.
-    pub parent: ParentKind,
+    pub parent: ParentOrBase,
 
     /// Currently hash_fn of lowercased target folder or file name.
     #[serde(rename = "nameHashed")]
@@ -396,7 +402,7 @@ pub struct LocationExistsRequestPayload {
 utils::display_from_json!(LocationExistsRequestPayload);
 
 impl LocationExistsRequestPayload {
-    pub fn new(api_key: SecUtf8, target_parent: ParentKind, target_name: &str) -> LocationExistsRequestPayload {
+    pub fn new(api_key: SecUtf8, target_parent: ParentOrBase, target_name: &str) -> LocationExistsRequestPayload {
         let name_hashed = LocationNameMetadata::name_hashed(target_name);
         LocationExistsRequestPayload {
             api_key,
@@ -426,25 +432,25 @@ response_payload!(
 
 /// Identifies parent eitner by ID or by indirect reference.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum ParentKind {
+pub enum ParentOrBase {
     /// Parent is a base folder.
     Base,
     /// Parent is a folder with the specified UUID.
     Folder(Uuid),
 }
-utils::display_from_json!(ParentKind);
+utils::display_from_json!(ParentOrBase);
 
-impl FromStr for ParentKind {
+impl FromStr for ParentOrBase {
     type Err = Error;
 
-    /// Tries to parse [ParentKind] from given string, which must be either "base" or hyphenated lowercased UUID.
+    /// Tries to parse [ParentOrBase] from given string, which must be either "base" or hyphenated lowercased UUID.
     fn from_str(base_or_id: &str) -> Result<Self, Self::Err> {
         if base_or_id.eq_ignore_ascii_case("base") {
-            Ok(ParentKind::Base)
+            Ok(ParentOrBase::Base)
         } else {
             match Uuid::parse_str(base_or_id) {
-                Ok(uuid) => Ok(ParentKind::Folder(uuid)),
-                Err(_) => CannotParseParentKindFromString {
+                Ok(uuid) => Ok(ParentOrBase::Folder(uuid)),
+                Err(_) => CannotParseParentOrBaseFromString {
                     string_length: base_or_id.len(),
                 }
                 .fail(),
@@ -453,7 +459,7 @@ impl FromStr for ParentKind {
     }
 }
 
-impl<'de> Deserialize<'de> for ParentKind {
+impl<'de> Deserialize<'de> for ParentOrBase {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -461,10 +467,10 @@ impl<'de> Deserialize<'de> for ParentKind {
         let base_or_id = String::deserialize(deserializer)?;
 
         if base_or_id.eq_ignore_ascii_case("base") {
-            Ok(ParentKind::Base)
+            Ok(ParentOrBase::Base)
         } else {
             match Uuid::parse_str(&base_or_id) {
-                Ok(uuid) => Ok(ParentKind::Folder(uuid)),
+                Ok(uuid) => Ok(ParentOrBase::Folder(uuid)),
                 Err(_) => Err(de::Error::invalid_value(
                     de::Unexpected::Str(&base_or_id),
                     &"\"base\" or hyphenated lowercased UUID",
@@ -474,17 +480,118 @@ impl<'de> Deserialize<'de> for ParentKind {
     }
 }
 
-impl Serialize for ParentKind {
+impl Serialize for ParentOrBase {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         match *self {
-            ParentKind::Base => serializer.serialize_str("base"),
-            ParentKind::Folder(uuid) => serializer.serialize_str(&uuid.to_hyphenated().to_string()),
+            ParentOrBase::Base => serializer.serialize_str("base"),
+            ParentOrBase::Folder(uuid) => serializer.serialize_str(&uuid.to_hyphenated().to_string()),
         }
     }
 }
+
+/// Eitner a parent ID or none.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum ParentOrNone {
+    /// No parent, which means parent is a base folder.
+    None,
+    /// Parent is a folder with the specified UUID.
+    Folder(Uuid),
+}
+utils::display_from_json!(ParentOrNone);
+
+impl FromStr for ParentOrNone {
+    type Err = Error;
+
+    /// Tries to parse [ParentOrNone] from given string, which must be either "none" or hyphenated lowercased UUID.
+    fn from_str(none_or_id: &str) -> Result<Self, Self::Err> {
+        if none_or_id.eq_ignore_ascii_case("none") {
+            Ok(ParentOrNone::None)
+        } else {
+            match Uuid::parse_str(none_or_id) {
+                Ok(uuid) => Ok(ParentOrNone::Folder(uuid)),
+                Err(_) => CannotParseParentOrNoneFromString {
+                    string_length: none_or_id.len(),
+                }
+                .fail(),
+            }
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ParentOrNone {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let none_or_id = String::deserialize(deserializer)?;
+
+        if none_or_id.eq_ignore_ascii_case("none") {
+            Ok(ParentOrNone::None)
+        } else {
+            match Uuid::parse_str(&none_or_id) {
+                Ok(uuid) => Ok(ParentOrNone::Folder(uuid)),
+                Err(_) => Err(de::Error::invalid_value(
+                    de::Unexpected::Str(&none_or_id),
+                    &"\"none\" or hyphenated lowercased UUID",
+                )),
+            }
+        }
+    }
+}
+
+impl Serialize for ParentOrNone {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match *self {
+            ParentOrNone::None => serializer.serialize_str("none"),
+            ParentOrNone::Folder(uuid) => serializer.serialize_str(&uuid.to_hyphenated().to_string()),
+        }
+    }
+}
+
+macro_rules! gen_decrypt_folders {
+    (
+        $folders_field_name:ident, $folder_data_type:ty
+    ) => {
+        /// Decrypts all encrypted folder names and associates them with folder data.
+        pub fn decrypt_all_folder_names(
+            &self,
+            keys: &[SecUtf8],
+        ) -> Result<Vec<($folder_data_type, String)>, fs::Error> {
+            self.$folders_field_name
+                .iter()
+                .map(|data| data.decrypt_name_metadata(keys).map(|name| (data, name)))
+                .collect::<Result<Vec<_>, fs::Error>>()
+        }
+    };
+}
+pub(crate) use gen_decrypt_folders;
+
+macro_rules! gen_decrypt_files {
+    (
+        $files_field_name:ident, $file_data_type:ty
+    ) => {
+        /// Decrypts all encrypted file properties and associates them with file data.
+        pub fn decrypt_all_file_properties(
+            &self,
+            keys: &[SecUtf8],
+        ) -> Result<Vec<($file_data_type, FileProperties)>, files::Error> {
+            self.$files_field_name
+                .iter()
+                .map(|data| {
+                    data.decrypt_file_metadata(keys)
+                        .map(|properties| (data, properties))
+                })
+                .collect::<Result<Vec<_>, files::Error>>()
+        }
+    };
+}
+pub(crate) use gen_decrypt_files;
 
 #[cfg(test)]
 mod tests {
@@ -532,9 +639,9 @@ mod tests {
     #[test]
     fn parent_kind_should_be_deserialized_from_base() {
         let json = r#""base""#;
-        let expected = ParentKind::Base;
+        let expected = ParentOrBase::Base;
 
-        let result = serde_json::from_str::<ParentKind>(&json);
+        let result = serde_json::from_str::<ParentOrBase>(&json);
 
         assert_eq!(result.unwrap(), expected);
     }
@@ -542,9 +649,9 @@ mod tests {
     #[test]
     fn parent_kind_should_be_deserialized_from_id() {
         let json = r#""00000000-0000-0000-0000-000000000000""#;
-        let expected = ParentKind::Folder(Uuid::nil());
+        let expected = ParentOrBase::Folder(Uuid::nil());
 
-        let result = serde_json::from_str::<ParentKind>(&json);
+        let result = serde_json::from_str::<ParentOrBase>(&json);
 
         assert_eq!(result.unwrap(), expected);
     }

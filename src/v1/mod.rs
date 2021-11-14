@@ -199,7 +199,7 @@ where
 ///
 /// To use, pass generated struct name and contained data type:
 /// ```
-/// api_response_struct_option!(
+/// response_payload!(
 ///     /// Response for some endpoint.
 ///     SomeResponsePayload<SomeOptionalResponseData>
 /// );

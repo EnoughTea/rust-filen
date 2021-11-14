@@ -79,7 +79,7 @@ pub struct DirLinkAddRequestPayload {
 
     /// ID of the parent of the linked item, hyphenated lowercased UUID V4 if non-base.
     /// Use "base" if the linked item is located in the root folder.
-    pub parent: ParentKind,
+    pub parent: ParentOrBase,
 
     /// Filen always uses "empty" when adding links.
     pub password: PasswordState,
@@ -102,7 +102,7 @@ impl DirLinkAddRequestPayload {
         api_key: SecUtf8,
         linked_item_uuid: Uuid,
         linked_item_metadata: S,
-        linked_item_parent_uuid: ParentKind,
+        linked_item_parent_uuid: ParentOrBase,
         link_type: ItemKind,
         last_master_key: &SecUtf8,
     ) -> DirLinkAddRequestPayload {
@@ -153,7 +153,7 @@ pub struct DirLinkEditRequestPayload {
 
     /// ID of the parent of the linked item, hyphenated lowercased UUID V4 if non-base.
     /// Use "base" if linked item is located in the root folder.
-    pub parent: ParentKind,
+    pub parent: ParentOrBase,
 
     /// "empty" means no password protection, "notempty" means password is present.
     pub password: PasswordState,
@@ -180,7 +180,7 @@ impl DirLinkEditRequestPayload {
         link_key_metadata: S,
         linked_item_uuid: Uuid,
         linked_item_metadata: S,
-        linked_item_parent_uuid: ParentKind,
+        linked_item_parent_uuid: ParentOrBase,
         link_type: ItemKind,
         link_expiration: Expire,
     ) -> DirLinkEditRequestPayload {
@@ -206,7 +206,7 @@ impl DirLinkEditRequestPayload {
         link_key_metadata: S,
         linked_folder_uuid: Uuid,
         linked_folder_metadata: S,
-        linked_folder_parent: ParentKind,
+        linked_folder_parent: ParentOrBase,
         link_type: ItemKind,
         link_expiration: Expire,
         plain_text_password: &SecUtf8,
