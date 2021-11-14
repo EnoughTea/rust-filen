@@ -43,8 +43,6 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 
 const METADATA_VERSION: u32 = 1;
 
-pub static EMPTY_PASSWORD_HASH: Lazy<String> = Lazy::new(|| crypto::hash_fn(&PasswordState::Empty.to_string()));
-
 #[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display("Filen response does not contain 'data'"))]

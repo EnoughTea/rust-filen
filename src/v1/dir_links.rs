@@ -9,6 +9,10 @@ use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
+pub(crate) static EMPTY_PASSWORD_VALUE: Lazy<String> = Lazy::new(|| PasswordState::Empty.to_string());
+pub(crate) static SEC_EMPTY_PASSWORD_VALUE: Lazy<SecUtf8> = Lazy::new(|| SecUtf8::from(EMPTY_PASSWORD_VALUE.as_str()));
+pub(crate) static EMPTY_PASSWORD_HASH: Lazy<String> = Lazy::new(|| crypto::hash_fn(&EMPTY_PASSWORD_VALUE));
+
 const DIR_LINK_ADD_PATH: &str = "/v1/dir/link/add";
 const DIR_LINK_EDIT_PATH: &str = "/v1/dir/link/edit";
 const DIR_LINK_REMOVE_PATH: &str = "/v1/dir/link/remove";
@@ -140,21 +144,6 @@ pub struct DirLinkEditRequestPayload {
     /// Link expiration time in text form. Usually has value "never".
     pub expiration: Expire,
 
-    /// Link key, encrypted.
-    #[serde(rename = "key")]
-    pub key_metadata: String,
-
-    /// Link ID; hyphenated lowercased UUID V4.
-    #[serde(rename = "linkUUID")]
-    pub link_uuid: Uuid,
-
-    /// Item metadata.
-    pub metadata: String,
-
-    /// ID of the parent of the linked item, hyphenated lowercased UUID V4 if non-base.
-    /// Use "base" if linked item is located in the root folder.
-    pub parent: ParentOrBase,
-
     /// "empty" means no password protection, "notempty" means password is present.
     pub password: PasswordState,
 
@@ -163,9 +152,8 @@ pub struct DirLinkEditRequestPayload {
     #[serde(rename = "passwordHashed")]
     pub password_hashed: String,
 
-    /// Determines whether a file or a folder link is being edited.
-    #[serde(rename = "type")]
-    pub link_type: ItemKind,
+    /// Salt used to make hashed password.
+    pub salt: String,
 
     /// Linked item ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -173,63 +161,26 @@ pub struct DirLinkEditRequestPayload {
 utils::display_from_json!(DirLinkEditRequestPayload);
 
 impl DirLinkEditRequestPayload {
-    fn from_no_password<S: Into<String>>(
+    fn new<S: Into<String>>(
         api_key: SecUtf8,
         download_btn: DownloadBtnState,
-        link_uuid: Uuid,
-        link_key_metadata: S,
-        linked_item_uuid: Uuid,
-        linked_item_metadata: S,
-        linked_item_parent_uuid: ParentOrBase,
-        link_type: ItemKind,
-        link_expiration: Expire,
+        item_uuid: Uuid,
+        expiration: Expire,
+        link_plain_password: Option<&SecUtf8>,
     ) -> DirLinkEditRequestPayload {
+        let (password_hashed, salt) = link_plain_password
+            .map(|password| crypto::encrypt_to_link_password_and_salt(&password))
+            .unwrap_or_else(|| crypto::encrypt_to_link_password_and_salt(&SEC_EMPTY_PASSWORD_VALUE));
         DirLinkEditRequestPayload {
             api_key,
             download_btn,
-            expiration: link_expiration,
-            key_metadata: link_key_metadata.into(),
-            link_uuid,
-            metadata: linked_item_metadata.into(),
-            parent: linked_item_parent_uuid,
-            password: PasswordState::Empty,
-            password_hashed: EMPTY_PASSWORD_HASH.clone(),
-            link_type,
-            uuid: linked_item_uuid,
-        }
-    }
-
-    fn from_plain_text_password<S: Into<String>>(
-        api_key: SecUtf8,
-        download_btn: DownloadBtnState,
-        link_uuid: Uuid,
-        link_key_metadata: S,
-        linked_folder_uuid: Uuid,
-        linked_folder_metadata: S,
-        linked_folder_parent: ParentOrBase,
-        link_type: ItemKind,
-        link_expiration: Expire,
-        plain_text_password: &SecUtf8,
-    ) -> DirLinkEditRequestPayload {
-        let salt = utils::random_alphanumeric_string(32);
-        let password_hashed = utils::bytes_to_hex_string(&crypto::derive_key_from_password_512(
-            plain_text_password.unsecure().as_bytes(),
-            salt.as_bytes(),
-            200_000,
-        ));
-
-        DirLinkEditRequestPayload {
-            api_key,
-            download_btn,
-            expiration: link_expiration,
-            key_metadata: link_key_metadata.into(),
-            link_uuid,
-            metadata: linked_folder_metadata.into(),
-            parent: linked_folder_parent,
-            password: PasswordState::NotEmpty,
+            expiration,
+            password: link_plain_password
+                .map(|_| PasswordState::NotEmpty)
+                .unwrap_or(PasswordState::Empty),
             password_hashed,
-            link_type,
-            uuid: linked_folder_uuid,
+            salt,
+            uuid: item_uuid,
         }
     }
 }

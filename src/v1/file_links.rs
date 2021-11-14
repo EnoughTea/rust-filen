@@ -69,6 +69,66 @@ pub struct LinkEditRequestPayload {
 }
 utils::display_from_json!(LinkEditRequestPayload);
 
+impl LinkEditRequestPayload {
+    pub fn new(
+        api_key: SecUtf8,
+        file_uuid: Uuid,
+        download_btn: DownloadBtnState,
+        expiration: Expire,
+        state: LinkState,
+        link_uuid: Option<Uuid>,
+        link_plain_password: Option<&SecUtf8>,
+    ) -> LinkEditRequestPayload {
+        let (password_hashed, salt) = link_plain_password
+            .map(|password| crypto::encrypt_to_link_password_and_salt(password))
+            .unwrap_or_else(|| crypto::encrypt_to_link_password_and_salt(&SEC_EMPTY_PASSWORD_VALUE));
+        LinkEditRequestPayload {
+            api_key,
+            download_btn,
+            expiration,
+            file_uuid,
+            password: link_plain_password
+                .map(|_| PasswordState::NotEmpty)
+                .unwrap_or(PasswordState::Empty),
+            password_hashed,
+            salt,
+            link_type: state,
+            uuid: link_uuid.unwrap_or_else(|| Uuid::new_v4()),
+        }
+    }
+
+    pub fn enabled(
+        api_key: SecUtf8,
+        file_uuid: Uuid,
+        download_btn: DownloadBtnState,
+        expiration: Expire,
+        link_uuid: Option<Uuid>,
+        link_plain_password: Option<&SecUtf8>,
+    ) -> LinkEditRequestPayload {
+        LinkEditRequestPayload::new(
+            api_key,
+            file_uuid,
+            download_btn,
+            expiration,
+            LinkState::Enable,
+            link_uuid,
+            link_plain_password,
+        )
+    }
+
+    pub fn disabled(api_key: SecUtf8, file_uuid: Uuid, link_uuid: Uuid) -> LinkEditRequestPayload {
+        LinkEditRequestPayload::new(
+            api_key,
+            file_uuid,
+            DownloadBtnState::Enable,
+            Expire::Never,
+            LinkState::Disable,
+            Some(link_uuid),
+            None,
+        )
+    }
+}
+
 /// Used for requests to [LINK_STATUS_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LinkStatusRequestPayload {
