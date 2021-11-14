@@ -360,6 +360,18 @@ pub fn decrypt_rsa(data: &[u8], private_key: &[u8]) -> Result<Vec<u8>> {
     private_key.decrypt(padding, data).context(RsaPkcs8CannotDecryptData {})
 }
 
+/// Creates Filen's public link password from the given plain text password,
+/// returns both link's password and salt used for its creation.
+pub fn encrypt_to_link_password_and_salt(plain_text_password: &SecUtf8) -> (String, String) {
+    let salt = utils::random_alphanumeric_string(32);
+    let password_hashed = utils::bytes_to_hex_string(&derive_key_from_password_512(
+        plain_text_password.unsecure().as_bytes(),
+        salt.as_bytes(),
+        200_000,
+    ));
+    (password_hashed, salt)
+}
+
 /// Calculates OpenSSL-compatible AES 256 CBC (Pkcs7 padding) hash with 'Salted__' prefix,
 /// then 8 bytes of salt, rest is ciphered.
 pub fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -> Vec<u8> {

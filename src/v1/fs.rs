@@ -55,6 +55,7 @@ pub enum Error {
 /// Public link or file chunk expiration time.
 ///
 /// For defined expiration period, Filen currently uses values "1h", "6h", "1d", "3d", "7d", "14d" and "30d".
+/// Otherwise, it's "never".
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Expire {
     Never,
