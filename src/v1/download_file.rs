@@ -39,7 +39,7 @@ pub enum Error {
 }
 
 /// Represents file's address on Filen servers, assuming all this file's chunks use the same region and bucket.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FileLocation {
     pub region: String,
     pub bucket: String,
@@ -73,7 +73,7 @@ impl fmt::Display for FileLocation {
 }
 
 /// Represents file chunk's address on Filen servers.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FileChunkLocation {
     pub region: String,
     pub bucket: String,

@@ -47,7 +47,7 @@ response_payload!(
 );
 
 /// Response data for [USER_USAGE_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserUsageResponseData {
     /// Uploaded files count.
     pub uploads: u64,

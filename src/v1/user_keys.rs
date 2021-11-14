@@ -101,7 +101,7 @@ pub trait HasPublicKey {
 
 /// Response data for [USER_KEY_PAIR_INFO_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserKeyPairInfoResponseData {
     /// User's public key bytes in PKCS#8 ASN.1 DER format, base64-encoded. Currently used for encrypting name and
     /// metadata of the shared download folders.
@@ -223,7 +223,7 @@ impl MasterKeysFetchRequestPayload {
 
 /// Response data for [USER_MASTER_KEYS_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct MasterKeysFetchResponseData {
     /// Metadata containing current Filen master keys, split by '|'. Last user key will be at the end.
     /// Can be used to update current user master keys.
@@ -253,7 +253,7 @@ utils::display_from_json!(UserPublicKeyGetRequestPayload);
 
 /// Response data for [USER_PUBLIC_KEY_GET_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserPublicKeyGetResponseData {
     /// User's public key bytes in PKCS#8 ASN.1 DER format, base64-encoded. Currently used for encrypting name and
     /// metadata of the shared download folders.

@@ -35,7 +35,7 @@ pub enum Error {
 
 /// Response data for [CURRENT_VERSIONS_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct CurrentVersionsResponseData {
     /// Filen's desktop client version.
     pub desktop: String,

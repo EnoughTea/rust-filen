@@ -145,7 +145,7 @@ impl fmt::Display for FileStorageInfo {
 }
 
 /// Represents one of the user folders or some folder under Filen sync folder.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FolderData {
     /// Folder ID, UUID V4 in hyphenated lowercase format.
     pub uuid: Uuid,
@@ -407,7 +407,7 @@ impl LocationExistsRequestPayload {
 }
 
 /// Response data for [DIR_EXISTS_PATH] or [FILE_TRASH_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct LocationExistsResponseData {
     /// True if folder or file with given name already exists in the parent folder; false otherwise.
     pub exists: bool,

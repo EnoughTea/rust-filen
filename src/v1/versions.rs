@@ -37,7 +37,7 @@ utils::display_from_json!(FileArchiveRestoreRequestPayload);
 
 /// Response data for [FILE_ARCHIVE_RESTORE_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FileArchiveRestoreResponseData {
     /// Archived file ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -79,7 +79,7 @@ response_payload!(
 );
 
 /// File version info.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FileVersion {
     /// File ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -117,7 +117,7 @@ utils::display_from_json!(FileVersionsRequestPayload);
 
 /// Response data for [FILE_VERSIONS_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FileVersionsResponseData {
     /// Found versions.
     #[serde(default)]

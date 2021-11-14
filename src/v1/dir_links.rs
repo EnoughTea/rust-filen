@@ -260,7 +260,7 @@ utils::display_from_json!(DirLinkStatusRequestPayload);
 
 /// Response data for [DIR_LINK_STATUS_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DirLinkStatusResponseData {
     /// True if link exists; false if link for the given item ID cannot be found.
     pub exists: bool,

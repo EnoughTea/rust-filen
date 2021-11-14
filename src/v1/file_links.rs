@@ -84,7 +84,7 @@ utils::display_from_json!(LinkStatusRequestPayload);
 
 /// Response data for [LINK_STATUS_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct LinkStatusResponseData {
     /// Links for files always implicitly exist, but can enabled/disabled. True if link for this file is enabled;
     /// false otherwise.

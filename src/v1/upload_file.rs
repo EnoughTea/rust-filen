@@ -75,7 +75,7 @@ pub enum Error {
 }
 
 /// Response data for [UPLOAD_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UploadFileChunkResponseData {
     /// Server's bucket where file is stored.
     pub bucket: String,
@@ -84,8 +84,12 @@ pub struct UploadFileChunkResponseData {
     pub region: String,
 
     /// 1 if expire was set when uploading chunk; 0 otherwise.
-    #[serde(rename = "expireSet")]
-    pub expire_set: u32,
+    #[serde(
+        rename = "expireSet",
+        deserialize_with = "bool_from_int",
+        serialize_with = "bool_to_int"
+    )]
+    pub expire_set: bool,
 
     /// Timestanp when chunk will be considired expired.
     #[serde(rename = "expireTimestamp")]

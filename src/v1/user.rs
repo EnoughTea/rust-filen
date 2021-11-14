@@ -1,8 +1,10 @@
 use crate::{filen_settings::*, queries, utils, v1::*};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
+use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};
 use snafu::{ResultExt, Snafu};
+use std::str::FromStr;
+use url::Url;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -22,6 +24,44 @@ pub enum Error {
     UserInfoQueryFailed { source: queries::Error },
 }
 
+/// One of payment gateways Filen currently support.
+///
+/// Currently observed: paypal, paypal_sale, stripe, stripe_sale, coinbase.
+#[derive(Clone, Debug, Display, EnumString, Eq, Hash, PartialEq)]
+#[strum(ascii_case_insensitive, serialize_all = "snake_case")]
+pub enum FilenPaymentGateway {
+    Paypal,
+    PaypalSale,
+    Stripe,
+    StripeSale,
+    Coinbase,
+    #[strum(default)]
+    Unknown(String),
+}
+
+impl<'de> Deserialize<'de> for FilenPaymentGateway {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        let deserialized = Self::from_str(&s).unwrap_or_else(|_| Self::Unknown(s));
+        Ok(deserialized)
+    }
+}
+
+impl Serialize for FilenPaymentGateway {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            FilenPaymentGateway::Unknown(value) => serializer.serialize_str(value),
+            other => serializer.serialize_str(&other.to_string()),
+        }
+    }
+}
+
 /// Represents an invoice for a Filen subscription.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -33,8 +73,8 @@ pub struct UserSubInvoice {
     #[serde(rename = "subId")]
     pub sub_id: Uuid,
 
-    /// Currently observed: paypal, paypal_sale, stripe, stripe_sale, coinbase.
-    pub gateway: String,
+    /// Payment gateway.
+    pub gateway: FilenPaymentGateway,
 
     /// Human-readable Filen plan name.
     #[serde(rename = "planName")]
@@ -59,8 +99,8 @@ pub struct UserSub {
     #[serde(rename = "planId")]
     pub plan_id: u32,
 
-    /// Currently observed: paypal, paypal_sale, stripe, stripe_sale, coinbase.
-    pub gateway: String,
+    /// Payment gateway.
+    pub gateway: FilenPaymentGateway,
 
     /// Human-readable Filen plan name.
     #[serde(rename = "planName")]
@@ -92,6 +132,7 @@ pub struct UserSub {
 utils::display_from_json!(UserSub);
 
 /// Response data for [USER_GET_ACCOUNT_PATH] endpoint.
+#[serde_as]
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct UserGetAccountResponseData {
@@ -153,7 +194,8 @@ pub struct UserGetAccountResponseData {
 
     /// Avatar URL.
     #[serde(rename = "avatarURL")]
-    pub avatar_url: String,
+    #[serde_as(as = "DisplayFromStr")]
+    pub avatar_url: Url,
 }
 utils::display_from_json!(UserGetAccountResponseData);
 
@@ -234,8 +276,9 @@ response_payload!(
 );
 
 /// Response data for [USER_INFO_PATH] endpoint.
+#[serde_as]
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserInfoResponseData {
     /// User's email.
     pub email: String,
@@ -258,7 +301,8 @@ pub struct UserInfoResponseData {
 
     /// Avatar URL.
     #[serde(rename = "avatarURL")]
-    pub avatar_url: String,
+    #[serde_as(as = "DisplayFromStr")]
+    pub avatar_url: Url,
 }
 utils::display_from_json!(UserInfoResponseData);
 

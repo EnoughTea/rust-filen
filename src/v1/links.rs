@@ -90,7 +90,7 @@ utils::display_from_json!(LinkDirItemStatusRequestPayload);
 
 /// Response data for [LINK_DIR_ITEM_STATUS_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct LinkDirItemStatusResponseData {
     /// True if at least one link for the specified item exists; false otherwise.
     pub link: bool,
@@ -119,7 +119,7 @@ pub struct LinkDirStatusRequestPayload {
 utils::display_from_json!(LinkDirStatusRequestPayload);
 
 /// Link UUID with link key.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct LinkIdWithKey {
     /// Link key, encrypted.
     #[serde(rename = "linkKey")]
@@ -139,7 +139,7 @@ impl HasLinkKey for LinkIdWithKey {
 
 /// Response data for [LINK_DIR_STATUS_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct LinkDirStatusResponseData {
     /// True if at least one link for the specified folder exists; false otherwise.
     pub link: bool,

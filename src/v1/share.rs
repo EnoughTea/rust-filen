@@ -132,7 +132,7 @@ pub struct ShareDirStatusRequestPayload {
 utils::display_from_json!(ShareDirStatusRequestPayload);
 
 /// User's email and RSA public key.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserEmailWithPublicKey {
     /// Email.
     pub email: String,
@@ -151,7 +151,7 @@ impl HasPublicKey for UserEmailWithPublicKey {
 
 /// Response data for [SHARE_DIR_STATUS_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct ShareDirStatusResponseData {
     /// True if the specified folder is shared; false otherwise.
     pub sharing: bool,
@@ -233,7 +233,7 @@ utils::display_from_json!(UserSharedOutRequestPayload);
 
 /// One of the files in response data for [USER_SHARED_IN] or [USER_SHARED_OUT_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserSharedFile {
     /// File ID, UUID V4 in hyphenated lowercase format.
     pub uuid: Uuid,
@@ -290,7 +290,7 @@ utils::display_from_json!(UserSharedFile);
 
 /// One of the files in response data for [USER_SHARED_IN] or [USER_SHARED_OUT_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserSharedFolder {
     /// Folder ID, UUID V4 in hyphenated lowercase format.
     pub uuid: Uuid,
@@ -363,7 +363,7 @@ utils::display_from_json!(UserSharedFolder);
 
 /// One of the base folders in response data for [USER_SHARED_IN] or [USER_SHARED_OUT_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserSharedFolderInfo {
     /// Base folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -379,7 +379,7 @@ utils::display_from_json!(UserSharedFolderInfo);
 
 /// Response data for [USER_SHARED_IN] or [USER_SHARED_OUT_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserSharedInOrOutResponseData {
     /// List of files in the given folder.
     pub uploads: Vec<UserSharedFile>,
@@ -494,7 +494,7 @@ pub struct UserSharedItemStatusRequestPayload {
 utils::display_from_json!(UserSharedItemStatusRequestPayload);
 
 /// User's id and RSA public key.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserIdWithPublicKey {
     /// User ID.
     pub id: u32,
@@ -513,7 +513,7 @@ impl HasPublicKey for UserIdWithPublicKey {
 
 /// Response data for [USER_SHARED_ITEM_STATUS_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserSharedItemStatusResponseData {
     /// True if the specified folder is shared; false otherwise.
     pub sharing: bool,

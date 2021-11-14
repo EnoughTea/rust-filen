@@ -32,7 +32,7 @@ pub enum Error {
 }
 
 /// Contains a Filen master key and a password hash used for a login API call.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FilenPasswordWithMasterKey {
     /// A hex string with 'master key', a hash that is widely used by Filen to encrypt/decrypt metadata.
     /// Note that master key is used to encrypt/decrypt metadata 'as is', without specific hex to bytes conversion.

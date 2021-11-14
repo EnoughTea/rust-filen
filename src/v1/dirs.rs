@@ -152,7 +152,7 @@ utils::display_from_json!(UserBaseFoldersRequestPayload);
 
 /// One of the folders in response data for [USER_BASE_FOLDERS_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserBaseFolder {
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -193,7 +193,7 @@ impl HasLocationName for UserBaseFolder {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserBaseFoldersResponseData {
     pub folders: Vec<UserBaseFolder>,
 }
@@ -206,7 +206,7 @@ response_payload!(
 
 /// One of the folders in response data for [USER_DIRS_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserDirData {
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -286,7 +286,7 @@ pub struct DirContentRequestPayload {
 utils::display_from_json!(DirContentRequestPayload);
 
 /// One of the files in response data for [DIR_CONTENT_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DirContentFile {
     /// File ID, UUID V4 in hyphenated lowercase format.
     pub uuid: Uuid,
@@ -347,7 +347,7 @@ impl HasFileMetadata for DirContentFile {
 
 /// One of the non-base folders in response data for [DIR_CONTENT_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DirContentFolder {
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -392,7 +392,7 @@ impl HasLocationName for DirContentFolder {
 
 /// One of the base folders in response data for [DIR_CONTENT_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DirContentFolderInfo {
     /// Base folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -408,7 +408,7 @@ utils::display_from_json!(DirContentFolderInfo);
 
 /// Response data for [USER_DIRS_PATH] endpoint.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DirContentResponseData {
     /// List of files in the given folder.
     pub uploads: Vec<DirContentFile>,

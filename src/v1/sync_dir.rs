@@ -38,7 +38,7 @@ pub struct GetDirRequestPayload {
 utils::display_from_json!(GetDirRequestPayload);
 
 /// Response data for [GET_DIR_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct GetDirResponseData {
     pub folders: Vec<FolderData>,
 
@@ -47,7 +47,7 @@ pub struct GetDirResponseData {
 utils::display_from_json!(GetDirResponseData);
 
 /// Represents a file stored under Filen sync folder.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct SyncedFileData {
     /// File ID, UUID V4 in hyphenated lowercase format.
     pub uuid: Uuid,

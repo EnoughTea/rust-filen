@@ -2,8 +2,8 @@ use crate::retry_settings::RetrySettings;
 use std::time::Duration;
 
 /// Each retry increases the delay since the last exponentially, but a maximum delay is limited.
-#[derive(Debug)]
-pub struct LimitedExponential {
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct LimitedExponential {
     current: u64,
     factor: f64,
     max: u64,

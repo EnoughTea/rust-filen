@@ -62,7 +62,7 @@ pub trait HasPlainResponse {
 
 /// Contains just the response status and corresponding message.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct PlainResponsePayload {
     /// True when API call was successful; false otherwise.
     pub status: bool,

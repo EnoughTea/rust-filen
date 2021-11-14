@@ -180,7 +180,7 @@ user_event_struct!(
 );
 
 /// Generic file event data for a downloadable file.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DownloadableFileEventInfo {
     /// File ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -229,7 +229,7 @@ impl HasFileLocation for DownloadableFileEventInfo {
 }
 
 /// Generic file event data.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FileParentlessEventInfo {
     /// File ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -249,7 +249,7 @@ impl HasFileMetadata for FileParentlessEventInfo {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FolderEventInfo {
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -283,13 +283,13 @@ pub struct UserEventsRequestPayload {
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 
-    pub id: u32,
+    pub id: u64,
 
     /// Determines which events to return.
     pub filter: UserEventFilter,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct BaseFolderCreatedEventInfo {
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -318,7 +318,7 @@ user_event_struct!(
     BaseFolderCreatedUserEvent<BaseFolderCreatedEventInfo>
 );
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct CodeRedeemedEventInfo {
     /// Redeemed code.
     pub code: String,
@@ -334,7 +334,7 @@ user_event_struct!(
     CodeRedeemedUserEvent<CodeRedeemedEventInfo>
 );
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct EmailChangeAttemptInfo {
     /// New email.
     pub email: String,
@@ -350,7 +350,7 @@ user_event_struct!(
     EmailChangeAttemptUserEvent<EmailChangeAttemptInfo>
 );
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct EmailChangedInfo {
     /// New email.
     pub email: String,
@@ -366,7 +366,7 @@ user_event_struct!(
     EmailChangedUserEvent<EmailChangedInfo>
 );
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FileLinkEditedInfo {
     /// File ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -405,7 +405,7 @@ user_event_struct!(
     FileRestoredUserEvent<DownloadableFileEventInfo>
 );
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FileRenamedInfo {
     /// File ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -447,7 +447,7 @@ user_event_struct!(
 );
 
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FileSharedInfo {
     /// File ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -495,7 +495,7 @@ user_event_struct!(
 );
 
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FolderColorChangedInfo {
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -528,7 +528,7 @@ user_event_struct!(
     FolderColorChangedUserEvent<FolderColorChangedInfo>
 );
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FolderLinkEditedInfo {
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -553,7 +553,7 @@ user_event_struct!(
     FolderMovedUserEvent<FolderEventInfo>
 );
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FolderRenamedInfo {
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -596,7 +596,7 @@ user_event_struct!(
 );
 
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FolderSharedEventInfo {
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -630,7 +630,7 @@ user_event_struct!(
 );
 
 #[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FolderTrashEventInfo {
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -659,7 +659,7 @@ user_event_struct!(
     FolderTrashUserEvent<FolderTrashEventInfo>
 );
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct ItemFavoriteEventInfo {
     /// Item ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -692,7 +692,7 @@ user_event_struct!(
     ItemFavoriteUserEvent<ItemFavoriteEventInfo>
 );
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct RemovedSharedInItemsInfo {
     /// Email of the user who shared this item.
     #[serde(rename = "sharerEmail")]
@@ -712,7 +712,7 @@ user_event_struct!(
     RemovedSharedInItemsUserEvent<RemovedSharedInItemsInfo>
 );
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct RemovedSharedOutItemsInfo {
     /// Email of the user with whom the item is shared.
     #[serde(rename = "receiverEmail")]
@@ -742,7 +742,7 @@ user_event_struct!(
     VersionedFileRestoredUserEvent<DownloadableFileEventInfo>
 );
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum UserEvent {
     BaseFolderCreated(BaseFolderCreatedUserEvent),
@@ -915,7 +915,7 @@ impl<'de> Deserialize<'de> for UserEvent {
 }
 
 /// Response data for [USER_EVENTS_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserEventsResponseData {
     /// List of filtered user events.
     pub events: Vec<UserEvent>,
@@ -991,7 +991,7 @@ macro_rules! user_event_struct {
     ) => {
         $(#[$meta])*
         #[serde_with::skip_serializing_none]
-        #[derive(Clone, Debug, serde::Deserialize, Eq, PartialEq, serde::Serialize)]
+        #[derive(Clone, Debug, serde::Deserialize, Eq, Hash, PartialEq, serde::Serialize)]
         pub struct $struct_name {
             // Event ID; Filen-incremented counter.
             pub id: u64,

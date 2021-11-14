@@ -20,7 +20,7 @@ pub static STANDARD_RETRIES: Lazy<RetrySettings> = Lazy::new(|| RetrySettings {
 ///
 /// Turn any API query into retriable if needed: call [RetrySettings::retry] for sync operations and
 /// [RetrySettings::retry_async] for futures.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub struct RetrySettings {
     /// Initial delay for exponential backoff.
     initial_delay: Duration,

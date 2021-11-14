@@ -71,7 +71,7 @@ pub struct DownloadDirLinkRequestPayload {
 }
 
 /// Represents one of the linked folders.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct LinkedFolderData {
     /// Folder ID, UUID V4 in hyphenated lowercase format.
     pub uuid: Uuid,
@@ -94,7 +94,7 @@ impl HasLinkedLocationName for LinkedFolderData {
 }
 
 /// Represents a linked file downloadable from Filen.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct LinkedFileData {
     /// File ID, UUID V4 in hyphenated lowercase format.
     pub uuid: Uuid,
@@ -182,7 +182,7 @@ impl LinkedFileData {
 }
 
 /// Response data for [DOWNLOAD_DIR_LINK_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DownloadDirLinkResponseData {
     pub folders: Vec<LinkedFolderData>,
 
@@ -207,7 +207,7 @@ pub struct DownloadDirSharedRequestPayload {
 }
 
 /// Represents one of the shared folders.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct SharedFolderData {
     /// Folder ID, UUID V4 in hyphenated lowercase format.
     pub uuid: Uuid,
@@ -230,7 +230,7 @@ impl HasSharedLocationName for SharedFolderData {
 }
 
 /// Represents a shared file downloadable from Filen.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct SharedFileData {
     /// File ID, UUID V4 in hyphenated lowercase format.
     pub uuid: Uuid,
@@ -315,7 +315,7 @@ impl SharedFileData {
 }
 
 /// Response data for [DOWNLOAD_DIR_SHARED_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DownloadDirSharedResponseData {
     pub folders: Vec<SharedFolderData>,
 
@@ -340,7 +340,7 @@ pub struct DownloadDirRequestPayload {
 }
 
 /// Response data for [DOWNLOAD_DIR_PATH] endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DownloadDirResponseData {
     pub folders: Vec<FolderData>,
 
@@ -371,7 +371,7 @@ impl DownloadDirResponseData {
 }
 
 /// Represents a file downloadable from Filen.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FileData {
     /// File ID, UUID V4 in hyphenated lowercase format.
     pub uuid: Uuid,
@@ -487,11 +487,13 @@ impl FileData {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FileNameSizeMime {
     pub name: String,
     pub size: u64,
     pub mime: String,
 }
+utils::display_from_json!(FileNameSizeMime);
 
 response_payload!(
     /// Response for [DOWNLOAD_DIR_PATH] endpoint.
