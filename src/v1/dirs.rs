@@ -193,6 +193,12 @@ impl HasLocationName for UserBaseFolder {
     }
 }
 
+impl HasUuid for UserBaseFolder {
+    fn uuid_ref(&self) -> &Uuid {
+        &self.uuid
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserBaseFoldersResponseData {
     pub folders: Vec<UserBaseFolder>,
@@ -204,8 +210,10 @@ response_payload!(
     UserBaseFoldersResponsePayload<UserBaseFoldersResponseData>
 );
 
-impl UserBaseFoldersResponseData {
-    gen_decrypt_folders!(folders, &UserBaseFolder);
+impl HasFolders<UserBaseFolder> for UserBaseFoldersResponseData {
+    fn folders_ref(&self) -> &[UserBaseFolder] {
+        &self.folders
+    }
 }
 
 /// One of the folders in response data for [USER_DIRS_PATH] endpoint.
@@ -248,6 +256,12 @@ impl HasLocationName for UserDirData {
     /// Decrypts name metadata into a folder name.
     fn name_metadata_ref(&self) -> &str {
         &self.name_metadata
+    }
+}
+
+impl HasUuid for UserDirData {
+    fn uuid_ref(&self) -> &Uuid {
+        &self.uuid
     }
 }
 
@@ -362,6 +376,12 @@ impl HasFileMetadata for DirContentFile {
     }
 }
 
+impl HasUuid for DirContentFile {
+    fn uuid_ref(&self) -> &Uuid {
+        &self.uuid
+    }
+}
+
 /// One of the non-base folders in response data for [DIR_CONTENT_PATH] endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -417,6 +437,12 @@ impl HasLocationName for DirContentFolder {
     }
 }
 
+impl HasUuid for DirContentFolder {
+    fn uuid_ref(&self) -> &Uuid {
+        &self.uuid
+    }
+}
+
 /// One of the base folders in response data for [DIR_CONTENT_PATH] endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -464,16 +490,15 @@ pub struct DirContentResponseData {
 }
 utils::display_from_json!(DirContentResponseData);
 
-impl DirContentResponseData {
-    gen_decrypt_files!(uploads, &DirContentFile);
-    gen_decrypt_folders!(folders, &DirContentFolder);
-
-    pub fn file_with_uuid(&self, uuid: Uuid) -> Option<&DirContentFile> {
-        self.uploads.iter().find(|file| file.uuid == uuid)
+impl HasFiles<DirContentFile> for DirContentResponseData {
+    fn files_ref(&self) -> &[DirContentFile] {
+        &self.uploads
     }
+}
 
-    pub fn folder_with_uuid(&self, uuid: Uuid) -> Option<&DirContentFolder> {
-        self.folders.iter().find(|folder| folder.uuid == uuid)
+impl HasFolders<DirContentFolder> for DirContentResponseData {
+    fn folders_ref(&self) -> &[DirContentFolder] {
+        &self.folders
     }
 }
 

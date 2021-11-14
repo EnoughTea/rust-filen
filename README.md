@@ -164,7 +164,7 @@ let mut file_buffer = std::io::BufWriter::new(Vec::new());
 // Internal retry logic avoid possible needless work.
 let retry_settings = RetrySettings::STANDARD_RETRIES;
 let sync_file_download_result = download_and_decrypt_file_from_data_and_key(
-    &some_file_data,
+    some_file_data,
     &file_key,
     &retry_settings,
     &filen_settings,
@@ -208,7 +208,7 @@ let upload_result = encrypt_and_upload_file(
 );
 ```
 
-### What if I want to upload file to a new folder?
+### Creating a new folder
 ```rust
 // All folders in Filen can be divided into 'base' and 'non-base'.
 // Base folders are called "cloud drives" in the web manager,
@@ -219,14 +219,14 @@ let upload_result = encrypt_and_upload_file(
 // this check into a separate helper function:
 fn folder_exists(
     api_key: &SecUtf8,
-    // ParentKind defines whether to seek folder_name among base folders or
+    // ParentOrBase defines whether to seek folder_name among base folders or
     // in the given parent folder. 
-    parent_kind: ParentKind,
+    parent: ParentOrBase,
     // Plain-text folder name.
     filen_settings: &FilenSettings,
 ) -> Result<bool> {
     let folder_exists_payload =
-        LocationExistsRequestPayload::new(api_key.clone(), parent_kind, folder_name);
+        LocationExistsRequestPayload::new(api_key.clone(), parent, folder_name);
     dir_exists_request(&folder_exists_payload, filen_settings)?
         .data_or_err()?
         .exists;
@@ -235,7 +235,7 @@ fn folder_exists(
 // Alright, now we have everything we need to create some folders.
 let new_base_folder_name = "New cloud drive";
 // Check that base folder with name "New cloud drive" does not exist already.
-if folder_exists(&api_key, ParentKind::Base, new_base_folder_name, &filen_settings)? {
+if folder_exists(&api_key, ParentOrBase::Base, new_base_folder_name, &filen_settings)? {
     bail!(format!("Folder {} already exists!", new_base_folder_name))
 }
 // No "New cloud drive" base folder exists, so create one. Prepare request payload first:

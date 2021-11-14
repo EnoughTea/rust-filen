@@ -46,9 +46,16 @@ pub struct GetDirResponseData {
 }
 utils::display_from_json!(GetDirResponseData);
 
-impl GetDirResponseData {
-    gen_decrypt_files!(files, &SyncedFileData);
-    gen_decrypt_folders!(folders, &FolderData);
+impl HasFiles<SyncedFileData> for GetDirResponseData {
+    fn files_ref(&self) -> &[SyncedFileData] {
+        &self.files
+    }
+}
+
+impl HasFolders<FolderData> for GetDirResponseData {
+    fn folders_ref(&self) -> &[FolderData] {
+        &self.folders
+    }
 }
 
 /// Represents a file stored under Filen sync folder.
@@ -79,6 +86,12 @@ utils::display_from_json!(SyncedFileData);
 impl HasFileMetadata for SyncedFileData {
     fn file_metadata_ref(&self) -> &str {
         &self.metadata
+    }
+}
+
+impl HasUuid for SyncedFileData {
+    fn uuid_ref(&self) -> &Uuid {
+        &self.uuid
     }
 }
 

@@ -173,6 +173,12 @@ impl HasLocationName for FolderData {
     }
 }
 
+impl HasUuid for FolderData {
+    fn uuid_ref(&self) -> &Uuid {
+        &self.uuid
+    }
+}
+
 /// Identifies location color set by user. Default yellow color is often represented by the absence of specifically set
 /// `LocationColor`.
 #[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
@@ -303,17 +309,59 @@ pub trait HasLinkedFileMetadata {
     }
 }
 
-pub trait HasFileLocation {
+/// Implement this trait for something that has Filen file location.
+pub trait HasFileLocation: HasUuid {
     /// Gets a reference to data defining where file is stored by Filen.
     fn file_storage_ref(&self) -> &FileStorageInfo;
-
-    /// Gets a reference to file ID.
-    fn uuid_ref(&self) -> &Uuid;
 
     /// Gets data required to build a URL for a file plus file chunk count.
     fn get_file_location(&self) -> FileLocation {
         let storage = self.file_storage_ref();
         FileLocation::new(&storage.region, &storage.bucket, *self.uuid_ref(), storage.chunks)
+    }
+}
+
+/// Implement this trait to add file properties decryption and other helper methods.
+pub trait HasFiles<T: HasUuid + HasFileMetadata> {
+    /// Returns files slice.
+    fn files_ref(&self) -> &[T];
+
+    /// Searches for a file with the specified ID in the files slice.
+    ///
+    /// If you do a lot of searches, build a `BTreeMap<Uuid, file data>` and use it instead.
+    fn file_with_uuid(&self, uuid: &Uuid) -> Option<&T> {
+        self.files_ref().iter().find(|file_ref| file_ref.uuid_ref() == uuid)
+    }
+
+    /// Decrypts all encrypted file properties and associates them with file data.
+    fn decrypt_all_file_properties(&self, keys: &[SecUtf8]) -> Result<Vec<(&T, FileProperties)>, files::Error> {
+        self.files_ref()
+            .iter()
+            .map(|data| data.decrypt_file_metadata(keys).map(|properties| (data, properties)))
+            .collect::<Result<Vec<_>, files::Error>>()
+    }
+}
+
+/// Implement this trait to add folder name decryption and other helper methods.
+pub trait HasFolders<T: HasUuid + HasLocationName> {
+    /// Returns folders slice.
+    fn folders_ref(&self) -> &[T];
+
+    /// Searches for a folder with the specified ID in the folders slice.
+    ///
+    /// If you do a lot of searches, build a `BTreeMap<Uuid, folder data>` and use it instead.
+    fn folder_with_uuid(&self, uuid: &Uuid) -> Option<&T> {
+        self.folders_ref()
+            .iter()
+            .find(|folder_ref| folder_ref.uuid_ref() == uuid)
+    }
+
+    /// Decrypts all encrypted folder names and associates them with folder data.
+    fn decrypt_all_folder_names(&self, keys: &[SecUtf8]) -> Result<Vec<(&T, String)>, fs::Error> {
+        self.folders_ref()
+            .iter()
+            .map(|data| data.decrypt_name_metadata(keys).map(|name| (data, name)))
+            .collect::<Result<Vec<_>, fs::Error>>()
     }
 }
 
@@ -370,6 +418,12 @@ pub trait HasLinkKey {
             .fail(),
         }
     }
+}
+
+/// Implement this trait for items that always have UUID.
+pub trait HasUuid {
+    /// Returns reference to an item's ID.
+    fn uuid_ref(&self) -> &Uuid;
 }
 
 /// Used for requests to [DIR_TRASH_PATH] or [FILE_TRASH_PATH] endpoint.
@@ -440,6 +494,16 @@ pub enum ParentOrBase {
 }
 utils::display_from_json!(ParentOrBase);
 
+impl ParentOrBase {
+    /// Creates [ParentOrNone] corresponding to this value.
+    pub fn as_parent_or_none(&self) -> ParentOrNone {
+        match self {
+            ParentOrBase::Base => ParentOrNone::None,
+            ParentOrBase::Folder(id) => ParentOrNone::Folder(*id),
+        }
+    }
+}
+
 impl FromStr for ParentOrBase {
     type Err = Error;
 
@@ -502,6 +566,16 @@ pub enum ParentOrNone {
 }
 utils::display_from_json!(ParentOrNone);
 
+impl ParentOrNone {
+    /// Creates [ParentOrBase] corresponding to this value.
+    pub fn as_parent_or_base(&self) -> ParentOrBase {
+        match self {
+            ParentOrNone::None => ParentOrBase::Base,
+            ParentOrNone::Folder(id) => ParentOrBase::Folder(*id),
+        }
+    }
+}
+
 impl FromStr for ParentOrNone {
     type Err = Error;
 
@@ -553,45 +627,6 @@ impl Serialize for ParentOrNone {
         }
     }
 }
-
-macro_rules! gen_decrypt_folders {
-    (
-        $folders_field_name:ident, $folder_data_type:ty
-    ) => {
-        /// Decrypts all encrypted folder names and associates them with folder data.
-        pub fn decrypt_all_folder_names(
-            &self,
-            keys: &[SecUtf8],
-        ) -> Result<Vec<($folder_data_type, String)>, fs::Error> {
-            self.$folders_field_name
-                .iter()
-                .map(|data| data.decrypt_name_metadata(keys).map(|name| (data, name)))
-                .collect::<Result<Vec<_>, fs::Error>>()
-        }
-    };
-}
-pub(crate) use gen_decrypt_folders;
-
-macro_rules! gen_decrypt_files {
-    (
-        $files_field_name:ident, $file_data_type:ty
-    ) => {
-        /// Decrypts all encrypted file properties and associates them with file data.
-        pub fn decrypt_all_file_properties(
-            &self,
-            keys: &[SecUtf8],
-        ) -> Result<Vec<($file_data_type, FileProperties)>, files::Error> {
-            self.$files_field_name
-                .iter()
-                .map(|data| {
-                    data.decrypt_file_metadata(keys)
-                        .map(|properties| (data, properties))
-                })
-                .collect::<Result<Vec<_>, files::Error>>()
-        }
-    };
-}
-pub(crate) use gen_decrypt_files;
 
 #[cfg(test)]
 mod tests {

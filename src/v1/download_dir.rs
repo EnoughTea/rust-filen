@@ -119,7 +119,9 @@ impl HasFileLocation for LinkedFileData {
     fn file_storage_ref(&self) -> &FileStorageInfo {
         &self.storage
     }
+}
 
+impl HasUuid for LinkedFileData {
     fn uuid_ref(&self) -> &Uuid {
         &self.uuid
     }
@@ -255,7 +257,9 @@ impl HasFileLocation for SharedFileData {
     fn file_storage_ref(&self) -> &FileStorageInfo {
         &self.storage
     }
+}
 
+impl HasUuid for SharedFileData {
     fn uuid_ref(&self) -> &Uuid {
         &self.uuid
     }
@@ -299,9 +303,16 @@ pub struct DownloadDirResponseData {
 }
 utils::display_from_json!(DownloadDirResponseData);
 
-impl DownloadDirResponseData {
-    gen_decrypt_files!(files, &FileData);
-    gen_decrypt_folders!(folders, &FolderData);
+impl HasFiles<FileData> for DownloadDirResponseData {
+    fn files_ref(&self) -> &[FileData] {
+        &self.files
+    }
+}
+
+impl HasFolders<FolderData> for DownloadDirResponseData {
+    fn folders_ref(&self) -> &[FolderData] {
+        &self.folders
+    }
 }
 
 /// Represents a file downloadable from Filen.
@@ -349,7 +360,9 @@ impl HasFileLocation for FileData {
     fn file_storage_ref(&self) -> &FileStorageInfo {
         &self.storage
     }
+}
 
+impl HasUuid for FileData {
     fn uuid_ref(&self) -> &Uuid {
         &self.uuid
     }
@@ -436,10 +449,7 @@ pub async fn download_dir_shared_request_async(
         .context(DownloadDirSharedQueryFailed {})
 }
 
-/// Calls [DOWNLOAD_DIR_PATH] endpoint. Used to get a list of user's folders and files.
-///
-/// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder,
-/// created by Filen's client.
+/// Calls [DOWNLOAD_DIR_PATH] endpoint. Used to get a user's folder with given ID and its sub-folders and files.
 pub fn download_dir_request(
     payload: &DownloadDirRequestPayload,
     filen_settings: &FilenSettings,
@@ -447,10 +457,8 @@ pub fn download_dir_request(
     queries::query_filen_api(DOWNLOAD_DIR_PATH, payload, filen_settings).context(DownloadDirQueryFailed {})
 }
 
-/// Calls [DOWNLOAD_DIR_PATH] endpoint asynchronously. Used to get a list of user's folders and files.
-///
-/// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder,
-/// created by Filen's client.
+/// Calls [DOWNLOAD_DIR_PATH] endpoint asynchronously. 
+/// Used to get a user's folder with given ID and its sub-folders and files.
 #[cfg(feature = "async")]
 pub async fn download_dir_request_async(
     payload: &DownloadDirRequestPayload,

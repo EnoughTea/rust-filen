@@ -222,7 +222,9 @@ impl HasFileLocation for DownloadableFileEventInfo {
     fn file_storage_ref(&self) -> &FileStorageInfo {
         &self.storage
     }
+}
 
+impl HasUuid for DownloadableFileEventInfo {
     fn uuid_ref(&self) -> &Uuid {
         &self.uuid
     }
@@ -276,6 +278,12 @@ impl HasLocationName for FolderEventInfo {
     }
 }
 
+impl HasUuid for FolderEventInfo {
+    fn uuid_ref(&self) -> &Uuid {
+        &self.uuid
+    }
+}
+
 /// Used for requests to [USER_EVENTS_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserEventsRequestPayload {
@@ -310,6 +318,12 @@ utils::display_from_json!(BaseFolderCreatedEventInfo);
 impl HasLocationName for BaseFolderCreatedEventInfo {
     fn name_metadata_ref(&self) -> &str {
         &self.name_metadata
+    }
+}
+
+impl HasUuid for BaseFolderCreatedEventInfo {
+    fn uuid_ref(&self) -> &Uuid {
+        &self.uuid
     }
 }
 
@@ -523,6 +537,12 @@ impl HasLocationName for FolderColorChangedInfo {
     }
 }
 
+impl HasUuid for FolderColorChangedInfo {
+    fn uuid_ref(&self) -> &Uuid {
+        &self.uuid
+    }
+}
+
 user_event_struct!(
     /// Event emitted after a folder color was changed.
     FolderColorChangedUserEvent<FolderColorChangedInfo>
@@ -585,6 +605,12 @@ impl HasLocationName for FolderRenamedInfo {
     }
 }
 
+impl HasUuid for FolderRenamedInfo {
+    fn uuid_ref(&self) -> &Uuid {
+        &self.uuid
+    }
+}
+
 user_event_struct!(
     /// Event emitted after a folder was renamed.
     FolderRenamedUserEvent<FolderRenamedInfo>
@@ -624,6 +650,12 @@ impl HasLocationName for FolderSharedEventInfo {
     }
 }
 
+impl HasUuid for FolderSharedEventInfo {
+    fn uuid_ref(&self) -> &Uuid {
+        &self.uuid
+    }
+}
+
 user_event_struct!(
     /// Event emitted after a folder was shared.
     FolderSharedUserEvent<FolderSharedEventInfo>
@@ -651,6 +683,12 @@ utils::display_from_json!(FolderTrashEventInfo);
 impl HasLocationName for FolderTrashEventInfo {
     fn name_metadata_ref(&self) -> &str {
         &self.name_metadata
+    }
+}
+
+impl HasUuid for FolderTrashEventInfo {
+    fn uuid_ref(&self) -> &Uuid {
+        &self.uuid
     }
 }
 

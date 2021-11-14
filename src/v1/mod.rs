@@ -159,7 +159,7 @@ pub(crate) fn optional_bool_from_int<'de, D>(deserializer: D) -> Result<Option<b
 where
     D: Deserializer<'de>,
 {
-    Ok(Option::<i32>::deserialize(deserializer)?.map(|int| if int == 0 { false } else { true }))
+    Ok(Option::<i32>::deserialize(deserializer)?.map(|int| int != 0))
 }
 
 pub(crate) fn optional_bool_to_int<S>(value: &Option<bool>, serializer: S) -> Result<S::Ok, S::Error>
