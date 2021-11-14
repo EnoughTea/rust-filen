@@ -1,8 +1,7 @@
-use crate::{crypto, filen_settings::FilenSettings, queries, retry_settings::RetrySettings, utils, v1::*};
+use crate::{crypto, filen_settings::FilenSettings, queries, utils, v1::*};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
-use std::io::Write;
 use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -27,13 +26,7 @@ pub enum Error {
         size: String,
         source: std::num::ParseIntError,
     },
-
-    #[snafu(display("Download and decrypt operation failed for file {}: {}", file_data, source))]
-    DownloadAndDecryptFileFailed {
-        file_data: Box<FileData>,
-        source: download_file::Error,
-    },
-
+    
     #[snafu(display("Download and decrypt operation failed for linked file {}: {}", file_data, source))]
     DownloadAndDecryptLinkedFileFailed {
         file_data: Box<LinkedFileData>,
@@ -133,53 +126,53 @@ impl HasFileLocation for LinkedFileData {
 }
 
 impl LinkedFileData {
-    // TODO: download_and_decrypt_file and download_and_decrypt_file_async should be extracted to a trait,
-    // but Rust does not support async in traits yet.
-
-    /// Uses this file's properties to call [download_and_decrypt_file].
-    pub fn download_and_decrypt_file<W: Write>(
-        &self,
-        file_key: &SecUtf8,
-        retry_settings: &RetrySettings,
-        filen_settings: &FilenSettings,
-        writer: &mut std::io::BufWriter<W>,
-    ) -> Result<u64> {
-        download_and_decrypt_file(
-            &self.get_file_location(),
-            self.version,
-            file_key,
-            retry_settings,
-            filen_settings,
-            writer,
-        )
-        .context(DownloadAndDecryptLinkedFileFailed {
-            file_data: self.clone(),
-        })
-    }
-
-    /// Uses this file's properties to call [download_and_decrypt_file_async].
-    #[cfg(feature = "async")]
-    pub async fn download_and_decrypt_file_async<W: Write>(
-        &self,
-        file_key: &SecUtf8,
-        retry_settings: &RetrySettings,
-        filen_settings: &FilenSettings,
-        writer: &mut std::io::BufWriter<W>,
-    ) -> Result<u64> {
-        download_and_decrypt_file_async(
-            &self.get_file_location(),
-            self.version,
-            file_key,
-            retry_settings,
-            filen_settings,
-            writer,
-        )
-        .await
-        .context(DownloadAndDecryptLinkedFileFailed {
-            file_data: self.clone(),
-        })
-    }
+    gen_download_and_decrypt_file!();
 }
+
+macro_rules! gen_download_and_decrypt_file {
+    (
+        
+    ) => {
+        /// Uses this file's properties to call [download_and_decrypt_file].
+        pub fn download_and_decrypt_file<W: std::io::Write>(
+            &self,
+            file_key: &secstr::SecUtf8,
+            retry_settings: &crate::RetrySettings,
+            filen_settings: &crate::FilenSettings,
+            writer: &mut std::io::BufWriter<W>,
+        ) -> Result<u64, crate::v1::download_file::Error> {
+            download_and_decrypt_file(
+                &self.get_file_location(),
+                self.version,
+                file_key,
+                retry_settings,
+                filen_settings,
+                writer,
+            )
+        }
+
+        /// Uses this file's properties to call [download_and_decrypt_file_async].
+        #[cfg(feature = "async")]
+        pub async fn download_and_decrypt_file_async<W: std::io::Write>(
+            &self,
+            file_key: &secstr::SecUtf8,
+            retry_settings: &crate::RetrySettings,
+            filen_settings: &crate::FilenSettings,
+            writer: &mut std::io::BufWriter<W>,
+        ) -> Result<u64, crate::v1::download_file::Error> {
+            download_and_decrypt_file_async(
+                &self.get_file_location(),
+                self.version,
+                file_key,
+                retry_settings,
+                filen_settings,
+                writer,
+            )
+            .await
+        }
+    };
+}
+pub(crate) use gen_download_and_decrypt_file;
 
 /// Response data for [DOWNLOAD_DIR_LINK_PATH] endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -269,49 +262,7 @@ impl HasFileLocation for SharedFileData {
 }
 
 impl SharedFileData {
-    /// Uses this file's properties to call [download_and_decrypt_file].
-    pub fn download_and_decrypt_file<W: Write>(
-        &self,
-        file_key: &SecUtf8,
-        retry_settings: &RetrySettings,
-        filen_settings: &FilenSettings,
-        writer: &mut std::io::BufWriter<W>,
-    ) -> Result<u64> {
-        download_and_decrypt_file(
-            &self.get_file_location(),
-            self.version,
-            file_key,
-            retry_settings,
-            filen_settings,
-            writer,
-        )
-        .context(DownloadAndDecryptSharedFileFailed {
-            file_data: self.clone(),
-        })
-    }
-
-    /// Uses this file's properties to call [download_and_decrypt_file_async].
-    #[cfg(feature = "async")]
-    pub async fn download_and_decrypt_file_async<W: Write>(
-        &self,
-        file_key: &SecUtf8,
-        retry_settings: &RetrySettings,
-        filen_settings: &FilenSettings,
-        writer: &mut std::io::BufWriter<W>,
-    ) -> Result<u64> {
-        download_and_decrypt_file_async(
-            &self.get_file_location(),
-            self.version,
-            file_key,
-            retry_settings,
-            filen_settings,
-            writer,
-        )
-        .await
-        .context(DownloadAndDecryptSharedFileFailed {
-            file_data: self.clone(),
-        })
-    }
+    gen_download_and_decrypt_file!();
 }
 
 /// Response data for [DOWNLOAD_DIR_SHARED_PATH] endpoint.
@@ -349,25 +300,8 @@ pub struct DownloadDirResponseData {
 utils::display_from_json!(DownloadDirResponseData);
 
 impl DownloadDirResponseData {
-    pub fn decrypt_all_folder_names(&self, master_keys: &[SecUtf8]) -> Result<Vec<(FolderData, String)>, fs::Error> {
-        self.folders
-            .iter()
-            .map(|data| data.decrypt_name_metadata(master_keys).map(|name| (data.clone(), name)))
-            .collect::<Result<Vec<_>, fs::Error>>()
-    }
-
-    pub fn decrypt_all_file_properties(
-        &self,
-        master_keys: &[SecUtf8],
-    ) -> Result<Vec<(FileData, FileProperties)>, files::Error> {
-        self.files
-            .iter()
-            .map(|data| {
-                data.decrypt_file_metadata(master_keys)
-                    .map(|properties| (data.clone(), properties))
-            })
-            .collect::<Result<Vec<_>, files::Error>>()
-    }
+    gen_decrypt_files!(files, &FileData);
+    gen_decrypt_folders!(folders, &FolderData);
 }
 
 /// Represents a file downloadable from Filen.
@@ -442,49 +376,7 @@ impl FileData {
         Ok(FileNameSizeMime { name, size, mime })
     }
 
-    /// Uses this file's properties to call [download_and_decrypt_file].
-    pub fn download_and_decrypt_file<W: Write>(
-        &self,
-        file_key: &SecUtf8,
-        retry_settings: &RetrySettings,
-        filen_settings: &FilenSettings,
-        writer: &mut std::io::BufWriter<W>,
-    ) -> Result<u64> {
-        download_and_decrypt_file(
-            &self.get_file_location(),
-            self.version,
-            file_key,
-            retry_settings,
-            filen_settings,
-            writer,
-        )
-        .context(DownloadAndDecryptFileFailed {
-            file_data: self.clone(),
-        })
-    }
-
-    /// Uses this file's properties to call [download_and_decrypt_file_async].
-    #[cfg(feature = "async")]
-    pub async fn download_and_decrypt_file_async<W: Write>(
-        &self,
-        file_key: &SecUtf8,
-        retry_settings: &RetrySettings,
-        filen_settings: &FilenSettings,
-        writer: &mut std::io::BufWriter<W>,
-    ) -> Result<u64> {
-        download_and_decrypt_file_async(
-            &self.get_file_location(),
-            self.version,
-            file_key,
-            retry_settings,
-            filen_settings,
-            writer,
-        )
-        .await
-        .context(DownloadAndDecryptFileFailed {
-            file_data: self.clone(),
-        })
-    }
+    gen_download_and_decrypt_file!();
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]

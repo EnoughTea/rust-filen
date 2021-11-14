@@ -46,6 +46,11 @@ pub struct GetDirResponseData {
 }
 utils::display_from_json!(GetDirResponseData);
 
+impl GetDirResponseData {
+    gen_decrypt_files!(files, &SyncedFileData);
+    gen_decrypt_folders!(folders, &FolderData);
+}
+
 /// Represents a file stored under Filen sync folder.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct SyncedFileData {

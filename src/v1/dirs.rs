@@ -204,6 +204,10 @@ response_payload!(
     UserBaseFoldersResponsePayload<UserBaseFoldersResponseData>
 );
 
+impl UserBaseFoldersResponseData {
+    gen_decrypt_folders!(folders, &UserBaseFolder);
+}
+
 /// One of the folders in response data for [USER_DIRS_PATH] endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -461,29 +465,15 @@ pub struct DirContentResponseData {
 utils::display_from_json!(DirContentResponseData);
 
 impl DirContentResponseData {
-    /// Decrypts all encrypted folder names and associates them with folder data.
-    pub fn decrypt_all_folder_names(
-        &self,
-        master_keys: &[SecUtf8],
-    ) -> Result<Vec<(DirContentFolder, String)>, fs::Error> {
-        self.folders
-            .iter()
-            .map(|data| data.decrypt_name_metadata(master_keys).map(|name| (data.clone(), name)))
-            .collect::<Result<Vec<_>, fs::Error>>()
+    gen_decrypt_files!(uploads, &DirContentFile);
+    gen_decrypt_folders!(folders, &DirContentFolder);
+
+    pub fn file_with_uuid(&self, uuid: Uuid) -> Option<&DirContentFile> {
+        self.uploads.iter().find(|file| file.uuid == uuid)
     }
 
-    /// Decrypts all encrypted file properties and associates them with file data.
-    pub fn decrypt_all_file_properties(
-        &self,
-        master_keys: &[SecUtf8],
-    ) -> Result<Vec<(DirContentFile, FileProperties)>, files::Error> {
-        self.uploads
-            .iter()
-            .map(|data| {
-                data.decrypt_file_metadata(master_keys)
-                    .map(|properties| (data.clone(), properties))
-            })
-            .collect::<Result<Vec<_>, files::Error>>()
+    pub fn folder_with_uuid(&self, uuid: Uuid) -> Option<&DirContentFolder> {
+        self.folders.iter().find(|folder| folder.uuid == uuid)
     }
 }
 
