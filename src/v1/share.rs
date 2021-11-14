@@ -1,4 +1,4 @@
-use crate::{filen_settings::*, queries, utils, v1::*};
+use crate::{queries, utils, v1::*, *};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -18,6 +18,45 @@ const USER_SHARED_ITEM_OUT_REMOVE_PATH: &str = "/v1/user/shared/item/out/remove"
 
 #[derive(Snafu, Debug)]
 pub enum Error {
+    #[snafu(display("Filen cannot share file '{}': {}", uuid, message))]
+    CannotShareFile {
+        uuid: Uuid,
+        message: String,
+        backtrace: Backtrace,
+    },
+
+    #[snafu(display("Filen cannot share folder '{}': {}", uuid, message))]
+    CannotShareFolder {
+        uuid: Uuid,
+        message: String,
+        backtrace: Backtrace,
+    },
+
+    #[snafu(display("Filen cannot list contents for folder '{}': {}", uuid, message))]
+    CannotGetFolderContents {
+        uuid: Uuid,
+        message: String,
+        backtrace: Backtrace,
+    },
+
+    #[snafu(display("Failed to decrypt file metadata '{}': {}", metadata, source))]
+    DecryptFileMetadataFailed { metadata: String, source: files::Error },
+
+    #[snafu(display("Failed to decrypt location name {}: {}", metadata, source))]
+    DecryptLocationNameFailed { metadata: String, source: fs::Error },
+
+    #[snafu(display("download_dir_request() was successful, but had no data: {}", source))]
+    DownloadDirHadNoData { source: crate::v1::Error },
+
+    #[snafu(display("dir_content_request() call failed when sharing folder: {}", source))]
+    DownloadDirRequestFailed { source: download_dir::Error },
+
+    #[snafu(display("Failed to encrypt file metadata '{}' using RSA: {}", metadata, source))]
+    EncryptFileMetadataRsaFailed { metadata: String, source: files::Error },
+
+    #[snafu(display("Failed to encrypt folder metadata '{}' using RSA: {}", metadata, source))]
+    EncryptFolderMetadataRsaFailed { metadata: String, source: crypto::Error },
+
     #[snafu(display("{} query failed: {}", SHARE_DIR_STATUS_PATH, source))]
     ShareDirStatusQueryFailed { source: queries::Error },
 
@@ -80,11 +119,37 @@ pub struct ShareRequestPayload {
 utils::display_from_json!(ShareRequestPayload);
 
 impl ShareRequestPayload {
+    pub fn from_file_data<T: HasFileMetadata + HasUuid>(
+        api_key: SecUtf8,
+        file_data: &T,
+        parent: ParentOrNone,
+        receiver_email: String,
+        receiver_public_key_bytes: &[u8],
+        master_keys: &[SecUtf8],
+    ) -> Result<ShareRequestPayload> {
+        let file_properties = file_data
+            .decrypt_file_metadata(master_keys)
+            .context(DecryptFileMetadataFailed {
+                metadata: file_data.file_metadata_ref().to_owned(),
+            })?;
+        ShareRequestPayload::from_file_properties(
+            api_key,
+            *file_data.uuid_ref(),
+            &file_properties,
+            parent,
+            receiver_email,
+            receiver_public_key_bytes,
+        )
+        .context(EncryptFileMetadataRsaFailed {
+            metadata: file_data.file_metadata_ref().to_owned(),
+        })
+    }
+
     pub fn from_file_properties(
         api_key: SecUtf8,
         file_uuid: Uuid,
-        parent: ParentOrNone,
         file_properties: &FileProperties,
+        parent: ParentOrNone,
         email: String,
         rsa_public_key_bytes: &[u8],
     ) -> Result<ShareRequestPayload, files::Error> {
@@ -99,11 +164,37 @@ impl ShareRequestPayload {
         })
     }
 
+    pub fn from_folder_data<T: HasLocationName + HasUuid>(
+        api_key: SecUtf8,
+        folder_data: &T,
+        parent: ParentOrNone,
+        receiver_email: String,
+        receiver_public_key_bytes: &[u8],
+        master_keys: &[SecUtf8],
+    ) -> Result<ShareRequestPayload> {
+        let folder_name = folder_data
+            .decrypt_name_metadata(master_keys)
+            .context(DecryptLocationNameFailed {
+                metadata: folder_data.name_metadata_ref().to_owned(),
+            })?;
+        ShareRequestPayload::from_folder_name(
+            api_key,
+            *folder_data.uuid_ref(),
+            &folder_name,
+            parent,
+            receiver_email,
+            receiver_public_key_bytes,
+        )
+        .context(EncryptFolderMetadataRsaFailed {
+            metadata: folder_data.name_metadata_ref().to_owned(),
+        })
+    }
+
     pub fn from_folder_name(
         api_key: SecUtf8,
         folder_uuid: Uuid,
-        parent: ParentOrNone,
         folder_name: &str,
+        parent: ParentOrNone,
         email: String,
         rsa_public_key_bytes: &[u8],
     ) -> Result<ShareRequestPayload, CryptoError> {
@@ -690,6 +781,264 @@ pub async fn user_shared_item_status_request_async(
     queries::query_filen_api_async(USER_SHARED_ITEM_STATUS_PATH, payload, filen_settings)
         .await
         .context(UserSharedItemStatusQueryFailed {})
+}
+
+/// Helper which shares given file with the specified user.
+pub fn share_file<T: HasFileMetadata + HasUuid>(
+    api_key: SecUtf8,
+    file_data: &T,
+    parent: ParentOrNone,
+    receiver_email: String,
+    receiver_public_key_bytes: &[u8],
+    master_keys: &[SecUtf8],
+    filen_settings: &FilenSettings,
+) -> Result<String> {
+    let file_properties = file_data
+        .decrypt_file_metadata(master_keys)
+        .context(DecryptFileMetadataFailed {
+            metadata: file_data.file_metadata_ref().to_owned(),
+        })?;
+    let share_payload = ShareRequestPayload::from_file_properties(
+        api_key,
+        *file_data.uuid_ref(),
+        &file_properties,
+        parent,
+        receiver_email,
+        receiver_public_key_bytes,
+    )
+    .context(EncryptFileMetadataRsaFailed {
+        metadata: file_data.file_metadata_ref().to_owned(),
+    })?;
+    let response = share_request(&share_payload, filen_settings)?;
+    if response.status {
+        Ok(response.message.unwrap_or_default())
+    } else {
+        CannotShareFile {
+            uuid: *file_data.uuid_ref(),
+            message: format!("{:?}", response.message),
+        }
+        .fail()
+    }
+}
+
+/// Helper which shares given file with the specified user; asynchronous.
+#[cfg(feature = "async")]
+pub async fn share_file_async<T: HasFileMetadata + HasUuid>(
+    api_key: SecUtf8,
+    file_data: &T,
+    parent: ParentOrNone,
+    receiver_email: String,
+    receiver_public_key_bytes: &[u8],
+    master_keys: &[SecUtf8],
+    filen_settings: &FilenSettings,
+) -> Result<String> {
+    let share_payload = ShareRequestPayload::from_file_data(
+        api_key,
+        file_data,
+        parent,
+        receiver_email,
+        receiver_public_key_bytes,
+        master_keys,
+    )?;
+    let response = share_request_async(&share_payload, filen_settings).await?;
+    if response.status {
+        Ok(response.message.unwrap_or_default())
+    } else {
+        CannotShareFile {
+            uuid: *file_data.uuid_ref(),
+            message: format!("{:?}", response.message),
+        }
+        .fail()
+    }
+}
+
+/// Helper which shares just the given folder without its files and sub-folders.
+pub fn share_folder<T: HasLocationName + HasUuid>(
+    api_key: SecUtf8,
+    folder_data: &T,
+    parent: ParentOrNone,
+    receiver_email: String,
+    receiver_public_key_bytes: &[u8],
+    master_keys: &[SecUtf8],
+    filen_settings: &FilenSettings,
+) -> Result<String> {
+    let share_payload = ShareRequestPayload::from_folder_data(
+        api_key,
+        folder_data,
+        parent,
+        receiver_email,
+        receiver_public_key_bytes,
+        master_keys,
+    )?;
+    let response = share_request(&share_payload, filen_settings)?;
+    if response.status {
+        Ok(response.message.unwrap_or_default())
+    } else {
+        CannotShareFolder {
+            uuid: *folder_data.uuid_ref(),
+            message: format!("{:?}", response.message),
+        }
+        .fail()
+    }
+}
+
+/// Helper which shares just the given folder without its files and sub-folders; asynchronous.
+#[cfg(feature = "async")]
+pub async fn share_folder_async<T: HasLocationName + HasUuid>(
+    api_key: SecUtf8,
+    folder_data: &T,
+    parent: ParentOrNone,
+    receiver_email: String,
+    receiver_public_key_bytes: &[u8],
+    master_keys: &[SecUtf8],
+    filen_settings: &FilenSettings,
+) -> Result<String> {
+    let share_payload = ShareRequestPayload::from_folder_data(
+        api_key,
+        folder_data,
+        parent,
+        receiver_email,
+        receiver_public_key_bytes,
+        master_keys,
+    )?;
+    let response = share_request_async(&share_payload, filen_settings).await?;
+    if response.status {
+        Ok(response.message.unwrap_or_default())
+    } else {
+        CannotShareFolder {
+            uuid: *folder_data.uuid_ref(),
+            message: format!("{:?}", response.message),
+        }
+        .fail()
+    }
+}
+
+/// Helper which shares the given folder and all its sub-folders recursively, with files.
+pub fn share_folder_recursively(
+    api_key: &SecUtf8,
+    folder_uuid: Uuid,
+    receiver_email: &str,
+    receiver_public_key_bytes: &[u8],
+    master_keys: &[SecUtf8],
+    retry_settings: &RetrySettings,
+    filen_settings: &FilenSettings,
+) -> Result<()> {
+    let content_payload = DownloadDirRequestPayload {
+        api_key: api_key.to_owned(),
+        uuid: folder_uuid,
+    };
+    let content_response = retry_settings
+        .retry(|| download_dir_request(&content_payload, filen_settings))
+        .context(DownloadDirRequestFailed {})?;
+    if content_response.status {
+        let contents = content_response.data_or_err().context(DownloadDirHadNoData {})?;
+        // Share this folder and all sub-folders:
+        contents
+            .folders
+            .iter()
+            .map(|folder| {
+                retry_settings.retry(|| {
+                    share_folder(
+                        api_key.to_owned(),
+                        folder,
+                        folder.parent.as_parent_or_none(),
+                        receiver_email.to_owned(),
+                        receiver_public_key_bytes,
+                        master_keys,
+                        filen_settings,
+                    )
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+        // Share all files.
+        contents
+            .files
+            .iter()
+            .map(|file| {
+                retry_settings.retry(|| {
+                    share_file(
+                        api_key.to_owned(),
+                        file,
+                        ParentOrNone::Folder(file.parent),
+                        receiver_email.to_owned(),
+                        receiver_public_key_bytes,
+                        master_keys,
+                        filen_settings,
+                    )
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(())
+    } else {
+        CannotGetFolderContents {
+            uuid: folder_uuid,
+            message: format!("{:?}", content_response.message),
+        }
+        .fail()
+    }
+}
+
+/// Helper which shares the given folder and all its sub-folders recursively, with files.
+#[cfg(feature = "async")]
+pub async fn share_folder_recursively_async(
+    api_key: &SecUtf8,
+    folder_uuid: Uuid,
+    receiver_email: &str,
+    receiver_public_key_bytes: &[u8],
+    master_keys: &[SecUtf8],
+    retry_settings: &RetrySettings,
+    filen_settings: &FilenSettings,
+) -> Result<()> {
+    let content_payload = DownloadDirRequestPayload {
+        api_key: api_key.clone(),
+        uuid: folder_uuid,
+    };
+    let content_response = retry_settings
+        .retry_async(|| download_dir_request_async(&content_payload, filen_settings))
+        .await
+        .context(DownloadDirRequestFailed {})?;
+    if content_response.status {
+        let contents = content_response.data_or_err().context(DownloadDirHadNoData {})?;
+        // Share this folder and all sub-folders:
+        let folder_futures = contents.folders.iter().map(|folder| {
+            retry_settings.retry_async(move || {
+                share_folder_async(
+                    api_key.to_owned(),
+                    folder,
+                    folder.parent.as_parent_or_none(),
+                    receiver_email.to_owned(),
+                    receiver_public_key_bytes,
+                    master_keys,
+                    filen_settings,
+                )
+            })
+        });
+        futures::future::try_join_all(folder_futures).await?;
+
+        // Share all files.
+        let file_futures = contents.files.iter().map(|file| {
+            retry_settings.retry_async(move || {
+                share_file_async(
+                    api_key.to_owned(),
+                    file,
+                    ParentOrNone::Folder(file.parent),
+                    receiver_email.to_owned(),
+                    receiver_public_key_bytes,
+                    master_keys,
+                    filen_settings,
+                )
+            })
+        });
+        futures::future::try_join_all(file_futures).await?;
+        Ok(())
+    } else {
+        CannotGetFolderContents {
+            uuid: folder_uuid,
+            message: format!("{:?}", content_response.message),
+        }
+        .fail()
+    }
 }
 
 #[cfg(test)]
