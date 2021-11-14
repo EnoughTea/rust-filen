@@ -28,7 +28,8 @@ If you're interested, that's how it all looks. Start by importing all we need fo
 ```rust
 use rust_filen::{*, v1::*};
 // All Filen API queries and related structs are in v1::*,
-// while rust_filen::* provides FilenSettings and RetrySettings. Also, for advanced usage, there are rust_filen::crypto
+// while rust_filen::* provides FilenSettings and RetrySettings.
+// Also, for advanced usage, there are rust_filen::crypto
 // with crypto-functions to encrypt/decrypt various Filen metadata and
 // rust_filen::queries as a way to define your own Filen API queries.
 use anyhow::bail;  // bail is used for demo purposes, it's not really needed.
