@@ -59,10 +59,10 @@ let auth_info_request_payload = auth::AuthInfoRequestPayload {
     two_factor_key: user_two_factor_key.clone(),
 };
 let auth_info_response = auth::auth_info_request(&auth_info_request_payload, &filen_settings)?;
-if !auth_info_response.status || auth_info_response.data.is_none() {
+if !auth_info_response.status {
     bail!("Filen API failed to return auth info: {:?}", auth_info_response.message);
 }
-let auth_info_response_data = auth_info_response.data.unwrap();
+let auth_info_response_data = auth_info_response.data_or_err()?;
 // filen_password_with_master_key() helper calculates Filen password for us,
 // depending on returned auth_info_response_data.
 let filen_password_and_m_key = auth_info_response_data
@@ -82,12 +82,13 @@ let login_request_payload = auth::LoginRequestPayload {
     auth_version: auth_info_response_data.auth_version,
 };
 let login_response = auth::login_request(&login_request_payload, &filen_settings)?;
-if !login_response.status || login_response.data.is_none() {
+if !login_response.status {
     bail!("Filen API failed to login: {:?}", auth_info_response.message);
 }
 // Login confirmed, now you can take API key and user's master key from the LoginResponseData
 // and go perform some API calls!
-let login_response_data = login_response.data.unwrap();
+let login_response_data = login_response.data_or_err()?;
+// Api key is needed for almost every call to Filen API, so it's a must have.
 let api_key = login_response_data.api_key;
 // Last master key is used for encryption of user's private data.
 let last_master_key = filen_password_and_m_key.m_key;
@@ -105,7 +106,7 @@ let user_dir_request_payload = UserDirsRequestPayload {
     api_key: api_key.clone(),
 };
 let user_dirs_response = user_dirs_request(&user_dir_request_payload, &filen_settings)?;
-if !user_dirs_response.status || user_dirs_response.data.is_empty() {
+if !user_dirs_response.status {
     bail!(
         "Filen API failed to provide user dirs: {:?}",
         user_dirs_response.message
@@ -124,14 +125,14 @@ let download_dir_request_payload = DownloadDirRequestPayload {
     uuid: default_folder_data.uuid,
 };
 let download_dir_response = download_dir_request(&download_dir_request_payload, &filen_settings)?;
-if !download_dir_response.status || download_dir_response.data.is_none() {
+if !download_dir_response.status {
     bail!(
         "Filen API failed to provide default folder contents: {:?}",
         download_dir_response.message
     );
 }
 // Again, this is just a helper method, feel free to decrypt metadata for every FileData yourself.
-let download_dir_response_data = download_dir_response.data.unwrap();
+let download_dir_response_data = download_dir_response.data_or_err()?;
 let default_folder_files_and_properties = download_dir_response_data.decrypt_all_file_properties(&master_keys)?;
 ```
 
@@ -195,6 +196,72 @@ let upload_result = encrypt_and_upload_file(
     &mut file_reader,
 );
 ```
+
+### What if I want to upload file to a new folder?
+```rust
+// All folders in Filen can be divided into 'base' and 'non-base'. Base folders are called "cloud drives"
+// in the web manager, non-base folders are your usual folders.
+// So let's create a new cloud drive, where we will put a new folder.
+// But before creating something new, you should always check if it's name is free to use.
+// Since we will be creating 2 folders, it would be wise to put this check into a separate helper function:
+fn folder_exists(
+    api_key: &SecUtf8,
+    // ParentKind defines whether to seek folder_name among base folders or in the given parent folder. 
+    parent_kind: ParentKind,
+    // Plain-text folder name.
+    filen_settings: &FilenSettings,
+) -> Result<bool> {
+    let folder_exists_payload = LocationExistsRequestPayload::new(api_key.clone(), parent_kind, folder_name);
+    dir_exists_request(&folder_exists_payload, filen_settings)?
+        .data_or_err()?
+        .exists;
+}
+
+// Alright, now we have everything we need to create some folders.
+let new_base_folder_name = "New cloud drive";
+// Check that base folder with name "New cloud drive" does not exist already.
+if folder_exists(&api_key, ParentKind::Base, new_base_folder_name, &filen_settings)? {
+    bail!(format!("Folder {} already exists!", new_base_folder_name))
+}
+// No "New cloud drive" base folder exists, so create one. Prepare request payload first:
+let create_base_folder_payload =
+    DirCreateRequestPayload::new(api_key.clone(), new_base_folder_name, &last_master_key);
+let created_base_folder_uuid = create_base_folder_payload.uuid; // New folder ID is random, so get hold of it.
+// Finally, create "New cloud drive" base folder, dir_create_request used for base folder creation.
+let create_base_folder_result = dir_create_request(&create_base_folder_payload, &filen_settings)?;
+if !create_base_folder_result.status {
+    bail!(
+        "Filen API failed to create base folder: {:?}",
+        create_base_folder_result.message
+    );
+}
+
+// Now lets create "This is a new folder" folder inside freshly created "New cloud drive" base folder.
+// Good thing we stored base folder ID in created_base_folder_uuid, we're going to pass it as a parent.
+// Again, check folder for existence first:
+let new_folder_name = "This is a new folder";
+if folder_exists(
+    &api_key,
+    ParentKind::Folder(created_base_folder_uuid.clone()),
+    new_folder_name,
+    &filen_settings,
+)? {
+    bail!(format!("Folder {} already exists!", new_folder_name))
+}
+
+// Everything should make sense by now. Usual folders are created with dir_sub_create_request:
+let folder_payload = DirSubCreateRequestPayload::new(
+    api_key.clone(),
+    new_folder_name,
+    created_base_folder_uuid,
+    &last_master_key,
+);
+let create_folder_result = dir_sub_create_request(&folder_payload, &filen_settings).unwrap();
+if !create_folder_result.status {
+    bail!("Filen API failed to create folder: {:?}", create_folder_result.message);
+}
+```
+
 
 ### There is encrypted metadata everywhere, what to do?
 
