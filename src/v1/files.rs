@@ -540,8 +540,8 @@ mod tests {
 
     static API_KEY: Lazy<SecUtf8> =
         Lazy::new(|| SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"));
-    const NAME: &str = "test_folder";
-    const NAME_METADATA: &str = "U2FsdGVkX19d09wR+Ti+qMO7o8habxXkS501US7uv96+zbHHZwDDPbnq1di1z0/S";
+    // const NAME: &str = "test_folder";
+    // const NAME_METADATA: &str = "U2FsdGVkX19d09wR+Ti+qMO7o8habxXkS501US7uv96+zbHHZwDDPbnq1di1z0/S";
     const NAME_HASHED: &str = "19d24c63b1170a0b1b40520a636a25235735f39f";
 
     #[test]

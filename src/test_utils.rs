@@ -130,6 +130,7 @@ where
     server
 }
 
+#[cfg(feature = "async")]
 pub(crate) async fn validate_contract_async<P, A, R, E, F>(
     api_endpoint: &str,
     request_payload: P,

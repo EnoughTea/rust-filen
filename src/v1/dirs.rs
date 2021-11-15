@@ -6,7 +6,6 @@ use snafu::{Backtrace, ResultExt, Snafu};
 use std::{fmt, str::FromStr};
 use uuid::Uuid;
 
-#[allow(dead_code)]
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub const FILEN_SYNC_FOLDER_NAME: &str = "Filen Sync";

@@ -7,6 +7,7 @@ use uuid::Uuid;
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// Sets how many chunks to download and decrypt concurrently.
+#[cfg(feature = "async")]
 const ASYNC_CHUNK_BATCH_SIZE: usize = 16; // Is it a good idea to simply hardcode this param?
 
 #[derive(Snafu, Debug)]
@@ -267,6 +268,7 @@ pub async fn download_and_decrypt_file_async<W: Write>(
 
 /// Writes batch of file chunks to the given writer and returns total size of passed encrypted batch.
 /// If one write in the batch fails, entire batch fails.
+#[cfg(feature = "async")]
 fn write_batch<W: Write>(
     batch: &[Vec<u8>],
     batch_encrypted_size: u64,
@@ -289,6 +291,7 @@ fn write_batch<W: Write>(
     Ok(written_lengths.iter().sum::<u64>())
 }
 
+#[cfg(feature = "async")]
 fn decrypt_batch(
     batch_index: usize,
     batch: &[Vec<u8>],
@@ -346,6 +349,7 @@ async fn download_batch_async(
 }
 
 /// Calculates batch indices from the total amount of chunks and the single batch size.
+#[cfg(feature = "async")]
 fn batch_chunks(file_chunk_count: u32, batch_size: usize) -> Vec<Vec<u32>> {
     let chunk_indicies: Vec<u32> = (0..file_chunk_count).collect();
     chunk_indicies.chunks(batch_size).map(|slice| slice.to_vec()).collect()

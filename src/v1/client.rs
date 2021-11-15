@@ -216,11 +216,6 @@ pub async fn trash_empty_request_async(
 mod tests {
     use super::*;
     use crate::test_utils::*;
-    use once_cell::sync::Lazy;
-    use secstr::SecUtf8;
-
-    static API_KEY: Lazy<SecUtf8> =
-        Lazy::new(|| SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"));
 
     #[test]
     fn current_versions_request_should_have_proper_contract() {
