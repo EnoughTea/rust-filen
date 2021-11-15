@@ -122,7 +122,7 @@ impl Serialize for Expire {
 }
 
 /// Identifies whether an item is a file or folder.
-#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
 #[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum ItemKind {
@@ -182,7 +182,7 @@ impl HasUuid for FolderData {
 
 /// Identifies location color set by user. Default yellow color is often represented by the absence of specifically set
 /// `LocationColor`.
-#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
 #[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum LocationColor {
@@ -196,7 +196,7 @@ pub enum LocationColor {
 }
 
 /// Identifies location type.
-#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize, Ord, PartialOrd)]
 #[serde(rename_all = "lowercase")]
 #[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum LocationKind {

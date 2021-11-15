@@ -3,6 +3,7 @@ use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use snafu::{ResultExt, Snafu};
+use std::cmp::Ordering;
 use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -83,7 +84,7 @@ pub enum Error {
 }
 
 /// Identifies shared item.
-#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "lowercase")]
 #[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum ShareTarget {
@@ -602,6 +603,18 @@ impl HasPublicKey for UserIdWithPublicKey {
     }
 }
 
+impl Ord for UserIdWithPublicKey {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.id.cmp(&other.id)
+    }
+}
+
+impl PartialOrd for UserIdWithPublicKey {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 /// Response data for [USER_SHARED_ITEM_STATUS_PATH] endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -610,6 +623,8 @@ pub struct UserSharedItemStatusResponseData {
     pub sharing: bool,
 
     /// Emails and public keys of the users the folder is shared with. Empty if folder is not shared.
+    ///
+    /// Note that if folder is shared, there might be multiple copies of the same user data here.
     #[serde(default)]
     pub users: Vec<UserIdWithPublicKey>,
 }
