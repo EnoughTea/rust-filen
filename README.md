@@ -362,6 +362,20 @@ let shared_file = contents
 let shared_file_properties = shared_file.decrypt_file_metadata(&master_keys)?;
 
 // Finally, we are all set to share the file.
+// Properly executed share queries are idempotent-ish, so there is no need
+// to check if file is shared or not. But if you want, you can see
+// with whom the file is shared by calling `user_shared_item_status_request`:
+let file_share_status_payload = UserSharedItemStatusRequestPayload {
+    api_key: api_key.clone(),
+    uuid: shared_file_uuid.clone(),
+};
+let file_share_status_response =
+    user_shared_item_status_request(&file_share_status_payload, &filen_settings)?;
+// `file_shared_with` below should be empty now, but if file was already shared,
+// there would be several user records, often with duplicates.
+let file_shared_with = file_share_status_response.data_or_err()?.users;
+
+// Alright, back to sharing the file.
 // When sharing items, Filen expects special parent notation.
 // If an item's parent is a base folder, no UUID is needed, pass "none" instead.
 // As you can recall, in this tutorial shared file is rooted,

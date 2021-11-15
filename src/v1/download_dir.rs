@@ -55,11 +55,12 @@ pub struct DownloadDirLinkRequestPayload {
     /// Folder link ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 
-    /// Linked folder ID; hyphenated lowercased UUID V4.
+    /// Folder ID; hyphenated lowercased UUID V4.
     pub parent: Uuid,
 
-    /// Output of [crypto::derive_key_from_password_512] for link's password with 32 random bytes of salt;
-    /// converted to a hex string.
+    /// Folder link password.
+    /// 
+    /// Link's password can be read from link status queries.
     pub password: String,
 }
 
@@ -407,7 +408,7 @@ response_payload!(
 
 /// Calls [DOWNLOAD_DIR_LINK_PATH] endpoint. Used to check contents of a linked folder.
 ///
-/// If you are wondering how to find link ID for a folder, check [dir_link_status_request].
+/// Link UUID and password can be found out with [dir_link_status_request] using folder UUID.
 pub fn download_dir_link_request(
     payload: &DownloadDirLinkRequestPayload,
     filen_settings: &FilenSettings,
@@ -417,7 +418,7 @@ pub fn download_dir_link_request(
 
 /// Calls [DOWNLOAD_DIR_LINK_PATH] endpoint asynchronously. Used to check contents of a linked folder.
 ///
-/// If you are wondering how to find link ID for a folder, check [dir_link_status_request].
+/// Link UUID and password can be found out with [dir_link_status_request] using folder UUID.
 #[cfg(feature = "async")]
 pub async fn download_dir_link_request_async(
     payload: &DownloadDirLinkRequestPayload,
@@ -450,6 +451,8 @@ pub async fn download_dir_shared_request_async(
 }
 
 /// Calls [DOWNLOAD_DIR_PATH] endpoint. Used to get a user's folder with given ID and its sub-folders and files.
+/// 
+/// For shared folders use [download_dir_shared_request], and for linked folders use [download_dir_link_request].
 pub fn download_dir_request(
     payload: &DownloadDirRequestPayload,
     filen_settings: &FilenSettings,
@@ -459,6 +462,9 @@ pub fn download_dir_request(
 
 /// Calls [DOWNLOAD_DIR_PATH] endpoint asynchronously. 
 /// Used to get a user's folder with given ID and its sub-folders and files.
+/// 
+/// For shared folders use [download_dir_shared_request_async],
+/// and for linked folders use [download_dir_link_request_async].
 #[cfg(feature = "async")]
 pub async fn download_dir_request_async(
     payload: &DownloadDirRequestPayload,

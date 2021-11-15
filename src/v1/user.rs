@@ -214,7 +214,7 @@ pub struct UserGetAccountResponsePayload {
 }
 utils::display_from_json!(UserGetAccountResponsePayload);
 
-impl HasPlainResponse for UserGetAccountResponsePayload {
+impl FilenResponse<UserGetAccountResponseData> for UserGetAccountResponsePayload {
     fn status_ref(&self) -> bool {
         self.status
     }
@@ -222,9 +222,7 @@ impl HasPlainResponse for UserGetAccountResponsePayload {
     fn message_ref(&self) -> Option<&str> {
         self.message.as_deref()
     }
-}
 
-impl HasDataOption<UserGetAccountResponseData> for UserGetAccountResponsePayload {
     fn data_ref(&self) -> Option<&UserGetAccountResponseData> {
         self.data.as_ref()
     }

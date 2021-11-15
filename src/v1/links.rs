@@ -1,4 +1,4 @@
-use crate::{filen_settings::*, queries, utils, v1::*};
+use crate::{queries, utils, v1::*, *};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -122,6 +122,7 @@ utils::display_from_json!(LinkDirStatusRequestPayload);
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct LinkIdWithKey {
     /// Link key, encrypted.
+    /// Decrypted by user's master keys and used to decrypt linked item metadata.
     #[serde(rename = "linkKey")]
     pub link_key: String,
 

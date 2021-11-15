@@ -45,17 +45,38 @@ const METADATA_VERSION: u32 = 1;
 
 #[derive(Snafu, Debug)]
 pub enum Error {
+    #[snafu(display("Filen response had status: false, reason: {}", message))]
+    FilenResponseIndicatesFailure { message: String, backtrace: Backtrace },
+
     #[snafu(display("Filen response does not contain 'data'"))]
     FilenResponseHasNoData { backtrace: Backtrace },
 }
 
 /// Common trait for all Filen API responses.
-pub trait HasPlainResponse {
+pub trait FilenResponse<T> {
     /// True when API call was successful; false otherwise.
     fn status_ref(&self) -> bool;
 
     /// Filen reason for success or failure.
     fn message_ref(&self) -> Option<&str>;
+
+    /// Data associated with response.
+    fn data_ref(&self) -> Option<&T>;
+
+    /// Returns extracted Filen response data or failure if response status is false or data is empty.
+    fn data_or_err(&self) -> Result<&T> {
+        if self.status_ref() {
+            match self.data_ref() {
+                Some(data) => Ok(data),
+                None => FilenResponseHasNoData {}.fail(),
+            }
+        } else {
+            FilenResponseIndicatesFailure {
+                message: format!("{:?}", self.message_ref()),
+            }
+            .fail()
+        }
+    }
 }
 
 /// Contains just the response status and corresponding message.
@@ -70,7 +91,7 @@ pub struct PlainResponsePayload {
 }
 utils::display_from_json!(PlainResponsePayload);
 
-impl HasPlainResponse for PlainResponsePayload {
+impl FilenResponse<()> for PlainResponsePayload {
     fn status_ref(&self) -> bool {
         self.status
     }
@@ -78,16 +99,9 @@ impl HasPlainResponse for PlainResponsePayload {
     fn message_ref(&self) -> Option<&str> {
         self.message.as_deref()
     }
-}
 
-pub trait HasDataOption<D> {
-    fn data_ref(&self) -> Option<&D>;
-
-    fn data_or_err(&self) -> Result<&D> {
-        match self.data_ref() {
-            Some(data) => Ok(data),
-            None => FilenResponseHasNoData {}.fail(),
-        }
+    fn data_ref(&self) -> Option<&()> {
+        None
     }
 }
 
@@ -221,7 +235,7 @@ macro_rules! response_payload {
             pub data: Option<$response_data_type>,
         }
 
-        impl crate::v1::HasPlainResponse for $struct_name {
+        impl crate::v1::FilenResponse<$response_data_type> for $struct_name {
             fn status_ref(&self) -> bool {
                 self.status
             }
@@ -229,9 +243,7 @@ macro_rules! response_payload {
             fn message_ref(&self) -> Option<&str> {
                 self.message.as_deref()
             }
-        }
 
-        impl HasDataOption<$response_data_type> for $struct_name {
             fn data_ref(&self) -> Option<&$response_data_type> {
                 self.data.as_ref()
             }

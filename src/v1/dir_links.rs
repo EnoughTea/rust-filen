@@ -147,7 +147,7 @@ pub struct DirLinkEditRequestPayload {
     /// "empty" means no password protection, "notempty" means password is present.
     pub password: PasswordState,
 
-    /// Output of [crypto::derive_key_from_password_512] for link's password with 32 random bytes of salt;
+    /// Hashed link's password, output of [crypto::derive_key_from_password_512] with 32 random bytes of salt;
     /// converted to a hex string.
     #[serde(rename = "passwordHashed")]
     pub password_hashed: String,

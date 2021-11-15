@@ -33,12 +33,8 @@ pub enum Error {
         backtrace: Backtrace,
     },
 
-    #[snafu(display("Filen cannot list contents for folder '{}': {}", uuid, message))]
-    CannotGetFolderContents {
-        uuid: Uuid,
-        message: String,
-        backtrace: Backtrace,
-    },
+    #[snafu(display("{}", source))]
+    CannotGetUserFolderContents { source: v1::Error },
 
     #[snafu(display("Failed to decrypt file metadata '{}': {}", metadata, source))]
     DecryptFileMetadataFailed { metadata: String, source: files::Error },
@@ -46,10 +42,7 @@ pub enum Error {
     #[snafu(display("Failed to decrypt location name {}: {}", metadata, source))]
     DecryptLocationNameFailed { metadata: String, source: fs::Error },
 
-    #[snafu(display("download_dir_request() was successful, but had no data: {}", source))]
-    DownloadDirHadNoData { source: crate::v1::Error },
-
-    #[snafu(display("dir_content_request() call failed when sharing folder: {}", source))]
+    #[snafu(display("download_dir_request() failed: {}", source))]
     DownloadDirRequestFailed { source: download_dir::Error },
 
     #[snafu(display("Failed to encrypt file metadata '{}' using RSA: {}", metadata, source))]
@@ -942,56 +935,50 @@ pub fn share_folder_recursively(
         api_key: api_key.to_owned(),
         uuid: folder_uuid,
     };
-    let content_response = retry_settings
+    let contents_response = retry_settings
         .retry(|| download_dir_request(&content_payload, filen_settings))
         .context(DownloadDirRequestFailed {})?;
-    if content_response.status {
-        let contents = content_response.data_or_err().context(DownloadDirHadNoData {})?;
-        // Share this folder and all sub-folders:
-        contents
-            .folders
-            .iter()
-            .map(|folder| {
-                retry_settings.retry(|| {
-                    share_folder(
-                        api_key.to_owned(),
-                        folder,
-                        folder.parent.as_parent_or_none(),
-                        receiver_email.to_owned(),
-                        receiver_public_key_bytes,
-                        master_keys,
-                        filen_settings,
-                    )
-                })
+    let contents = contents_response
+        .data_or_err()
+        .context(CannotGetUserFolderContents {})?;
+    // Share this folder and all sub-folders:
+    contents
+        .folders
+        .iter()
+        .map(|folder| {
+            retry_settings.retry(|| {
+                share_folder(
+                    api_key.to_owned(),
+                    folder,
+                    folder.parent.as_parent_or_none(),
+                    receiver_email.to_owned(),
+                    receiver_public_key_bytes,
+                    master_keys,
+                    filen_settings,
+                )
             })
-            .collect::<Result<Vec<_>>>()?;
-        // Share all files.
-        contents
-            .files
-            .iter()
-            .map(|file| {
-                retry_settings.retry(|| {
-                    share_file(
-                        api_key.to_owned(),
-                        file,
-                        ParentOrNone::Folder(file.parent),
-                        receiver_email.to_owned(),
-                        receiver_public_key_bytes,
-                        master_keys,
-                        filen_settings,
-                    )
-                })
+        })
+        .collect::<Result<Vec<_>>>()?;
+    // Share all files.
+    contents
+        .files
+        .iter()
+        .map(|file| {
+            retry_settings.retry(|| {
+                share_file(
+                    api_key.to_owned(),
+                    file,
+                    ParentOrNone::Folder(file.parent),
+                    receiver_email.to_owned(),
+                    receiver_public_key_bytes,
+                    master_keys,
+                    filen_settings,
+                )
             })
-            .collect::<Result<Vec<_>>>()?;
+        })
+        .collect::<Result<Vec<_>>>()?;
 
-        Ok(())
-    } else {
-        CannotGetFolderContents {
-            uuid: folder_uuid,
-            message: format!("{:?}", content_response.message),
-        }
-        .fail()
-    }
+    Ok(())
 }
 
 /// Helper which shares the given folder and all its sub-folders recursively, with files.
@@ -1006,54 +993,48 @@ pub async fn share_folder_recursively_async(
     filen_settings: &FilenSettings,
 ) -> Result<()> {
     let content_payload = DownloadDirRequestPayload {
-        api_key: api_key.clone(),
+        api_key: api_key.to_owned(),
         uuid: folder_uuid,
     };
-    let content_response = retry_settings
+    let contents_response = retry_settings
         .retry_async(|| download_dir_request_async(&content_payload, filen_settings))
         .await
         .context(DownloadDirRequestFailed {})?;
-    if content_response.status {
-        let contents = content_response.data_or_err().context(DownloadDirHadNoData {})?;
-        // Share this folder and all sub-folders:
-        let folder_futures = contents.folders.iter().map(|folder| {
-            retry_settings.retry_async(move || {
-                share_folder_async(
-                    api_key.to_owned(),
-                    folder,
-                    folder.parent.as_parent_or_none(),
-                    receiver_email.to_owned(),
-                    receiver_public_key_bytes,
-                    master_keys,
-                    filen_settings,
-                )
-            })
-        });
-        futures::future::try_join_all(folder_futures).await?;
+    let contents = contents_response
+        .data_or_err()
+        .context(CannotGetUserFolderContents {})?;
+    // Share this folder and all sub-folders:
+    let folder_futures = contents.folders.iter().map(|folder| {
+        retry_settings.retry_async(move || {
+            share_folder_async(
+                api_key.to_owned(),
+                folder,
+                folder.parent.as_parent_or_none(),
+                receiver_email.to_owned(),
+                receiver_public_key_bytes,
+                master_keys,
+                filen_settings,
+            )
+        })
+    });
+    futures::future::try_join_all(folder_futures).await?;
 
-        // Share all files.
-        let file_futures = contents.files.iter().map(|file| {
-            retry_settings.retry_async(move || {
-                share_file_async(
-                    api_key.to_owned(),
-                    file,
-                    ParentOrNone::Folder(file.parent),
-                    receiver_email.to_owned(),
-                    receiver_public_key_bytes,
-                    master_keys,
-                    filen_settings,
-                )
-            })
-        });
-        futures::future::try_join_all(file_futures).await?;
-        Ok(())
-    } else {
-        CannotGetFolderContents {
-            uuid: folder_uuid,
-            message: format!("{:?}", content_response.message),
-        }
-        .fail()
-    }
+    // Share all files.
+    let file_futures = contents.files.iter().map(|file| {
+        retry_settings.retry_async(move || {
+            share_file_async(
+                api_key.to_owned(),
+                file,
+                ParentOrNone::Folder(file.parent),
+                receiver_email.to_owned(),
+                receiver_public_key_bytes,
+                master_keys,
+                filen_settings,
+            )
+        })
+    });
+    futures::future::try_join_all(file_futures).await?;
+    Ok(())
 }
 
 #[cfg(test)]
