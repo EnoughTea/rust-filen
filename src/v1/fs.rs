@@ -275,7 +275,7 @@ impl LocationNameMetadata {
     }
 }
 
-/// Implement this trait to add decryption of a metadata containing Filen's file properties JSON.
+/// Implemented to add decryption of a metadata containing Filen's file properties JSON.
 pub trait HasFileMetadata {
     /// Gets a reference to file metadata, if present.
     fn file_metadata_ref(&self) -> &str;
@@ -286,7 +286,7 @@ pub trait HasFileMetadata {
     }
 }
 
-/// Implement this trait to add decryption of a metadata containing Filen's file properties JSON,
+/// Implemented to add decryption of a metadata containing Filen's file properties JSON,
 /// encrypted using user's public key.
 pub trait HasSharedFileMetadata {
     /// Gets a reference to file metadata, if present.
@@ -298,7 +298,7 @@ pub trait HasSharedFileMetadata {
     }
 }
 
-/// Implement this trait to add decryption of a metadata containing Filen's file properties JSON,
+/// Implemented to add decryption of a metadata containing Filen's file properties JSON,
 /// encrypted using link key.
 pub trait HasLinkedFileMetadata {
     /// Gets a reference to file metadata, if present.
@@ -310,7 +310,7 @@ pub trait HasLinkedFileMetadata {
     }
 }
 
-/// Implement this trait for something that has Filen file location.
+/// Implemented for something that has Filen file location.
 pub trait HasFileLocation: HasUuid {
     /// Gets a reference to data defining where file is stored by Filen.
     fn file_storage_ref(&self) -> &FileStorageInfo;
@@ -322,7 +322,7 @@ pub trait HasFileLocation: HasUuid {
     }
 }
 
-/// Implement this trait to add file properties decryption and other helper methods.
+/// Implemented to add file properties decryption and other helper methods.
 pub trait HasFiles<T: HasUuid + HasFileMetadata> {
     /// Returns files slice.
     fn files_ref(&self) -> &[T];
@@ -343,7 +343,7 @@ pub trait HasFiles<T: HasUuid + HasFileMetadata> {
     }
 }
 
-/// Implement this trait to add folder name decryption and other helper methods.
+/// Implemented to add folder name decryption and other helper methods.
 pub trait HasFolders<T: HasUuid + HasLocationName> {
     /// Returns folders slice.
     fn folders_ref(&self) -> &[T];
@@ -366,7 +366,7 @@ pub trait HasFolders<T: HasUuid + HasLocationName> {
     }
 }
 
-/// Implement this trait to add decryption of a metadata containing Filen's name JSON: { "name": "some name value" }
+/// Implemented to add decryption of a metadata containing Filen's name JSON: { "name": "some name value" }
 pub trait HasLocationName {
     /// Returns reference to a string containing metadata with Filen's name JSON.
     fn name_metadata_ref(&self) -> &str;
@@ -377,7 +377,7 @@ pub trait HasLocationName {
     }
 }
 
-/// Implement this trait to add decryption of a metadata containing Filen's name JSON: { "name": "some name value" },
+/// Implemented to add decryption of a metadata containing Filen's name JSON: { "name": "some name value" },
 /// encrypted using user's public key.
 pub trait HasSharedLocationName {
     /// Returns reference to a string containing metadata with Filen's name JSON.
@@ -389,7 +389,7 @@ pub trait HasSharedLocationName {
     }
 }
 
-/// Implement this trait to add decryption of a metadata containing Filen's name JSON: { "name": "some name value" },
+/// Implemented to add decryption of a metadata containing Filen's name JSON: { "name": "some name value" },
 /// encrypted using link key.
 pub trait HasLinkedLocationName {
     /// Returns reference to a string containing metadata with Filen's name JSON.
@@ -401,6 +401,7 @@ pub trait HasLinkedLocationName {
     }
 }
 
+/// Implemented for something that has link key metadata.
 pub trait HasLinkKey {
     /// Returns reference to a string containing link key metadata.
     fn link_key_metadata_ref(&self) -> Option<&str>;
@@ -421,7 +422,7 @@ pub trait HasLinkKey {
     }
 }
 
-/// Implement this trait for items that always have UUID.
+/// Implemented for items that always have UUID.
 pub trait HasUuid {
     /// Returns reference to an item's ID.
     fn uuid_ref(&self) -> &Uuid;

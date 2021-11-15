@@ -44,7 +44,7 @@ pub enum Error {
     UserPublicKeyGetQueryFailed { source: queries::Error },
 }
 
-/// Implement this trait to add decryption of a master keys metadata.
+/// Implemented to add decryption of a master keys metadata.
 pub trait HasMasterKeys {
     /// Gets a reference to master keys metadata, if present.
     fn master_keys_metadata_ref(&self) -> Option<&str>;
@@ -63,7 +63,7 @@ pub trait HasMasterKeys {
     }
 }
 
-/// Implement this trait to add decryption of a private key metadata.
+/// Implemented to add decryption of a private key metadata.
 pub trait HasPrivateKey {
     /// Gets a reference to private key metadata, if present.
     fn private_key_metadata_ref(&self) -> Option<&str>;
@@ -82,7 +82,7 @@ pub trait HasPrivateKey {
     }
 }
 
-/// Implement this trait to add conversion of a public key into bytes.
+/// Implemented to add conversion of a public key into bytes.
 pub trait HasPublicKey {
     /// Gets a reference to private key metadata, if present.
     fn public_key_ref(&self) -> Option<&str>;
