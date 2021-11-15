@@ -113,7 +113,18 @@ pub struct FileProperties {
 utils::display_from_json!(FileProperties);
 
 impl FileProperties {
-    pub fn from_name_size_modified(name: &str, size: u64, last_modified: &SystemTime) -> Result<FileProperties> {
+    /// Fills file properties from name, size, last modified and optional file key.
+    ///
+    /// * `name` - Filename with extension, e.g. "readme.txt".
+    /// * `size` - File size in bytes.
+    /// * `last_modified` - Last modification time as reported by file system.
+    /// * `file_key` - Optional file key to use. If none, random alphanumeric string (32 chars) will be used.
+    pub fn from_name_size_modified_key(
+        name: &str,
+        size: u64,
+        last_modified: &SystemTime,
+        file_key: Option<SecUtf8>,
+    ) -> Result<FileProperties> {
         ensure!(
             size > 0,
             BadArgument {
@@ -121,7 +132,6 @@ impl FileProperties {
             }
         );
 
-        let key = SecUtf8::from(utils::random_alphanumeric_string(32));
         let mime_guess = mime_guess::from_path(name).first_raw();
         let mime = mime_guess.unwrap_or("");
         let last_modified_secs = last_modified
@@ -132,11 +142,17 @@ impl FileProperties {
             name: name.to_owned(),
             size,
             mime: mime.to_owned(),
-            key,
+            key: file_key.unwrap_or_else(|| SecUtf8::from(utils::random_alphanumeric_string(32))),
             last_modified: last_modified_secs,
         })
     }
 
+    /// Fills file properties from name, size and last modified. File key will be randomly generated.
+    pub fn from_name_size_modified(name: &str, size: u64, last_modified: &SystemTime) -> Result<FileProperties> {
+        FileProperties::from_name_size_modified_key(name, size, last_modified, None)
+    }
+
+    /// Fills file properties from local file properties. File key will be randomly generated.
     pub fn from_local_path(local_file_path: &Path) -> Result<FileProperties> {
         match local_file_path.file_name().and_then(|filename| filename.to_str()) {
             Some(file_name) => FileProperties::from_name_and_local_path(file_name, local_file_path),
@@ -144,6 +160,8 @@ impl FileProperties {
         }
     }
 
+    /// Fills file properties from local file properties, with a way to change file name.
+    /// File key will be randomly generated.
     pub fn from_name_and_local_path(filen_filename: &str, local_file_path: &Path) -> Result<FileProperties> {
         let fs_metadata = fs::metadata(local_file_path).context(FileSystemMetadataError {})?;
         let last_modified_time = fs_metadata.modified().unwrap_or_else(|_| SystemTime::now());
