@@ -42,11 +42,11 @@ pub enum Error {
         source: crypto::Error,
     },
 
-    #[snafu(display("Filen did not accept at least one uploaded file chunk: {}", reason))]
-    ChunkNotAccepted { reason: String, backtrace: Backtrace },
+    #[snafu(display("Filen did not accept at least one uploaded file chunk: {}", message))]
+    ChunkNotAccepted { message: String, backtrace: Backtrace },
 
-    #[snafu(display("Filen could not mark file upload as done: {}", reason))]
-    CouldNotMarkDone { reason: String, backtrace: Backtrace },
+    #[snafu(display("Filen could not mark file upload as done: {}", message))]
+    CouldNotMarkDone { message: String, backtrace: Backtrace },
 
     #[snafu(display(
         "Not all uploaded chunks with status == true actually had data: {}",
@@ -54,8 +54,8 @@ pub enum Error {
     ))]
     ChunkUploadResponseMissingData { file_upload_info: Box<FileUploadInfo> },
 
-    #[snafu(display("Filen did not accept uploaded dummy chunk: {}", reason))]
-    DummyChunkNotAccepted { reason: String, backtrace: Backtrace },
+    #[snafu(display("Filen did not accept uploaded dummy chunk: {}", message))]
+    DummyChunkNotAccepted { message: String, backtrace: Backtrace },
 
     #[snafu(display("Cannot read file chunks due to IO error: {}", source))]
     SeekReadError { source: std::io::Error },
@@ -471,13 +471,13 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
                     Ok(FileUploadInfo::new(upload_properties, chunk_upload_responses))
                 } else {
                     CouldNotMarkDone {
-                        reason: format!("{:?}", mark_done_response.message),
+                        message: format!("{:?}", mark_done_response.message),
                     }
                     .fail()
                 }
             } else {
                 DummyChunkNotAccepted {
-                    reason: dummy_chunk_response
+                    message: dummy_chunk_response
                         .message
                         .unwrap_or_else(|| "unknown reason".to_owned()),
                 }
@@ -543,13 +543,13 @@ pub async fn encrypt_and_upload_file_async<R: Read + Seek>(
                 Ok(FileUploadInfo::new(upload_properties, chunk_upload_responses))
             } else {
                 CouldNotMarkDone {
-                    reason: format!("{:?}", mark_done_response.message),
+                    message: format!("{:?}", mark_done_response.message),
                 }
                 .fail()
             }
         } else {
             DummyChunkNotAccepted {
-                reason: dummy_chunk_response
+                message: dummy_chunk_response
                     .message
                     .unwrap_or_else(|| "unknown reason".to_owned()),
             }
@@ -576,7 +576,7 @@ where
             let failure_reason = failed_chunk.message.as_deref().unwrap_or("unknown reason");
             // At least one chunk failed with 'status: false', so fail entire upload, I guess
             ChunkNotAccepted {
-                reason: failure_reason.to_owned(),
+                message: failure_reason.to_owned(),
             }
             .fail()
         }

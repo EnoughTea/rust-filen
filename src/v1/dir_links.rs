@@ -81,8 +81,8 @@ pub struct DirLinkAddRequestPayload {
     /// Linked item metadata.
     pub metadata: String,
 
-    /// ID of the parent of the linked item, hyphenated lowercased UUID V4 if non-base.
-    /// Use "base" if the linked item is located in the root folder.
+    /// ID of the linked parent of the linked item, hyphenated lowercased UUID V4.
+    /// Use "base" if linked item's parent is not linked.
     pub parent: ParentOrBase,
 
     /// Filen always uses "empty" when adding links.
@@ -169,7 +169,7 @@ impl DirLinkEditRequestPayload {
         link_plain_password: Option<&SecUtf8>,
     ) -> DirLinkEditRequestPayload {
         let (password_hashed, salt) = link_plain_password
-            .map(|password| crypto::encrypt_to_link_password_and_salt(&password))
+            .map(|password| crypto::encrypt_to_link_password_and_salt(password))
             .unwrap_or_else(|| crypto::encrypt_to_link_password_and_salt(&SEC_EMPTY_PASSWORD_VALUE));
         DirLinkEditRequestPayload {
             api_key,
@@ -192,7 +192,7 @@ pub struct DirLinkRemoveRequestPayload {
     #[serde(rename = "apiKey")]
     pub api_key: SecUtf8,
 
-    /// Link ID; hyphenated lowercased UUID V4.
+    /// Linked folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
 utils::display_from_json!(DirLinkRemoveRequestPayload);

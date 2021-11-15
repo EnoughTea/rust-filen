@@ -93,7 +93,7 @@ impl LinkEditRequestPayload {
             password_hashed,
             salt,
             link_type: state,
-            uuid: link_uuid.unwrap_or_else(|| Uuid::new_v4()),
+            uuid: link_uuid.unwrap_or_else(Uuid::new_v4),
         }
     }
 
