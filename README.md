@@ -3,11 +3,12 @@
 [Filen.io](https://filen.io) is a cloud storage provider with an open-source [desktop client](https://github.com/FilenCloudDienste/filen-desktop). My goal was to write a library which calls Filen's API in a meaningful way, and to learn Rust in process.
 Filen's API is currently undocumented and I try to get it right by studying the client's sources, so take it all with a grain of salt.
 
-This library is in a usable yet unpolished state. It is possible to login, receive users RSA keys,
+This library is in a usable yet unpolished state. It is possible to make almost every imaginable Filen query:
+you can login, receive users RSA keys,
 perform CRUD on files and folders, list Filen Sync folder/trash folder/recent files contents,
-download and decrypt files, encrypt and upload files, and share/link files and folders.
+download and decrypt files, encrypt and upload files, and share/link files/folders with helpers for recursion.
 
-Various user-specific API queries are still unimplemented and documentation is lacking, sorry about that.
+Some obscure user-specific API queries are unimplemented and documentation is lacking, sorry about that.
 If you need to call missing API query, you can do so with `rust_filen::queries::query_filen_api("/v1/some/uimplemented/api/path", any_serde_serializable_payload, filen_settings)`.
 
 I have not published `rust_filen` yet, but chances are you would want to depend on its sources anyway.
@@ -32,7 +33,6 @@ use rust_filen::{*, v1::*};
 // Also, for advanced usage, there are rust_filen::crypto
 // with crypto-functions to encrypt/decrypt various Filen metadata and
 // rust_filen::queries as a way to define your own Filen API queries.
-use anyhow::bail;  // bail is used for demo purposes, it's not really needed.
 use secstr::SecUtf8;
 ```
 
@@ -62,7 +62,7 @@ let auth_info_request_payload = auth::AuthInfoRequestPayload {
 };
 let auth_info_response = auth::auth_info_request(&auth_info_request_payload, &filen_settings)?;
 if !auth_info_response.status {
-    bail!("Filen API failed to return auth info: {:?}", auth_info_response.message);
+    panic!("Filen API failed to return auth info: {:?}", auth_info_response.message);
 }
 let auth_info_response_data = auth_info_response.data_or_err()?;
 
@@ -86,7 +86,7 @@ let login_request_payload = auth::LoginRequestPayload {
 };
 let login_response = auth::login_request(&login_request_payload, &filen_settings)?;
 if !login_response.status {
-    bail!("Filen API failed to login: {:?}", auth_info_response.message);
+    panic!("Filen API failed to login: {:?}", auth_info_response.message);
 }
 
 // Login confirmed, now you can take API key and user's master key from the LoginResponseData
@@ -116,7 +116,7 @@ let user_dir_request_payload = UserDirsRequestPayload {
 };
 let user_dirs_response = user_dirs_request(&user_dir_request_payload, &filen_settings)?;
 if !user_dirs_response.status {
-    bail!(
+    panic!(
         "Filen API failed to provide user dirs: {:?}",
         user_dirs_response.message
     );
@@ -137,7 +137,7 @@ let download_dir_request_payload = DownloadDirRequestPayload {
 };
 let download_dir_response = download_dir_request(&download_dir_request_payload, &filen_settings)?;
 if !download_dir_response.status {
-    bail!(
+    panic!(
         "Filen API failed to provide default folder contents: {:?}",
         download_dir_response.message
     );
@@ -169,6 +169,7 @@ let mut file_buffer = std::io::BufWriter::new(Vec::new());
 // between retries and some random jitter.
 // Usually RetrySettings is opt-in, you call RetrySettings::retry yourself
 // when needed for every API query you want retried.
+//
 // But file download/upload are helper methods where providing RetrySettings is mandatory.
 // File is downloaded or uploaded as a sequence of chunks, and any one of them can fail.
 // With external retries, if the last chunk fails, you'll have to redo the entire file.
@@ -232,8 +233,10 @@ let upload_result = encrypt_and_upload_file(
 // All folders in Filen can be divided into 'base' and 'non-base'.
 // Base folders are called "cloud drives" in the web manager,
 // non-base folders are your usual folders.
+// 
 // So let's create a new cloud drive, where we will put a new folder.
 // But before creating something new, you should always check if it's name is free to use.
+// 
 // Since we will be creating 2 folders, it would be wise to put
 // this check into a separate helper function:
 fn folder_exists(
@@ -256,7 +259,7 @@ let new_base_folder_name = "New cloud drive";
 
 // Check that base folder with name "New cloud drive" does not exist already.
 if folder_exists(&api_key, ParentOrBase::Base, new_base_folder_name, &filen_settings)? {
-    bail!(format!("Folder {} already exists!", new_base_folder_name))
+    panic!("Folder {} already exists!", new_base_folder_name)
 }
 
 // No "New cloud drive" base folder exists, so create one. Prepare request payload first:
@@ -270,7 +273,7 @@ let created_base_folder_uuid = create_base_folder_payload.uuid;
 // dir_create_request used for base folder creation.
 let create_base_folder_result = dir_create_request(&create_base_folder_payload, &filen_settings)?;
 if !create_base_folder_result.status {
-    bail!(
+    panic!(
         "Filen API failed to create base folder: {:?}",
         create_base_folder_result.message
     );
@@ -280,6 +283,7 @@ if !create_base_folder_result.status {
 // created "New cloud drive" base folder.
 // Good thing we stored base folder ID in `created_base_folder_uuid`, 
 // we're going to pass it as a parent.
+// 
 // Again, check folder for existence first:
 let new_folder_name = "This is a new folder";
 if folder_exists(
@@ -288,7 +292,7 @@ if folder_exists(
     new_folder_name,
     &filen_settings,
 )? {
-    bail!(format!("Folder {} already exists!", new_folder_name))
+    panic!("Folder {} already exists!", new_folder_name)
 }
 
 // Everything should make sense by now. 
@@ -301,7 +305,7 @@ let folder_payload = DirSubCreateRequestPayload::new(
 );
 let create_folder_result = dir_sub_create_request(&folder_payload, &filen_settings)?;
 if !create_folder_result.status {
-    bail!("Filen API failed to create folder: {:?}", create_folder_result.message);
+    panic!("Filen API failed to create folder: {:?}", create_folder_result.message);
 }
 ```
 
@@ -378,10 +382,12 @@ let file_shared_with = file_share_status_response.data_or_err()?.users;
 // Alright, back to sharing the file.
 // When sharing items, Filen expects special parent notation.
 // If an item's parent is a base folder, no UUID is needed, pass "none" instead.
+// 
 // As you can recall, in this tutorial shared file is rooted,
 // and `shared_file_parent_uuid` refers to a base folder. So instead of passing
 // `ParentOrNone::Folder(shared_file_parent_uuid)`to share_request() call,
 // we should pass `ParentOrNone::None`.
+// 
 // See `user_base_folders_request` query for a way to fetch base folders
 // and check if file parent is a base folder or not.
 let share_payload = ShareRequestPayload::from_file_properties(
@@ -406,7 +412,7 @@ if !share_response.status {
 // you need to share all those sub-items manually. However, rust_filen has a helper
 // method that does it for you. Just take some folder to share and feed it to
 // `share_folder_recursively(_async)`:
-let folder_to_share = Uuid::parse_str("3a15c71c-762b-43d3-99d6-c484093b9db5").unwrap();
+let folder_to_share = Uuid::parse_str("3a15c71c-762b-43d3-99d6-c484093b9db5")?;
 let share_folder_recursively_result = share_folder_recursively(
     &api_key,
     folder_to_share,
@@ -419,6 +425,75 @@ let share_folder_recursively_result = share_folder_recursively(
 ```
 
 
+### Linking a file
+
+```rust
+// First of all, creating a public link for a file and
+// adding a file to existing folder link so it can be seen inside linked folder
+// are two different concepts.
+// 
+// File links are "global": they are always present and not attached to any linked folder,
+// but can be disabled or enabled. 
+// At any given time only one file link can be enabled, so it is not possible
+// to link the same file two times with different settings.
+// 
+// For this example, let's toggle file's global public link:
+// disable file's link if it is already enabled, and vice-versa.
+//
+// Start by checking current file link status:
+let linked_file_uuid = Uuid::parse_str("e132fbc4-22c9-4ee6-af91-f53f8855a65b")?;
+let link_status_payload = LinkStatusRequestPayload {
+    api_key: api_key.clone(),
+    file_uuid: linked_file_uuid.clone(),
+};
+let link_status_response = link_status_request(&link_status_payload, &filen_settings)?;
+let link_status_data = link_status_response.data_or_err()?;
+// LinkEditRequestPayload::(disabled|enabled) are helper methods
+// to create a payload used disable or enable file link.
+let toggle_payload = if link_status_data.enabled && link_status_data.uuid.is_some() {
+    LinkEditRequestPayload::disabled(api_key.clone(), linked_file_uuid, link_status_data.uuid.unwrap())
+} else {
+    LinkEditRequestPayload::enabled(
+        api_key.clone(),
+        linked_file_uuid,
+        DownloadBtnState::Enable,
+        Expire::Never,
+        None,
+        None,
+    )
+};
+// This is it, file link will be enabled or disabled depending on its current status.
+let response = link_edit_request(&toggle_payload, &filen_settings)?;
+if !response.status {
+    panic!("Filen API failed to edit file link: {:?}", response.message)
+}
+```
+
+
+### Linking a folder
+
+```rust
+// Again, creating a public link for a folder and
+// adding a folder to existing folder link so it can be seen inside linked folder
+// are two different concepts.
+//
+// Unlike file links, folder links are not global and multiple links with different settings
+// can be created to the same folder.
+//
+// If you want to create a folder link for a folder which contains other folders or files,
+// you need to link all those sub-items manually. However, rust_filen has a helper
+// method that does it for you. Just take some folder to share and feed it to
+// `link_folder_recursively(_async)`:
+let linked_folder_uuid = Uuid::parse_str("3a15c71c-762b-43d3-99d6-c484093b9db5")?;
+link_folder_recursively(
+    &api_key,
+    linked_folder_uuid,
+    master_keys,
+    &retry_settings,
+    &filen_settings,
+)?
+```
+
 ### There is encrypted metadata everywhere, what to do?
 
 Sooner or later you will encounter properties with "metadata" in their names and encrypted strings for their values.
@@ -426,7 +501,12 @@ Quite often there are helper methods on structs with such properties which can b
 If not, you should know that "metadata" is a Filen way to encrypt any sensitive info, and there are 3 general ways of dealing with it:
 
 1. User's data intended only for that user to use, like file properties and folder names, can be decrypted/encrypted with `rust_filen::crypto::decrypt_metadata_str`/ `rust_filen::crypto::encrypt_metadata_str` using user's last master key.
-2. User's data intended to be public, like shared or publicly linked file properties. Shared item metadata can be encrypted by `rust_filen::crypto::encrypt_rsa` using target user RSA public key, and decrypted by `rust_filen::crypto::decrypt_rsa` using target user RSA private key file. This can be pretty confusing when sharing files. You will need to keep in mind who is currently the sharer and who is the receiver, so receiver's metadata needs to be encrypted with receiver's public key, so it can decipher it later with its private key.
+2. User's data intended to be public, like shared or publicly linked file properties. 
+Shared and linked item metadata are treated differently. Shared item metadata can be encrypted by
+`rust_filen::crypto::encrypt_rsa` using target user RSA public key, and decrypted by
+`rust_filen::crypto::decrypt_rsa` using target user RSA private key file. This can be pretty confusing when sharing files.
+You will need to keep in mind who is currently the sharer and who is the receiver,
+so receiver's metadata needs to be encrypted with receiver's public key, so it can decipher it later with its private key.
 3. Linked item metadata is treated like user's private data in list item #1, only with link key instead of user's last master key.
 
 Check `FileProperties::encrypt_file_metadata(_rsa)`/`FileProperties::decrypt_file_metadata(_rsa)`
