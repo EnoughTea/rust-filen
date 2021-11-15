@@ -21,6 +21,15 @@ const DIR_LINK_STATUS_PATH: &str = "/v1/dir/link/status";
 #[allow(clippy::enum_variant_names)]
 #[derive(Snafu, Debug)]
 pub enum Error {
+    #[snafu(display("Failed to decrypt link key metadata '{}': {}", metadata, source))]
+    DecryptLinkKeyMetadataFailed { metadata: String, source: crypto::Error },
+
+    #[snafu(display("{}", source))]
+    DecryptLocationNameFailed { source: fs::Error },
+
+    #[snafu(display("{}", source))]
+    DecryptFileMetadataFailed { source: files::Error },
+
     #[snafu(display("{} query failed: {}", DIR_LINK_ADD_PATH, source))]
     DirLinkAddQueryFailed { source: queries::Error },
 
@@ -102,30 +111,110 @@ pub struct DirLinkAddRequestPayload {
 utils::display_from_json!(DirLinkAddRequestPayload);
 
 impl DirLinkAddRequestPayload {
-    pub fn new<S: Into<String>>(
+    pub fn from_file_data<T: HasFileMetadata + HasUuid, S: Into<String>>(
         api_key: SecUtf8,
-        linked_item_uuid: Uuid,
-        linked_item_metadata: S,
-        linked_item_parent_uuid: ParentOrBase,
-        link_type: ItemKind,
-        last_master_key: &SecUtf8,
-    ) -> DirLinkAddRequestPayload {
-        let link_key = utils::random_alphanumeric_string(32);
-        let key_metadata = // Should never panic...
-            crypto::encrypt_metadata_str(&link_key, last_master_key, METADATA_VERSION).unwrap();
-        DirLinkAddRequestPayload {
+        file_data: &T,
+        parent: ParentOrBase,
+        link_uuid: Uuid,
+        link_key_metadata: S,
+        master_keys: &[SecUtf8],
+    ) -> Result<DirLinkAddRequestPayload> {
+        let file_properties = file_data
+            .decrypt_file_metadata(master_keys)
+            .context(DecryptFileMetadataFailed {})?;
+        DirLinkAddRequestPayload::from_file_properties(
+            api_key,
+            *file_data.uuid_ref(),
+            &file_properties,
+            parent,
+            link_uuid,
+            link_key_metadata,
+            master_keys,
+        )
+    }
+
+    pub fn from_file_properties<S: Into<String>>(
+        api_key: SecUtf8,
+        file_uuid: Uuid,
+        file_properties: &FileProperties,
+        parent: ParentOrBase,
+        link_uuid: Uuid,
+        link_key_metadata: S,
+        master_keys: &[SecUtf8],
+    ) -> Result<DirLinkAddRequestPayload> {
+        let key_metadata: String = link_key_metadata.into();
+        let link_key = SecUtf8::from(
+            crypto::decrypt_metadata_str_any_key(&key_metadata, master_keys).context(DecryptLinkKeyMetadataFailed {
+                metadata: key_metadata.clone(),
+            })?,
+        );
+        let metadata = file_properties.to_metadata_string(&link_key);
+        Ok(DirLinkAddRequestPayload {
             api_key,
             download_btn: DownloadBtnState::Enable,
             expiration: Expire::Never,
             key_metadata,
-            link_uuid: Uuid::new_v4(),
-            metadata: linked_item_metadata.into(),
-            parent: linked_item_parent_uuid,
+            link_uuid,
+            metadata,
+            parent,
             password: PasswordState::Empty,
             password_hashed: EMPTY_PASSWORD_HASH.clone(),
-            link_type,
-            uuid: linked_item_uuid,
-        }
+            link_type: ItemKind::File,
+            uuid: file_uuid,
+        })
+    }
+
+    pub fn from_folder_data<T: HasLocationName + HasUuid, S: Into<String>>(
+        api_key: SecUtf8,
+        folder_data: &T,
+        parent: ParentOrBase,
+        link_uuid: Uuid,
+        link_key_metadata: S,
+        master_keys: &[SecUtf8],
+    ) -> Result<DirLinkAddRequestPayload> {
+        let folder_name = folder_data
+            .decrypt_name_metadata(master_keys)
+            .context(DecryptLocationNameFailed {})?;
+        DirLinkAddRequestPayload::from_folder_name(
+            api_key,
+            *folder_data.uuid_ref(),
+            &folder_name,
+            parent,
+            link_uuid,
+            link_key_metadata,
+            master_keys,
+        )
+    }
+
+    pub fn from_folder_name<S: Into<String>>(
+        api_key: SecUtf8,
+        folder_uuid: Uuid,
+        folder_name: &str,
+        parent: ParentOrBase,
+        link_uuid: Uuid,
+        link_key_metadata: S,
+        master_keys: &[SecUtf8],
+    ) -> Result<DirLinkAddRequestPayload> {
+        let key_metadata: String = link_key_metadata.into();
+        let link_key = SecUtf8::from(
+            crypto::decrypt_metadata_str_any_key(&key_metadata, master_keys).context(DecryptLinkKeyMetadataFailed {
+                metadata: key_metadata.clone(),
+            })?,
+        );
+        let metadata = LocationNameMetadata::encrypt_name_to_metadata(folder_name, &link_key);
+        Ok(DirLinkAddRequestPayload {
+            api_key,
+            download_btn: DownloadBtnState::Enable,
+            expiration: Expire::Never,
+            key_metadata,
+            link_uuid,
+            metadata,
+            parent,
+            password: PasswordState::Empty,
+            password_hashed: EMPTY_PASSWORD_HASH.clone(),
+            link_type: ItemKind::Folder,
+            uuid: folder_uuid,
+        })
     }
 }
 

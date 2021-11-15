@@ -121,10 +121,10 @@ utils::display_from_json!(LinkDirStatusRequestPayload);
 /// Link UUID with link key.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct LinkIdWithKey {
-    /// Link key, encrypted.
-    /// Decrypted by user's master keys and used to decrypt linked item metadata.
+    /// Link key metadata.
+    /// Used to decrypt linked item metadata instead of user's master keys.
     #[serde(rename = "linkKey")]
-    pub link_key: String,
+    pub link_key_metadata: String,
 
     /// Link ID; hyphenated lowercased UUID V4.
     #[serde(rename = "linkUUID")]
