@@ -956,9 +956,10 @@ pub fn share_folder_recursively(
                     master_keys,
                     filen_settings,
                 )
+                .map(|_| ())
             })
         })
-        .collect::<Result<Vec<_>>>()?;
+        .collect::<Result<Vec<()>>>()?;
     // Share all files.
     contents
         .files
@@ -974,9 +975,10 @@ pub fn share_folder_recursively(
                     master_keys,
                     filen_settings,
                 )
+                .map(|_| ())
             })
         })
-        .collect::<Result<Vec<_>>>()?;
+        .collect::<Result<Vec<()>>>()?;
 
     Ok(())
 }
@@ -1005,7 +1007,7 @@ pub async fn share_folder_recursively_async(
         .context(CannotGetUserFolderContents {})?;
     // Share this folder and all sub-folders:
     let folder_futures = contents.folders.iter().map(|folder| {
-        retry_settings.retry_async(move || {
+        retry_settings.retry_async(move || async move {
             share_folder_async(
                 api_key.to_owned(),
                 folder,
@@ -1015,13 +1017,15 @@ pub async fn share_folder_recursively_async(
                 master_keys,
                 filen_settings,
             )
+            .await
+            .map(|_| ())
         })
     });
     futures::future::try_join_all(folder_futures).await?;
 
-    // Share all files.
+    // Share all files:
     let file_futures = contents.files.iter().map(|file| {
-        retry_settings.retry_async(move || {
+        retry_settings.retry_async(move || async move {
             share_file_async(
                 api_key.to_owned(),
                 file,
@@ -1031,6 +1035,8 @@ pub async fn share_folder_recursively_async(
                 master_keys,
                 filen_settings,
             )
+            .await
+            .map(|_| ())
         })
     });
     futures::future::try_join_all(file_futures).await?;
