@@ -49,8 +49,8 @@ pub struct FileLocation {
 }
 
 impl FileLocation {
-    pub fn new<S: Into<String>>(region: S, bucket: S, file_uuid: Uuid, chunks: u32) -> FileLocation {
-        FileLocation {
+    pub fn new<S: Into<String>>(region: S, bucket: S, file_uuid: Uuid, chunks: u32) -> Self {
+        Self {
             region: region.into(),
             bucket: bucket.into(),
             file_uuid,
@@ -83,8 +83,8 @@ pub struct FileChunkLocation {
 }
 
 impl FileChunkLocation {
-    pub fn new<S: Into<String>>(region: S, bucket: S, file_uuid: Uuid, chunk_index: u32) -> FileChunkLocation {
-        FileChunkLocation {
+    pub fn new<S: Into<String>>(region: S, bucket: S, file_uuid: Uuid, chunk_index: u32) -> Self {
+        Self {
             region: region.into(),
             bucket: bucket.into(),
             file_uuid,
@@ -164,7 +164,7 @@ pub fn download_and_decrypt_file_from_data_and_key<W: Write>(
 /// You can pass [crate::NO_RETRIES] if you really want to fail the entire file download even if a single chunk
 /// download request fails temporarily, otherwise [crate::STANDARD_RETRIES] is a better fit.
 #[cfg(feature = "async")]
-pub async fn download_and_decrypt_file_from_data_and_key_async<W: Write>(
+pub async fn download_and_decrypt_file_from_data_and_key_async<W: Write + Send>(
     file_data: &FileData,
     file_key: &SecUtf8,
     writer: &mut std::io::BufWriter<W>,
@@ -227,7 +227,7 @@ pub fn download_and_decrypt_file<W: Write>(
 /// Returns total size of downloaded encrypted file chunks.
 /// All file chunks are downloaded and decrypted concurrently first, and then written to the provided writer.
 #[cfg(feature = "async")]
-pub async fn download_and_decrypt_file_async<W: Write>(
+pub async fn download_and_decrypt_file_async<W: Write + Send>(
     file_location: &FileLocation,
     version: u32,
     file_key: &SecUtf8,

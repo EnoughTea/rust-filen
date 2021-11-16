@@ -124,7 +124,7 @@ impl FileProperties {
         size: u64,
         last_modified: &SystemTime,
         file_key: Option<SecUtf8>,
-    ) -> Result<FileProperties> {
+    ) -> Result<Self> {
         ensure!(
             size > 0,
             BadArgument {
@@ -138,7 +138,7 @@ impl FileProperties {
             .duration_since(UNIX_EPOCH)
             .context(SystemTimeError {})?
             .as_secs();
-        Ok(FileProperties {
+        Ok(Self {
             name: name.to_owned(),
             size,
             mime: mime.to_owned(),
@@ -148,48 +148,48 @@ impl FileProperties {
     }
 
     /// Fills file properties from name, size and last modified. File key will be randomly generated.
-    pub fn from_name_size_modified(name: &str, size: u64, last_modified: &SystemTime) -> Result<FileProperties> {
-        FileProperties::from_name_size_modified_key(name, size, last_modified, None)
+    pub fn from_name_size_modified(name: &str, size: u64, last_modified: &SystemTime) -> Result<Self> {
+        Self::from_name_size_modified_key(name, size, last_modified, None)
     }
 
     /// Fills file properties from local file properties. File key will be randomly generated.
-    pub fn from_local_path(local_file_path: &Path) -> Result<FileProperties> {
+    pub fn from_local_path(local_file_path: &Path) -> Result<Self> {
         match local_file_path.file_name().and_then(|filename| filename.to_str()) {
-            Some(file_name) => FileProperties::from_name_and_local_path(file_name, local_file_path),
+            Some(file_name) => Self::from_name_and_local_path(file_name, local_file_path),
             None => FilePathDoesNotContainValidFilename {}.fail(),
         }
     }
 
     /// Fills file properties from local file properties, with a way to change file name.
     /// File key will be randomly generated.
-    pub fn from_name_and_local_path(filen_filename: &str, local_file_path: &Path) -> Result<FileProperties> {
+    pub fn from_name_and_local_path(filen_filename: &str, local_file_path: &Path) -> Result<Self> {
         let fs_metadata = fs::metadata(local_file_path).context(FileSystemMetadataError {})?;
         let last_modified_time = fs_metadata.modified().unwrap_or_else(|_| SystemTime::now());
-        FileProperties::from_name_size_modified(filen_filename, fs_metadata.len(), &last_modified_time)
+        Self::from_name_size_modified(filen_filename, fs_metadata.len(), &last_modified_time)
     }
 
     /// Decrypts file properties from metadata string.
-    pub fn decrypt_file_metadata(metadata: &str, master_keys: &[SecUtf8]) -> Result<FileProperties> {
+    pub fn decrypt_file_metadata(metadata: &str, master_keys: &[SecUtf8]) -> Result<Self> {
         crypto::decrypt_metadata_str_any_key(metadata, master_keys)
             .context(DecryptFileMetadataFailed {
                 metadata: metadata.to_owned(),
             })
             .and_then(|file_properties_json| {
-                serde_json::from_str::<FileProperties>(&file_properties_json).context(DeserializeFileMetadataFailed {
+                serde_json::from_str::<Self>(&file_properties_json).context(DeserializeFileMetadataFailed {
                     metadata: metadata.to_owned(),
                 })
             })
     }
 
     /// Encrypts file properties to a metadata string.
-    pub fn encrypt_file_metadata(file_properties: &FileProperties, last_master_key: &SecUtf8) -> String {
+    pub fn encrypt_file_metadata(file_properties: &Self, last_master_key: &SecUtf8) -> String {
         let metadata_json = json!(file_properties).to_string();
         crypto::encrypt_metadata_str(&metadata_json, last_master_key, METADATA_VERSION).unwrap()
     }
 
     /// Decrypts file properties from a metadata string using RSA private key.
     /// Assumes given metadata string is base64-encoded.
-    pub fn decrypt_file_metadata_rsa(metadata: &str, rsa_private_key_bytes: &SecVec<u8>) -> Result<FileProperties> {
+    pub fn decrypt_file_metadata_rsa(metadata: &str, rsa_private_key_bytes: &SecVec<u8>) -> Result<Self> {
         let decoded = base64::decode(metadata).context(CannotDecodeBase64Metadata {
             metadata: metadata.to_owned(),
         })?;
@@ -197,14 +197,14 @@ impl FileProperties {
             crypto::decrypt_rsa(&decoded, rsa_private_key_bytes.unsecure()).context(DecryptFileMetadataRsaFailed {
                 metadata: metadata.to_owned(),
             })?;
-        serde_json::from_slice::<FileProperties>(&decrypted).context(DeserializeFileMetadataFailed {
+        serde_json::from_slice::<Self>(&decrypted).context(DeserializeFileMetadataFailed {
             metadata: metadata.to_owned(),
         })
     }
 
     /// Encrypts file properties to a metadata string using RSA public key of the user with whom item is shared
     /// aka receiver. Returns base64-encoded bytes.
-    pub fn encrypt_file_metadata_rsa(file_properties: &FileProperties, rsa_public_key_bytes: &[u8]) -> Result<String> {
+    pub fn encrypt_file_metadata_rsa(file_properties: &Self, rsa_public_key_bytes: &[u8]) -> Result<String> {
         let metadata_json = json!(file_properties).to_string();
         let encrypted = crypto::encrypt_rsa(metadata_json.as_bytes(), rsa_public_key_bytes).context(
             EncryptFileMetadataRsaFailed {
@@ -215,11 +215,11 @@ impl FileProperties {
     }
 
     pub fn to_metadata_string(&self, last_master_key: &SecUtf8) -> String {
-        FileProperties::encrypt_file_metadata(self, last_master_key)
+        Self::encrypt_file_metadata(self, last_master_key)
     }
 
     pub fn to_metadata_rsa_string(&self, rsa_public_key_bytes: &[u8]) -> Result<String> {
-        FileProperties::encrypt_file_metadata_rsa(self, rsa_public_key_bytes)
+        Self::encrypt_file_metadata_rsa(self, rsa_public_key_bytes)
     }
 
     pub fn name_encrypted(&self) -> String {
@@ -299,11 +299,11 @@ impl FileRenameRequestPayload {
         new_file_name: &str,
         file_metadata: &FileProperties,
         last_master_key: &SecUtf8,
-    ) -> FileRenameRequestPayload {
+    ) -> Self {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(new_file_name, last_master_key);
         let name_hashed = LocationNameMetadata::name_hashed(new_file_name);
         let metadata = file_metadata.to_metadata_string(last_master_key);
-        FileRenameRequestPayload {
+        Self {
             api_key,
             uuid,
             name_metadata,

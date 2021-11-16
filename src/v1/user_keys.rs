@@ -164,7 +164,7 @@ impl UserKeyPairUpdateRequestPayload {
         private_key_bytes: &SecVec<u8>,
         public_key_bytes: &[u8],
         last_master_key: &SecUtf8,
-    ) -> Result<UserKeyPairUpdateRequestPayload> {
+    ) -> Result<Self> {
         let private_key = crypto::encrypt_metadata_str(
             &base64::encode(private_key_bytes.unsecure()),
             last_master_key,
@@ -174,7 +174,7 @@ impl UserKeyPairUpdateRequestPayload {
         .context(EncryptPrivateKeyFailed {})?;
 
         let public_key = base64::encode(public_key_bytes);
-        Ok(UserKeyPairUpdateRequestPayload {
+        Ok(Self {
             api_key,
             private_key,
             public_key,
@@ -199,7 +199,7 @@ utils::display_from_json!(MasterKeysFetchRequestPayload);
 impl MasterKeysFetchRequestPayload {
     /// Creates [MasterKeysFetchRequestPayload] from user's API key and user's master keys.
     /// Assumes user's last master key is the last element of given master keys slice.
-    fn new(api_key: SecUtf8, raw_master_keys: &[SecUtf8]) -> Result<MasterKeysFetchRequestPayload> {
+    fn new(api_key: SecUtf8, raw_master_keys: &[SecUtf8]) -> Result<Self> {
         ensure!(
             !raw_master_keys.is_empty(),
             BadArgument {
@@ -214,7 +214,7 @@ impl MasterKeysFetchRequestPayload {
         )
         .context(EncryptMasterKeysFailed {})?;
 
-        Ok(MasterKeysFetchRequestPayload {
+        Ok(Self {
             api_key,
             master_keys_metadata,
         })

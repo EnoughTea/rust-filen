@@ -9,9 +9,10 @@ use uuid::Uuid;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-pub(crate) static EMPTY_PASSWORD_VALUE: Lazy<String> = Lazy::new(|| PasswordState::Empty.to_string());
-pub(crate) static SEC_EMPTY_PASSWORD_VALUE: Lazy<SecUtf8> = Lazy::new(|| SecUtf8::from(EMPTY_PASSWORD_VALUE.as_str()));
-pub(crate) static EMPTY_PASSWORD_HASH: Lazy<String> = Lazy::new(|| crypto::hash_fn(&EMPTY_PASSWORD_VALUE));
+pub static LINK_EMPTY_PASSWORD_VALUE: Lazy<String> = Lazy::new(|| PasswordState::Empty.to_string());
+pub static LINK_EMPTY_PASSWORD_HASH: Lazy<String> = Lazy::new(|| crypto::hash_fn(&LINK_EMPTY_PASSWORD_VALUE));
+pub static SEC_LINK_EMPTY_PASSWORD_VALUE: Lazy<SecUtf8> =
+    Lazy::new(|| SecUtf8::from(LINK_EMPTY_PASSWORD_VALUE.as_str()));
 
 const DIR_LINK_ADD_PATH: &str = "/v1/dir/link/add";
 const DIR_LINK_EDIT_PATH: &str = "/v1/dir/link/edit";
@@ -118,11 +119,11 @@ impl DirLinkAddRequestPayload {
         link_uuid: Uuid,
         link_key_metadata: S,
         master_keys: &[SecUtf8],
-    ) -> Result<DirLinkAddRequestPayload> {
+    ) -> Result<Self> {
         let file_properties = file_data
             .decrypt_file_metadata(master_keys)
             .context(DecryptFileMetadataFailed {})?;
-        DirLinkAddRequestPayload::from_file_properties(
+        Self::from_file_properties(
             api_key,
             *file_data.uuid_ref(),
             &file_properties,
@@ -141,7 +142,7 @@ impl DirLinkAddRequestPayload {
         link_uuid: Uuid,
         link_key_metadata: S,
         master_keys: &[SecUtf8],
-    ) -> Result<DirLinkAddRequestPayload> {
+    ) -> Result<Self> {
         let key_metadata: String = link_key_metadata.into();
         let link_key = SecUtf8::from(
             crypto::decrypt_metadata_str_any_key(&key_metadata, master_keys).context(DecryptLinkKeyMetadataFailed {
@@ -149,7 +150,7 @@ impl DirLinkAddRequestPayload {
             })?,
         );
         let metadata = file_properties.to_metadata_string(&link_key);
-        Ok(DirLinkAddRequestPayload {
+        Ok(Self {
             api_key,
             download_btn: DownloadBtnState::Enable,
             expiration: Expire::Never,
@@ -158,7 +159,7 @@ impl DirLinkAddRequestPayload {
             metadata,
             parent,
             password: PasswordState::Empty,
-            password_hashed: EMPTY_PASSWORD_HASH.clone(),
+            password_hashed: LINK_EMPTY_PASSWORD_HASH.clone(),
             link_type: ItemKind::File,
             uuid: file_uuid,
         })
@@ -171,11 +172,11 @@ impl DirLinkAddRequestPayload {
         link_uuid: Uuid,
         link_key_metadata: S,
         master_keys: &[SecUtf8],
-    ) -> Result<DirLinkAddRequestPayload> {
+    ) -> Result<Self> {
         let folder_name = folder_data
             .decrypt_name_metadata(master_keys)
             .context(DecryptLocationNameFailed {})?;
-        DirLinkAddRequestPayload::from_folder_name(
+        Self::from_folder_name(
             api_key,
             *folder_data.uuid_ref(),
             &folder_name,
@@ -194,7 +195,7 @@ impl DirLinkAddRequestPayload {
         link_uuid: Uuid,
         link_key_metadata: S,
         master_keys: &[SecUtf8],
-    ) -> Result<DirLinkAddRequestPayload> {
+    ) -> Result<Self> {
         let key_metadata: String = link_key_metadata.into();
         let link_key = SecUtf8::from(
             crypto::decrypt_metadata_str_any_key(&key_metadata, master_keys).context(DecryptLinkKeyMetadataFailed {
@@ -202,7 +203,7 @@ impl DirLinkAddRequestPayload {
             })?,
         );
         let metadata = LocationNameMetadata::encrypt_name_to_metadata(folder_name, &link_key);
-        Ok(DirLinkAddRequestPayload {
+        Ok(Self {
             api_key,
             download_btn: DownloadBtnState::Enable,
             expiration: Expire::Never,
@@ -211,7 +212,7 @@ impl DirLinkAddRequestPayload {
             metadata,
             parent,
             password: PasswordState::Empty,
-            password_hashed: EMPTY_PASSWORD_HASH.clone(),
+            password_hashed: LINK_EMPTY_PASSWORD_HASH.clone(),
             link_type: ItemKind::Folder,
             uuid: folder_uuid,
         })
@@ -256,11 +257,11 @@ impl DirLinkEditRequestPayload {
         item_uuid: Uuid,
         expiration: Expire,
         link_plain_password: Option<&SecUtf8>,
-    ) -> DirLinkEditRequestPayload {
+    ) -> Self {
         let (password_hashed, salt) = link_plain_password
             .map(|password| crypto::encrypt_to_link_password_and_salt(password))
-            .unwrap_or_else(|| crypto::encrypt_to_link_password_and_salt(&SEC_EMPTY_PASSWORD_VALUE));
-        DirLinkEditRequestPayload {
+            .unwrap_or_else(|| crypto::encrypt_to_link_password_and_salt(&SEC_LINK_EMPTY_PASSWORD_VALUE));
+        Self {
             api_key,
             download_btn,
             expiration,

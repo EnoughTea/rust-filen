@@ -76,9 +76,9 @@ impl LinkDirItemRenameRequestPayload {
         file_uuid: Uuid,
         file_properties: &FileProperties,
         link_key: &SecUtf8,
-    ) -> LinkDirItemRenameRequestPayload {
+    ) -> Self {
         let metadata = file_properties.to_metadata_string(link_key);
-        LinkDirItemRenameRequestPayload {
+        Self {
             api_key,
             metadata,
             link_uuid,
@@ -92,9 +92,9 @@ impl LinkDirItemRenameRequestPayload {
         folder_uuid: Uuid,
         folder_name: &str,
         link_key: &SecUtf8,
-    ) -> LinkDirItemRenameRequestPayload {
+    ) -> Self {
         let metadata = LocationNameMetadata::encrypt_name_to_metadata(folder_name, link_key);
-        LinkDirItemRenameRequestPayload {
+        Self {
             api_key,
             metadata,
             link_uuid,
@@ -167,11 +167,11 @@ impl HasLinkKey for LinkIdWithKey {
 
 impl LinkIdWithKey {
     /// Generates a new link uuid and a link key metadata.
-    pub fn generate(last_master_key: &SecUtf8) -> LinkIdWithKey {
-        let (link_uuid, link_key_plain) = LinkIdWithKey::generate_unencrypted();
+    pub fn generate(last_master_key: &SecUtf8) -> Self {
+        let (link_uuid, link_key_plain) = Self::generate_unencrypted();
         let link_key_metadata =
             crypto::encrypt_metadata_str(link_key_plain.unsecure(), last_master_key, METADATA_VERSION).unwrap();
-        LinkIdWithKey {
+        Self {
             link_key_metadata,
             link_uuid,
         }
@@ -396,7 +396,7 @@ pub fn add_file_to_link<T: HasFileMetadata + HasUuid, S: Into<String>>(
 
 /// Helper which adds given file to existing folder link; asynchronous.
 #[cfg(feature = "async")]
-pub async fn add_file_to_link_async<T: HasFileMetadata + HasUuid, S: Into<String>>(
+pub async fn add_file_to_link_async<T: HasFileMetadata + HasUuid + Sync, S: Into<String> + Send>(
     api_key: SecUtf8,
     file_data: &T,
     parent: ParentOrBase,
@@ -450,7 +450,7 @@ pub fn add_folder_to_link<T: HasLocationName + HasUuid, S: Into<String>>(
 
 /// Helper which adds given folder to existing folder link; asynchronous.
 #[cfg(feature = "async")]
-pub async fn add_folder_to_link_async<T: HasLocationName + HasUuid, S: Into<String>>(
+pub async fn add_folder_to_link_async<T: HasLocationName + HasUuid + Sync, S: Into<String> + Send>(
     api_key: SecUtf8,
     folder_data: &T,
     parent: ParentOrBase,

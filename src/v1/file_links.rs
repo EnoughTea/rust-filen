@@ -78,11 +78,11 @@ impl LinkEditRequestPayload {
         state: LinkState,
         link_uuid: Option<Uuid>,
         link_plain_password: Option<&SecUtf8>,
-    ) -> LinkEditRequestPayload {
+    ) -> Self {
         let (password_hashed, salt) = link_plain_password
             .map(|password| crypto::encrypt_to_link_password_and_salt(password))
-            .unwrap_or_else(|| crypto::encrypt_to_link_password_and_salt(&SEC_EMPTY_PASSWORD_VALUE));
-        LinkEditRequestPayload {
+            .unwrap_or_else(|| crypto::encrypt_to_link_password_and_salt(&SEC_LINK_EMPTY_PASSWORD_VALUE));
+        Self {
             api_key,
             download_btn,
             expiration,
@@ -104,8 +104,8 @@ impl LinkEditRequestPayload {
         expiration: Expire,
         link_uuid: Option<Uuid>,
         link_plain_password: Option<&SecUtf8>,
-    ) -> LinkEditRequestPayload {
-        LinkEditRequestPayload::new(
+    ) -> Self {
+        Self::new(
             api_key,
             file_uuid,
             download_btn,
@@ -116,8 +116,8 @@ impl LinkEditRequestPayload {
         )
     }
 
-    pub fn disabled(api_key: SecUtf8, file_uuid: Uuid, link_uuid: Uuid) -> LinkEditRequestPayload {
-        LinkEditRequestPayload::new(
+    pub fn disabled(api_key: SecUtf8, file_uuid: Uuid, link_uuid: Uuid) -> Self {
+        Self::new(
             api_key,
             file_uuid,
             DownloadBtnState::Enable,

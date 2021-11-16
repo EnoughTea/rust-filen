@@ -73,7 +73,7 @@ impl FromStr for Expire {
     /// e.g. "6h" or "30d".
     fn from_str(never_or_duration: &str) -> Result<Self, Self::Err> {
         if never_or_duration.eq_ignore_ascii_case("never") {
-            Ok(Expire::Never)
+            Ok(Self::Never)
         } else if never_or_duration.len() < 2 {
             DurationIsTooShort {
                 value: never_or_duration.to_owned(),
@@ -85,8 +85,8 @@ impl FromStr for Expire {
                 value: never_or_duration,
             })?;
             match unit {
-                "d" => Ok(Expire::Days(value)),
-                "h" => Ok(Expire::Hours(value)),
+                "d" => Ok(Self::Days(value)),
+                "h" => Ok(Self::Hours(value)),
                 other => DurationUnitUnsupported { unit: other.to_owned() }.fail(),
             }
         }
@@ -99,7 +99,7 @@ impl<'de> Deserialize<'de> for Expire {
         D: Deserializer<'de>,
     {
         let never_or_duration_repr = String::deserialize(deserializer)?;
-        str::parse::<Expire>(&never_or_duration_repr).map_err(|_| {
+        str::parse::<Self>(&never_or_duration_repr).map_err(|_| {
             de::Error::invalid_value(
                 de::Unexpected::Str(&never_or_duration_repr),
                 &"\"never\" or duration with time units, e.g. \"6h\" or \"1d\"",
@@ -208,14 +208,14 @@ pub enum LocationKind {
 
 /// Typed folder or file name metadata.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub(crate) struct LocationNameMetadata {
+pub struct LocationNameMetadata {
     pub name: String,
 }
 
 impl LocationNameMetadata {
-    /// Puts the given name into Filen-expected JSON and encrypts it into metadata.
+    /// Puts the given name into Filen-expected JSON { name: "some name" } and encrypts it into metadata.
     pub fn encrypt_name_to_metadata<S: Into<String>>(name: S, key: &SecUtf8) -> String {
-        let name_json = json!(LocationNameMetadata { name: name.into() }).to_string();
+        let name_json = json!(Self { name: name.into() }).to_string();
         crypto::encrypt_metadata_str(&name_json, key, super::METADATA_VERSION).unwrap()
     }
 
@@ -230,9 +230,8 @@ impl LocationNameMetadata {
                 metadata: name_metadata.to_owned(),
             });
 
-        decrypted_name_result.and_then(|name_metadata| {
-            LocationNameMetadata::extract_name_from_folder_properties_json(name_metadata.as_bytes())
-        })
+        decrypted_name_result
+            .and_then(|name_metadata| Self::extract_name_from_folder_properties_json(name_metadata.as_bytes()))
     }
 
     /// Decrypts location name from a metadata string using RSA private key.
@@ -250,7 +249,7 @@ impl LocationNameMetadata {
                 metadata: name_metadata.to_owned(),
             })?;
 
-        LocationNameMetadata::extract_name_from_folder_properties_json(&decrypted_folder_properties_json)
+        Self::extract_name_from_folder_properties_json(&decrypted_folder_properties_json)
     }
 
     /// Encrypts location name to a metadata string using RSA public key of the user with whom item is shared aka receiver.
@@ -259,7 +258,7 @@ impl LocationNameMetadata {
         name: S,
         rsa_public_key_bytes: &[u8],
     ) -> Result<String, crypto::Error> {
-        let name_json = json!(LocationNameMetadata { name: name.into() }).to_string();
+        let name_json = json!(Self { name: name.into() }).to_string();
         crypto::encrypt_rsa(name_json.as_bytes(), rsa_public_key_bytes).map(base64::encode)
     }
 
@@ -269,7 +268,7 @@ impl LocationNameMetadata {
     }
 
     pub(crate) fn extract_name_from_folder_properties_json(folder_properties_json_bytes: &[u8]) -> Result<String> {
-        serde_json::from_slice::<LocationNameMetadata>(folder_properties_json_bytes)
+        serde_json::from_slice::<Self>(folder_properties_json_bytes)
             .context(DeserializeLocationNameFailed {})
             .map(|typed| typed.name)
     }
@@ -458,9 +457,9 @@ pub struct LocationExistsRequestPayload {
 utils::display_from_json!(LocationExistsRequestPayload);
 
 impl LocationExistsRequestPayload {
-    pub fn new(api_key: SecUtf8, target_parent: ParentOrBase, target_name: &str) -> LocationExistsRequestPayload {
+    pub fn new(api_key: SecUtf8, target_parent: ParentOrBase, target_name: &str) -> Self {
         let name_hashed = LocationNameMetadata::name_hashed(target_name);
-        LocationExistsRequestPayload {
+        Self {
             api_key,
             parent: target_parent,
             name_hashed,
@@ -498,10 +497,10 @@ utils::display_from_json!(ParentOrBase);
 
 impl ParentOrBase {
     /// Creates [ParentOrNone] corresponding to this value.
-    pub fn as_parent_or_none(&self) -> ParentOrNone {
+    pub const fn as_parent_or_none(&self) -> ParentOrNone {
         match self {
-            ParentOrBase::Base => ParentOrNone::None,
-            ParentOrBase::Folder(id) => ParentOrNone::Folder(*id),
+            Self::Base => ParentOrNone::None,
+            Self::Folder(id) => ParentOrNone::Folder(*id),
         }
     }
 }
@@ -512,10 +511,10 @@ impl FromStr for ParentOrBase {
     /// Tries to parse [ParentOrBase] from given string, which must be either "base" or hyphenated lowercased UUID.
     fn from_str(base_or_id: &str) -> Result<Self, Self::Err> {
         if base_or_id.eq_ignore_ascii_case("base") {
-            Ok(ParentOrBase::Base)
+            Ok(Self::Base)
         } else {
             match Uuid::parse_str(base_or_id) {
-                Ok(uuid) => Ok(ParentOrBase::Folder(uuid)),
+                Ok(uuid) => Ok(Self::Folder(uuid)),
                 Err(_) => CannotParseParentOrBaseFromString {
                     string_length: base_or_id.len(),
                 }
@@ -533,10 +532,10 @@ impl<'de> Deserialize<'de> for ParentOrBase {
         let base_or_id = String::deserialize(deserializer)?;
 
         if base_or_id.eq_ignore_ascii_case("base") {
-            Ok(ParentOrBase::Base)
+            Ok(Self::Base)
         } else {
             match Uuid::parse_str(&base_or_id) {
-                Ok(uuid) => Ok(ParentOrBase::Folder(uuid)),
+                Ok(uuid) => Ok(Self::Folder(uuid)),
                 Err(_) => Err(de::Error::invalid_value(
                     de::Unexpected::Str(&base_or_id),
                     &"\"base\" or hyphenated lowercased UUID",
@@ -552,8 +551,8 @@ impl Serialize for ParentOrBase {
         S: Serializer,
     {
         match *self {
-            ParentOrBase::Base => serializer.serialize_str("base"),
-            ParentOrBase::Folder(uuid) => serializer.serialize_str(&uuid.to_hyphenated().to_string()),
+            Self::Base => serializer.serialize_str("base"),
+            Self::Folder(uuid) => serializer.serialize_str(&uuid.to_hyphenated().to_string()),
         }
     }
 }
@@ -570,10 +569,10 @@ utils::display_from_json!(ParentOrNone);
 
 impl ParentOrNone {
     /// Creates [ParentOrBase] corresponding to this value.
-    pub fn as_parent_or_base(&self) -> ParentOrBase {
+    pub const fn as_parent_or_base(&self) -> ParentOrBase {
         match self {
-            ParentOrNone::None => ParentOrBase::Base,
-            ParentOrNone::Folder(id) => ParentOrBase::Folder(*id),
+            Self::None => ParentOrBase::Base,
+            Self::Folder(id) => ParentOrBase::Folder(*id),
         }
     }
 }
@@ -584,10 +583,10 @@ impl FromStr for ParentOrNone {
     /// Tries to parse [ParentOrNone] from given string, which must be either "none" or hyphenated lowercased UUID.
     fn from_str(none_or_id: &str) -> Result<Self, Self::Err> {
         if none_or_id.eq_ignore_ascii_case("none") {
-            Ok(ParentOrNone::None)
+            Ok(Self::None)
         } else {
             match Uuid::parse_str(none_or_id) {
-                Ok(uuid) => Ok(ParentOrNone::Folder(uuid)),
+                Ok(uuid) => Ok(Self::Folder(uuid)),
                 Err(_) => CannotParseParentOrNoneFromString {
                     string_length: none_or_id.len(),
                 }
@@ -605,10 +604,10 @@ impl<'de> Deserialize<'de> for ParentOrNone {
         let none_or_id = String::deserialize(deserializer)?;
 
         if none_or_id.eq_ignore_ascii_case("none") {
-            Ok(ParentOrNone::None)
+            Ok(Self::None)
         } else {
             match Uuid::parse_str(&none_or_id) {
-                Ok(uuid) => Ok(ParentOrNone::Folder(uuid)),
+                Ok(uuid) => Ok(Self::Folder(uuid)),
                 Err(_) => Err(de::Error::invalid_value(
                     de::Unexpected::Str(&none_or_id),
                     &"\"none\" or hyphenated lowercased UUID",

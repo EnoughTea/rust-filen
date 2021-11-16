@@ -55,6 +55,7 @@ impl RetrySettings {
     pub async fn retry_async<T, CF, OpErr>(&self, operation: CF) -> Result<T, OpErr>
     where
         CF: fure::CreateFuture<T, OpErr> + Send,
+        CF::Output: Send,
         OpErr: std::error::Error + Send,
     {
         let exp_backoff = self.get_exp_backoff_iterator();
@@ -64,9 +65,9 @@ impl RetrySettings {
 
     pub fn retry<O, R, OR, OpErr>(&self, operation: O) -> Result<R, OpErr>
     where
-        O: FnMut() -> OR + Send,
+        O: Send + FnMut() -> OR,
         OR: Into<retry::OperationResult<R, OpErr>>,
-        OpErr: std::error::Error + Send + Sync,
+        OpErr: std::error::Error + Send,
     {
         let policy = self.get_exp_backoff_iterator();
         let retry_result = retry::retry(policy, operation);

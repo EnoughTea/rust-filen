@@ -431,9 +431,9 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
     file_properties: &FileProperties,
     version: u32,
     last_master_key: &SecUtf8,
+    reader: &mut BufReader<R>,
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
-    reader: &mut BufReader<R>,
 ) -> Result<FileUploadInfo> {
     let upload_properties =
         FileUploadProperties::from_file_properties(file_properties, version, parent_uuid, last_master_key);
@@ -501,9 +501,9 @@ pub async fn encrypt_and_upload_file_async<R: Read + Seek + Send>(
     file_properties: &FileProperties,
     version: u32,
     last_master_key: &SecUtf8,
+    reader: &mut BufReader<R>,
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
-    reader: &mut BufReader<R>,
 ) -> Result<FileUploadInfo> {
     let upload_properties =
         FileUploadProperties::from_file_properties(file_properties, version, parent_uuid, last_master_key);

@@ -140,7 +140,7 @@ pub async fn validate_contract_async<P, A, R, E, F>(
 where
     P: Serialize + Send,
     R: fmt::Debug + DeserializeOwned + PartialEq + Serialize + Send,
-    A: Fn(P, FilenSettings) -> F + Send,
+    A: Send + Sync + Fn(P, FilenSettings) -> F,
     E: fmt::Debug + Send,
     F: futures::Future<Output = Result<R, E>> + Send,
 {

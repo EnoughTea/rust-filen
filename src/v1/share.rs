@@ -120,13 +120,13 @@ impl ShareRequestPayload {
         receiver_email: String,
         receiver_public_key_bytes: &[u8],
         master_keys: &[SecUtf8],
-    ) -> Result<ShareRequestPayload> {
+    ) -> Result<Self> {
         let file_properties = file_data
             .decrypt_file_metadata(master_keys)
             .context(DecryptFileMetadataFailed {
                 metadata: file_data.file_metadata_ref().to_owned(),
             })?;
-        ShareRequestPayload::from_file_properties(
+        Self::from_file_properties(
             api_key,
             *file_data.uuid_ref(),
             &file_properties,
@@ -146,9 +146,9 @@ impl ShareRequestPayload {
         parent: ParentOrNone,
         email: String,
         rsa_public_key_bytes: &[u8],
-    ) -> Result<ShareRequestPayload, files::Error> {
+    ) -> Result<Self, files::Error> {
         let metadata = file_properties.to_metadata_rsa_string(rsa_public_key_bytes)?;
-        Ok(ShareRequestPayload {
+        Ok(Self {
             api_key,
             email,
             metadata,
@@ -165,13 +165,13 @@ impl ShareRequestPayload {
         receiver_email: String,
         receiver_public_key_bytes: &[u8],
         master_keys: &[SecUtf8],
-    ) -> Result<ShareRequestPayload> {
+    ) -> Result<Self> {
         let folder_name = folder_data
             .decrypt_name_metadata(master_keys)
             .context(DecryptLocationNameFailed {
                 metadata: folder_data.name_metadata_ref().to_owned(),
             })?;
-        ShareRequestPayload::from_folder_name(
+        Self::from_folder_name(
             api_key,
             *folder_data.uuid_ref(),
             &folder_name,
@@ -191,9 +191,9 @@ impl ShareRequestPayload {
         parent: ParentOrNone,
         email: String,
         rsa_public_key_bytes: &[u8],
-    ) -> Result<ShareRequestPayload, CryptoError> {
+    ) -> Result<Self, CryptoError> {
         let metadata = LocationNameMetadata::encrypt_name_to_metadata_rsa(folder_name, rsa_public_key_bytes)?;
-        Ok(ShareRequestPayload {
+        Ok(Self {
             api_key,
             email,
             metadata,
@@ -522,9 +522,9 @@ impl UserSharedItemRenameRequestPayload {
         file_uuid: Uuid,
         file_properties: &FileProperties,
         rsa_public_key_bytes: &[u8],
-    ) -> Result<UserSharedItemRenameRequestPayload, files::Error> {
+    ) -> Result<Self, files::Error> {
         let metadata = file_properties.to_metadata_rsa_string(rsa_public_key_bytes)?;
-        Ok(UserSharedItemRenameRequestPayload {
+        Ok(Self {
             api_key,
             uuid: file_uuid,
             receiver_id,
@@ -538,9 +538,9 @@ impl UserSharedItemRenameRequestPayload {
         folder_uuid: Uuid,
         folder_name: &str,
         rsa_public_key_bytes: &[u8],
-    ) -> Result<UserSharedItemRenameRequestPayload, CryptoError> {
+    ) -> Result<Self, CryptoError> {
         let metadata = LocationNameMetadata::encrypt_name_to_metadata_rsa(folder_name, rsa_public_key_bytes)?;
-        Ok(UserSharedItemRenameRequestPayload {
+        Ok(Self {
             api_key,
             uuid: folder_uuid,
             receiver_id,
@@ -831,7 +831,7 @@ pub fn share_file<T: HasFileMetadata + HasUuid>(
 
 /// Helper which shares given file with the specified user; asynchronous.
 #[cfg(feature = "async")]
-pub async fn share_file_async<T: HasFileMetadata + HasUuid>(
+pub async fn share_file_async<T: HasFileMetadata + HasUuid + Sync>(
     api_key: SecUtf8,
     file_data: &T,
     parent: ParentOrNone,
@@ -892,7 +892,7 @@ pub fn share_folder<T: HasLocationName + HasUuid>(
 
 /// Helper which shares just the given folder without its files and sub-folders; asynchronous.
 #[cfg(feature = "async")]
-pub async fn share_folder_async<T: HasLocationName + HasUuid>(
+pub async fn share_folder_async<T: HasLocationName + HasUuid + Sync>(
     api_key: SecUtf8,
     folder_data: &T,
     parent: ParentOrNone,

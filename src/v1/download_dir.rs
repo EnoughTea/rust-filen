@@ -156,7 +156,7 @@ macro_rules! gen_download_and_decrypt_file {
 
         /// Uses this file's properties to call [download_and_decrypt_file_async].
         #[cfg(feature = "async")]
-        pub async fn download_and_decrypt_file_async<W: std::io::Write>(
+        pub async fn download_and_decrypt_file_async<W: std::io::Write + Send>(
             &self,
             file_key: &secstr::SecUtf8,
             retry_settings: &crate::RetrySettings,

@@ -1,3 +1,5 @@
+#![allow(clippy::redundant_pub_crate)]
+
 use crate::{filen_settings::*, queries, utils, v1::*};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
@@ -107,10 +109,10 @@ impl FromStr for UserEventFilter {
 
     fn from_str(all_or_event_kind: &str) -> Result<Self, Self::Err> {
         if all_or_event_kind.eq_ignore_ascii_case("all") {
-            Ok(UserEventFilter::All)
+            Ok(Self::All)
         } else {
             match UserEventKind::from_str(all_or_event_kind) {
-                Ok(user_event_kind) => Ok(UserEventFilter::Specific(user_event_kind)),
+                Ok(user_event_kind) => Ok(Self::Specific(user_event_kind)),
                 Err(_) => CannotParseUserEventFilterFromString {
                     string_length: all_or_event_kind.len(),
                 }
@@ -137,10 +139,10 @@ impl<'de> Deserialize<'de> for UserEventFilter {
         let all_or_event_kind = String::deserialize(deserializer)?;
 
         if all_or_event_kind.eq_ignore_ascii_case("all") {
-            Ok(UserEventFilter::All)
+            Ok(Self::All)
         } else {
             match UserEventKind::from_str(&all_or_event_kind) {
-                Ok(user_event_kind) => Ok(UserEventFilter::Specific(user_event_kind)),
+                Ok(user_event_kind) => Ok(Self::Specific(user_event_kind)),
                 Err(_) => Err(de::Error::invalid_value(
                     de::Unexpected::Str(&all_or_event_kind),
                     &"\"all\" or specific event type",
@@ -837,115 +839,109 @@ impl<'de> Deserialize<'de> for UserEvent {
         let helper = UserEventDeserializeHelper::deserialize(deserializer)?;
         match helper.event_type {
             UserEventKind::BaseFolderCreated => BaseFolderCreatedEventInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::BaseFolderCreated(BaseFolderCreatedUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::BaseFolderCreated(BaseFolderCreatedUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::CodeRedeemed => CodeRedeemedEventInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::CodeRedeemed(CodeRedeemedUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::CodeRedeemed(CodeRedeemedUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::DeleteAll => UserFingerprint::deserialize(&helper.info)
-                .map(|ei| UserEvent::DeleteAll(PlainUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::DeleteAll(PlainUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::DeleteUnfinished => UserFingerprint::deserialize(&helper.info)
-                .map(|ei| UserEvent::DeleteUnfinished(PlainUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::DeleteUnfinished(PlainUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::DeleteVersioned => UserFingerprint::deserialize(&helper.info)
-                .map(|ei| UserEvent::DeleteVersioned(PlainUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::DeleteVersioned(PlainUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::Disabled2FA => UserFingerprint::deserialize(&helper.info)
-                .map(|ei| UserEvent::Disabled2FA(PlainUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::Disabled2FA(PlainUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::EmailChangeAttempt => EmailChangeAttemptInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::EmailChangeAttempt(EmailChangeAttemptUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::EmailChangeAttempt(EmailChangeAttemptUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::EmailChanged => EmailChangedInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::EmailChanged(EmailChangedUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::EmailChanged(EmailChangedUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::Enabled2FA => UserFingerprint::deserialize(&helper.info)
-                .map(|ei| UserEvent::Enabled2FA(PlainUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::Enabled2FA(PlainUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::FileLinkEdited => FileLinkEditedInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::FileLinkEdited(FileLinkEditedUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::FileLinkEdited(FileLinkEditedUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::FileMoved => DownloadableFileEventInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::FileMoved(FileMovedUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::FileMoved(FileMovedUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::FileRenamed => FileRenamedInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::FileRenamed(FileRenamedUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::FileRenamed(FileRenamedUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::FileRestored => DownloadableFileEventInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::FileRestored(FileRestoredUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::FileRestored(FileRestoredUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::FileRm => FileParentlessEventInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::FileRm(FileRmUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::FileRm(FileRmUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::FileShared => FileSharedInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::FileShared(FileSharedUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::FileShared(FileSharedUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::FileTrash => FileParentlessEventInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::FileTrash(FileTrashUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::FileTrash(FileTrashUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::FileUploaded => DownloadableFileEventInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::FileUploaded(FileUploadedUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::FileUploaded(FileUploadedUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::FileVersioned => FileParentlessEventInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::FileVersioned(FileVersionedUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::FileVersioned(FileVersionedUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::FolderColorChanged => FolderColorChangedInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::FolderColorChanged(FolderColorChangedUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::FolderColorChanged(FolderColorChangedUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::FolderLinkEdited => FolderLinkEditedInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::FolderLinkEdited(FolderLinkEditedUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::FolderLinkEdited(FolderLinkEditedUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::FolderMoved => FolderEventInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::FolderMoved(FolderMovedUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::FolderMoved(FolderMovedUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::FolderRenamed => FolderRenamedInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::FolderRenamed(FolderRenamedUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::FolderRenamed(FolderRenamedUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::FolderRestored => FolderEventInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::FolderRestored(FolderRestoredUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::FolderRestored(FolderRestoredUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::FolderShared => FolderSharedEventInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::FolderShared(FolderSharedUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::FolderShared(FolderSharedUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::FolderTrash => FolderTrashEventInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::FolderTrash(FolderTrashUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::FolderTrash(FolderTrashUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::ItemFavorite => ItemFavoriteEventInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::ItemFavorite(ItemFavoriteUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::ItemFavorite(ItemFavoriteUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::Login => UserFingerprint::deserialize(&helper.info)
-                .map(|ei| UserEvent::Login(PlainUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::Login(PlainUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::PasswordChanged => UserFingerprint::deserialize(&helper.info)
-                .map(|ei| UserEvent::PasswordChanged(PlainUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::PasswordChanged(PlainUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::RemovedSharedInItems => RemovedSharedInItemsInfo::deserialize(&helper.info)
-                .map(|ei| {
-                    UserEvent::RemovedSharedInItems(RemovedSharedInItemsUserEvent::from_helper_and_info(helper, ei))
-                })
+                .map(|ei| Self::RemovedSharedInItems(RemovedSharedInItemsUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::RemovedSharedOutItems => RemovedSharedOutItemsInfo::deserialize(&helper.info)
-                .map(|ei| {
-                    UserEvent::RemovedSharedOutItems(RemovedSharedOutItemsUserEvent::from_helper_and_info(helper, ei))
-                })
+                .map(|ei| Self::RemovedSharedOutItems(RemovedSharedOutItemsUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::SubFolderCreated => FolderEventInfo::deserialize(&helper.info)
-                .map(|ei| UserEvent::SubFolderCreated(SubFolderCreatedUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::SubFolderCreated(SubFolderCreatedUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::RequestAccountDeletion => UserFingerprint::deserialize(&helper.info)
-                .map(|ei| UserEvent::RequestAccountDeletion(PlainUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::RequestAccountDeletion(PlainUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::TrashEmptied => UserFingerprint::deserialize(&helper.info)
-                .map(|ei| UserEvent::TrashEmptied(PlainUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::TrashEmptied(PlainUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::VersionedFileRestored => DownloadableFileEventInfo::deserialize(&helper.info)
-                .map(|ei| {
-                    UserEvent::VersionedFileRestored(VersionedFileRestoredUserEvent::from_helper_and_info(helper, ei))
-                })
+                .map(|ei| Self::VersionedFileRestored(VersionedFileRestoredUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
             UserEventKind::Unknown(_) => UserFingerprint::deserialize(&helper.info)
-                .map(|ei| UserEvent::Unknown(PlainUserEvent::from_helper_and_info(helper, ei)))
+                .map(|ei| Self::Unknown(PlainUserEvent::from_helper_and_info(helper, ei)))
                 .map_err(de::Error::custom),
         }
     }
@@ -1050,6 +1046,7 @@ macro_rules! user_event_struct {
         crate::utils::display_from_json!($struct_name);
 
         impl $struct_name {
+            #[allow(clippy::missing_const_for_fn)]
             pub(crate) fn from_helper_and_info(helper: UserEventDeserializeHelper, info: $event_data_type) -> $struct_name {
                 $struct_name {
                     id: helper.id,

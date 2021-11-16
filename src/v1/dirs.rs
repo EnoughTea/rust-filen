@@ -77,10 +77,10 @@ impl FromStr for ContentKind {
 
     fn from_str(trash_or_id: &str) -> Result<Self, Self::Err> {
         if trash_or_id.eq_ignore_ascii_case("trash") {
-            Ok(ContentKind::Trash)
+            Ok(Self::Trash)
         } else {
             match Uuid::parse_str(trash_or_id) {
-                Ok(uuid) => Ok(ContentKind::Folder(uuid)),
+                Ok(uuid) => Ok(Self::Folder(uuid)),
                 Err(_) => CannotParseContentKindFromString {
                     string_length: trash_or_id.len(),
                 }
@@ -107,10 +107,10 @@ impl<'de> Deserialize<'de> for ContentKind {
         let trash_or_id = String::deserialize(deserializer)?;
 
         if trash_or_id.eq_ignore_ascii_case("trash") {
-            Ok(ContentKind::Trash)
+            Ok(Self::Trash)
         } else {
             match Uuid::parse_str(&trash_or_id) {
-                Ok(uuid) => Ok(ContentKind::Folder(uuid)),
+                Ok(uuid) => Ok(Self::Folder(uuid)),
                 Err(_) => Err(de::Error::invalid_value(
                     de::Unexpected::Str(&trash_or_id),
                     &"\"trash\" or hyphenated lowercased UUID",
@@ -303,9 +303,9 @@ pub struct DirContentRequestPayload {
 utils::display_from_json!(DirContentRequestPayload);
 
 impl DirContentRequestPayload {
-    pub fn new(api_key: SecUtf8, folder_uuid: ContentKind) -> DirContentRequestPayload {
+    pub fn new(api_key: SecUtf8, folder_uuid: ContentKind) -> Self {
         let folders = format!("[\"{}\"]", folder_uuid);
-        DirContentRequestPayload {
+        Self {
             api_key,
             uuid: folder_uuid,
             folders,
@@ -534,17 +534,17 @@ impl DirCreateRequestPayload {
     /// Payload used for creation of the special Filen sync folder that is created by Filen client
     /// to store all synced files.
     /// You should only use this if you are writing your own replacement client.
-    pub fn payload_for_sync_folder_creation(api_key: SecUtf8, last_master_key: &SecUtf8) -> DirCreateRequestPayload {
-        let mut payload = DirCreateRequestPayload::new(api_key, FILEN_SYNC_FOLDER_NAME, last_master_key);
+    pub fn payload_for_sync_folder_creation(api_key: SecUtf8, last_master_key: &SecUtf8) -> Self {
+        let mut payload = Self::new(api_key, FILEN_SYNC_FOLDER_NAME, last_master_key);
         payload.dir_type = LocationKind::Sync;
         payload
     }
 
     /// Payload to create a new folder with the specified name.
-    pub fn new(api_key: SecUtf8, name: &str, last_master_key: &SecUtf8) -> DirCreateRequestPayload {
+    pub fn new(api_key: SecUtf8, name: &str, last_master_key: &SecUtf8) -> Self {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(name, last_master_key);
         let name_hashed = LocationNameMetadata::name_hashed(name);
-        DirCreateRequestPayload {
+        Self {
             api_key,
             uuid: Uuid::new_v4(),
             name_metadata,
@@ -579,10 +579,10 @@ utils::display_from_json!(DirSubCreateRequestPayload);
 
 impl DirSubCreateRequestPayload {
     /// Payload to create a new sub-folder with the specified name.
-    pub fn new(api_key: SecUtf8, name: &str, parent: Uuid, last_master_key: &SecUtf8) -> DirSubCreateRequestPayload {
+    pub fn new(api_key: SecUtf8, name: &str, parent: Uuid, last_master_key: &SecUtf8) -> Self {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(name, last_master_key);
         let name_hashed = LocationNameMetadata::name_hashed(name);
-        DirSubCreateRequestPayload {
+        Self {
             api_key,
             uuid: Uuid::new_v4(),
             name_metadata,
@@ -629,15 +629,10 @@ pub struct DirRenameRequestPayload {
 utils::display_from_json!(DirRenameRequestPayload);
 
 impl DirRenameRequestPayload {
-    pub fn new(
-        api_key: SecUtf8,
-        folder_uuid: Uuid,
-        new_folder_name: &str,
-        last_master_key: &SecUtf8,
-    ) -> DirRenameRequestPayload {
+    pub fn new(api_key: SecUtf8, folder_uuid: Uuid, new_folder_name: &str, last_master_key: &SecUtf8) -> Self {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(new_folder_name, last_master_key);
         let name_hashed = LocationNameMetadata::name_hashed(new_folder_name);
-        DirRenameRequestPayload {
+        Self {
             api_key,
             uuid: folder_uuid,
             name_metadata,

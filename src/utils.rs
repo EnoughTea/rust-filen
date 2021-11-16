@@ -1,6 +1,7 @@
 //! This module contains general purpose functions (aka dump).
 #![doc(hidden)]
 
+use crate::v1::FileChunkLocation;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use secstr::SecUtf8;
@@ -86,10 +87,7 @@ macro_rules! display_from_json {
         }
     };
 }
-// TODO: Should this be a derive proc macro?
 pub(crate) use display_from_json;
-
-use crate::v1::FileChunkLocation;
 
 #[cfg(test)]
 mod tests {
