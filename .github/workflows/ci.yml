@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+
+jobs:
+  build:
+      name: Lint & Build
+      runs-on: ubuntu-latest
+      steps:
+        - name: Setup | Checkout
+          uses: actions/checkout@v2
+        - name: Setup | Toolchain
+          uses: actions-rs/toolchain@v1
+          with:
+            toolchain: stable
+        - name: Build | Compile
+          uses: actions-rs/cargo@v1
+          with:
+            command: check
+        - name: Build | Release with all features
+          uses: actions-rs/cargo@v1
+          with:
+            command: build
+            args: --release --all-features
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lint | Checkout
+        uses: actions/checkout@v2
+      - name: Lint | Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+      - name: Lint | Fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+      - name: Lint | Clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+
+  compile:
+    name: Compile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compile | Checkout
+        uses: actions/checkout@v2
+      - name: Compile | Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+      - name: Compile | Compile
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+
+  test:
+    name: Test
+    strategy:
+      matrix:
+        os:
+        - ubuntu-latest
+        - windows-latest
+        - macOS-latest
+        rust:
+          - stable
+          - beta
+          - nightly
+    runs-on: ${{ matrix.os }}
+    needs: [compile]
+    steps:
+      - name: Test | Checkout
+        uses: actions/checkout@v2
+      - name: Test | Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+      - name: Test | Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
