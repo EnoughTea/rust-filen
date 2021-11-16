@@ -29,7 +29,14 @@ As a result, [reqwest](https://github.com/seanmonstar/reqwest) will be used inst
 
 ## Some examples
 
-If you're interested, that's how it all looks. Start by importing all we need for exemplary purposes:
+All Filen API requests are named by their original URL with `_request` appended at the end.
+Usually requests have associated `*RequestPayload` struct, which corresponds to original sent JSON, and
+`*ResponsePayload` struct, which corresponds to JSON response.
+For example, `/v1/user/baseFolders` request will be performed by
+`rust_filen::v1::user_base_folders_request` and `UserBaseFoldersRequestPayload`, with response stored in `UserBaseFoldersResponsePayload`.
+
+If you are interested, below is a series of small demos with all you need to know to start doing stuff with Filen.
+Start by importing all we need for exemplary purposes:
 
 ```rust
 use rust_filen::{*, v1::*};
@@ -39,13 +46,15 @@ use rust_filen::{*, v1::*};
 // Also, for advanced usage, there are rust_filen::crypto
 // with crypto-functions to encrypt/decrypt various Filen metadata and
 // rust_filen::queries as a way to define your own Filen API queries.
-use secstr::SecUtf8;
+use rust_filen::secstr::SecUtf8;
+use rust_filen::uuid::Uuid;
 ```
 
 While we are on the topic of imports, `rust_filen` re-exports all third-party crates used in public functions.
 Namely `rust_filen::ureq`, `rust_filen::reqwest`, `rust_filen::fure`, `rust_filen::retry`, `rust_filen::secstr` and `rust_filen::uuid`.
 
 Anyway, let's login first.
+
 
 ### Getting auth info
 
@@ -63,11 +72,11 @@ let user_two_factor_key = SecUtf8::from("XXXXXX");
 let settings = STANDARD_SETTINGS_BUNDLE.clone();
 let filen_settings = settings.filen;  // Provides Filen server URLs.
 
-let auth_info_request_payload = auth::AuthInfoRequestPayload {
+let auth_info_request_payload = AuthInfoRequestPayload {
     email: user_email.clone(),
     two_factor_key: user_two_factor_key.clone(),
 };
-let auth_info_response = auth::auth_info_request(&auth_info_request_payload, &filen_settings)?;
+let auth_info_response = auth_info_request(&auth_info_request_payload, &filen_settings)?;
 if !auth_info_response.status {
     panic!("Filen API failed to return auth info: {:?}", auth_info_response.message);
 }
@@ -85,13 +94,13 @@ let filen_password_and_m_key = auth_info_response_data
 ```rust
 // Now that we have Filen password, we can login. Master key is not needed for login,
 // but is also very important, since it is used often throughout the API to encrypt/decrypt metadata.
-let login_request_payload = auth::LoginRequestPayload {
+let login_request_payload = LoginRequestPayload {
     email: user_email.clone(),
     password: filen_password_and_m_key.sent_password.clone(),
     two_factor_key: user_two_factor_key.clone(),
     auth_version: auth_info_response_data.auth_version,
 };
-let login_response = auth::login_request(&login_request_payload, &filen_settings)?;
+let login_response = login_request(&login_request_payload, &filen_settings)?;
 if !login_response.status {
     panic!("Filen API failed to login: {:?}", auth_info_response.message);
 }
