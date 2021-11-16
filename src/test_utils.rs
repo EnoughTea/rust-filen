@@ -37,7 +37,7 @@ pub enum Error {
     },
 }
 
-pub(crate) fn init_server() -> (MockServer, FilenSettings) {
+pub fn init_server() -> (MockServer, FilenSettings) {
     let server = MockServer::start();
     let filen_settings = FilenSettings {
         api_servers: vec![Url::parse(&server.base_url()).unwrap()],
@@ -50,12 +50,12 @@ pub(crate) fn init_server() -> (MockServer, FilenSettings) {
     (server, filen_settings)
 }
 
-pub(crate) fn deserialize_from_file<U: DeserializeOwned>(response_file_path: &str) -> U {
+pub fn deserialize_from_file<U: DeserializeOwned>(response_file_path: &str) -> U {
     let response_contents = read_project_file(response_file_path);
     serde_json::from_slice(&response_contents).unwrap()
 }
 
-pub(crate) fn project_path() -> Result<Utf8PathBuf> {
+pub fn project_path() -> Result<Utf8PathBuf> {
     match env::var("CARGO_MANIFEST_DIR") {
         Ok(val) => Ok(Utf8PathBuf::from(val)),
         _ => {
@@ -67,7 +67,7 @@ pub(crate) fn project_path() -> Result<Utf8PathBuf> {
     }
 }
 
-pub(crate) fn project_path_for(file_path: &str) -> Utf8PathBuf {
+pub fn project_path_for(file_path: &str) -> Utf8PathBuf {
     match Path::new(&file_path).is_absolute() {
         true => Utf8PathBuf::from(file_path),
         false => {
@@ -79,18 +79,18 @@ pub(crate) fn project_path_for(file_path: &str) -> Utf8PathBuf {
 }
 
 /// Reads file at the specified path to the end.
-pub(crate) fn read_file<P: AsRef<Path>>(file_path: P) -> Result<Vec<u8>, std::io::Error> {
+pub fn read_file<P: AsRef<Path>>(file_path: P) -> Result<Vec<u8>, std::io::Error> {
     let mut f = File::open(&file_path)?;
     let mut buffer = Vec::new();
     f.read_to_end(&mut buffer).map(|_read_bytes| buffer)
 }
 
-pub(crate) fn read_project_file(file_path: &str) -> Vec<u8> {
+pub fn read_project_file(file_path: &str) -> Vec<u8> {
     let target_path = project_path_for(file_path);
-    read_file(&target_path).expect(&format!("Cannot read file: {}", target_path))
+    read_file(&target_path).unwrap_or_else(|_| panic!("Cannot read file: {}", target_path))
 }
 
-pub(crate) fn setup_json_mock<'server, T: Serialize, U: Serialize>(
+pub fn setup_json_mock<'server, T: Serialize, U: Serialize>(
     api_path: &str,
     request_payload: &T,
     response_payload: &U,
@@ -107,17 +107,17 @@ pub(crate) fn setup_json_mock<'server, T: Serialize, U: Serialize>(
     })
 }
 
-pub(crate) fn validate_contract<P, A, R, E>(
+pub fn validate_contract<P, A, R, E>(
     api_endpoint: &str,
     request_payload: P,
     expected_response_path: &str,
     action: A,
 ) -> MockServer
 where
-    P: Serialize,
-    R: fmt::Debug + DeserializeOwned + PartialEq + Serialize,
-    A: Fn(P, FilenSettings) -> Result<R, E>,
-    E: fmt::Debug,
+    P: Serialize + Send,
+    R: fmt::Debug + DeserializeOwned + PartialEq + Serialize + Send,
+    A: Fn(P, FilenSettings) -> Result<R, E> + Send,
+    E: fmt::Debug + Send,
 {
     let (server, filen_settings) = init_server();
     let expected_response: R = deserialize_from_file(expected_response_path);
@@ -131,18 +131,18 @@ where
 }
 
 #[cfg(feature = "async")]
-pub(crate) async fn validate_contract_async<P, A, R, E, F>(
+pub async fn validate_contract_async<P, A, R, E, F>(
     api_endpoint: &str,
     request_payload: P,
     expected_response_path: &str,
     action: A,
 ) -> MockServer
 where
-    P: Serialize,
-    R: fmt::Debug + DeserializeOwned + PartialEq + Serialize,
-    A: Fn(P, FilenSettings) -> F,
-    E: fmt::Debug,
-    F: futures::Future<Output = Result<R, E>>,
+    P: Serialize + Send,
+    R: fmt::Debug + DeserializeOwned + PartialEq + Serialize + Send,
+    A: Fn(P, FilenSettings) -> F + Send,
+    E: fmt::Debug + Send,
+    F: futures::Future<Output = Result<R, E>> + Send,
 {
     let (server, filen_settings) = init_server();
     let expected_response: R = deserialize_from_file(expected_response_path);

@@ -638,7 +638,7 @@ mod tests {
     #[test]
     fn location_should_be_deserialized_from_empty_string_uuid() {
         let json = r#"{"exists":false, "uuid":""}"#;
-        let result = serde_json::from_str::<LocationExistsResponseData>(&json);
+        let result = serde_json::from_str::<LocationExistsResponseData>(json);
 
         assert!(result.unwrap().uuid.is_none());
     }
@@ -648,7 +648,7 @@ mod tests {
         let json = r#""6h""#;
         let expected = Expire::Hours(6);
 
-        let result = serde_json::from_str::<Expire>(&json);
+        let result = serde_json::from_str::<Expire>(json);
 
         assert_eq!(result.unwrap(), expected);
     }
@@ -658,7 +658,7 @@ mod tests {
         let json = r#""30d""#;
         let expected = Expire::Days(30);
 
-        let result = serde_json::from_str::<Expire>(&json);
+        let result = serde_json::from_str::<Expire>(json);
 
         assert_eq!(result.unwrap(), expected);
     }
@@ -668,7 +668,7 @@ mod tests {
         let json = r#""never""#;
         let expected = Expire::Never;
 
-        let result = serde_json::from_str::<Expire>(&json);
+        let result = serde_json::from_str::<Expire>(json);
 
         assert_eq!(result.unwrap(), expected);
     }
@@ -678,7 +678,7 @@ mod tests {
         let json = r#""base""#;
         let expected = ParentOrBase::Base;
 
-        let result = serde_json::from_str::<ParentOrBase>(&json);
+        let result = serde_json::from_str::<ParentOrBase>(json);
 
         assert_eq!(result.unwrap(), expected);
     }
@@ -688,7 +688,7 @@ mod tests {
         let json = r#""00000000-0000-0000-0000-000000000000""#;
         let expected = ParentOrBase::Folder(Uuid::nil());
 
-        let result = serde_json::from_str::<ParentOrBase>(&json);
+        let result = serde_json::from_str::<ParentOrBase>(json);
 
         assert_eq!(result.unwrap(), expected);
     }

@@ -81,7 +81,7 @@ pub fn query_filen_api<T: Serialize + ?Sized, U: DeserializeOwned>(
 /// Asynchronously sends POST with given payload to one of Filen API servers.
 /// `api_endpoint` parameter should be relative, eg `/v1/some/api`, as one of the Filen servers will be chosen randomly.
 #[cfg(feature = "async")]
-pub async fn query_filen_api_async<T: Serialize + ?Sized, U: DeserializeOwned>(
+pub async fn query_filen_api_async<T: Serialize + ?Sized + Sync, U: DeserializeOwned>(
     api_endpoint: &str,
     payload: &T,
     filen_settings: &FilenSettings,
@@ -273,7 +273,7 @@ fn post_json<T: Serialize + ?Sized>(
 
 /// Asynchronously sends POST with given payload and timeout to the specified URL.
 #[cfg(feature = "async")]
-async fn post_json_async<T: Serialize + ?Sized>(
+async fn post_json_async<T: Serialize + ?Sized + Sync>(
     url: &str,
     payload: &T,
     timeout_secs: u64,
@@ -316,7 +316,7 @@ fn deserialize_response<U, F>(
 ) -> Result<U>
 where
     U: DeserializeOwned,
-    F: FnOnce() -> String,
+    F: Send + FnOnce() -> String,
 {
     let response = request_result.context(ReqwestWebRequestFailed {
         message: error_message(),
@@ -333,7 +333,7 @@ async fn deserialize_response_async<U, F>(
 ) -> Result<U>
 where
     U: DeserializeOwned,
-    F: FnOnce() -> String,
+    F: Send + FnOnce() -> String,
 {
     let response = request_result.context(ReqwestWebRequestFailed {
         message: error_message(),

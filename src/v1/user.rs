@@ -45,8 +45,7 @@ impl<'de> Deserialize<'de> for FilenPaymentGateway {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        let deserialized = Self::from_str(&s).unwrap_or_else(|_| Self::Unknown(s));
-        Ok(deserialized)
+        Ok(Self::from_str(&s).unwrap_or_else(|_| Self::Unknown(s)))
     }
 }
 

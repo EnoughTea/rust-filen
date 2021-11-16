@@ -120,20 +120,21 @@ pub(crate) fn bool_from_string<'de, D>(deserializer: D) -> Result<bool, D::Error
 where
     D: Deserializer<'de>,
 {
-    let deserialized = String::deserialize(deserializer)?;
-    let trimmed_value = deserialized.trim();
+    let deserialized_string = String::deserialize(deserializer)?;
+    let trimmed_value = deserialized_string.trim();
     if trimmed_value.eq_ignore_ascii_case("true") {
         Ok(true)
     } else if trimmed_value.eq_ignore_ascii_case("false") {
         Ok(false)
     } else {
         Err(de::Error::invalid_value(
-            de::Unexpected::Str(&deserialized),
+            de::Unexpected::Str(&deserialized_string),
             &"\"true\" or \"false\"",
         ))
     }
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub(crate) fn bool_to_string<S>(value: &bool, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -156,6 +157,7 @@ where
     }
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub(crate) fn bool_to_int<S>(value: &bool, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -174,6 +176,7 @@ where
     Ok(Option::<i32>::deserialize(deserializer)?.map(|int| int != 0))
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub(crate) fn optional_bool_to_int<S>(value: &Option<bool>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,

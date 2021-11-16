@@ -109,14 +109,14 @@ pub fn hash_password(password: &str) -> String {
 
 /// Calculates login key from the given user password and service-provided salt using SHA512 with 64 bytes output.
 pub fn derive_key_from_password_512(password: &[u8], salt: &[u8], iterations: u32) -> [u8; 64] {
-    let mut pbkdf2_hash = [0u8; 64];
+    let mut pbkdf2_hash = [0_u8; 64];
     derive_key_from_password_generic::<HmacSha512>(password, salt, iterations, &mut pbkdf2_hash);
     pbkdf2_hash
 }
 
 /// Calculates login key from the given user password and service-provided salt using SHA512 with 32 bytes output.
 pub fn derive_key_from_password_256(password: &[u8], salt: &[u8], iterations: u32) -> [u8; 32] {
-    let mut pbkdf2_hash = [0u8; 32];
+    let mut pbkdf2_hash = [0_u8; 32];
     derive_key_from_password_generic::<HmacSha512>(password, salt, iterations, &mut pbkdf2_hash);
     pbkdf2_hash
 }
@@ -125,7 +125,7 @@ pub fn derive_key_from_password_256(password: &[u8], salt: &[u8], iterations: u3
 /// Depending on metadata version, different encryption algos will be used.
 pub fn encrypt_metadata(data: &[u8], key: &[u8], metadata_version: u32) -> Result<Vec<u8>> {
     if data.is_empty() {
-        return Ok(vec![0u8; 0]);
+        return Ok(vec![0_u8; 0]);
     }
 
     match metadata_version {
@@ -146,7 +146,7 @@ pub fn encrypt_metadata(data: &[u8], key: &[u8], metadata_version: u32) -> Resul
 /// given keys. Tries to decrypt using given keys until one of them succeeds.
 pub fn decrypt_metadata_any_key(data: &[u8], keys: &[Vec<u8>]) -> Result<Vec<u8>> {
     if data.is_empty() {
-        return Ok(vec![0u8; 0]);
+        return Ok(vec![0_u8; 0]);
     }
 
     ensure!(
@@ -156,7 +156,7 @@ pub fn decrypt_metadata_any_key(data: &[u8], keys: &[Vec<u8>]) -> Result<Vec<u8>
         }
     );
 
-    let mut result = Ok(vec![0u8; 0]);
+    let mut result = Ok(vec![0_u8; 0]);
     for key in keys {
         result = decrypt_metadata(data, key);
         if result.is_ok() {
@@ -194,7 +194,7 @@ pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     }
 
     if data.is_empty() {
-        return Ok(vec![0u8; 0]);
+        return Ok(vec![0_u8; 0]);
     }
 
     let metadata_version = read_metadata_version(data)?;
@@ -375,7 +375,7 @@ pub fn encrypt_to_link_password_and_salt(plain_text_password: &SecUtf8) -> (Stri
 /// Calculates OpenSSL-compatible AES 256 CBC (Pkcs7 padding) hash with 'Salted__' prefix,
 /// then 8 bytes of salt, rest is ciphered.
 pub fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -> Vec<u8> {
-    let mut salt = [0u8; OPENSSL_SALT_LENGTH];
+    let mut salt = [0_u8; OPENSSL_SALT_LENGTH];
     match maybe_salt {
         Some(user_salt) if user_salt.len() == OPENSSL_SALT_LENGTH => salt.copy_from_slice(user_salt),
         _ => rand::thread_rng().fill(&mut salt),
@@ -532,7 +532,6 @@ mod tests {
     use super::*;
     use crate::test_utils::*;
     use pretty_assertions::{assert_eq, assert_ne};
-    use std::convert::TryInto;
 
     #[test]
     fn encrypt_metadata_v1_should_use_simple_aes_with_base64() {
@@ -555,7 +554,7 @@ mod tests {
         let expected_metadata = "{\"name\":\"perform.js\",\"size\":156,\"mime\":\"application/javascript\",\
         \"key\":\"tqNrczqVdTCgFzB1b1gyiQBIYmwDBwa9\",\"lastModified\":499162500}";
 
-        let decrypted_metadata = decrypt_metadata(&metadata_base64.as_bytes(), m_key.as_bytes()).unwrap();
+        let decrypted_metadata = decrypt_metadata(metadata_base64.as_bytes(), m_key.as_bytes()).unwrap();
 
         assert_eq!(String::from_utf8_lossy(&decrypted_metadata), expected_metadata);
     }
@@ -646,7 +645,7 @@ mod tests {
     #[test]
     fn encrypt_aes_openssl_should_return_valid_aes_hash_with_explicit_salt() {
         let key = b"test";
-        let actual_aes_hash_bytes = encrypt_aes_openssl(b"This is Jimmy.", key, Some(&[0u8, 1, 2, 3, 4, 5, 6, 7]));
+        let actual_aes_hash_bytes = encrypt_aes_openssl(b"This is Jimmy.", key, Some(&[0_u8, 1, 2, 3, 4, 5, 6, 7]));
         let actual_aes_hash = base64::encode(&actual_aes_hash_bytes);
 
         assert_eq!(
@@ -671,7 +670,7 @@ mod tests {
     fn decrypt_aes_openssl_should_decrypt_currently_encrypted() {
         let key = b"test";
         let expected_data = b"This is Jimmy.";
-        let encrypted_data = encrypt_aes_openssl(expected_data, key, Some(&[0u8, 1, 2, 3, 4, 5, 6, 7]));
+        let encrypted_data = encrypt_aes_openssl(expected_data, key, Some(&[0_u8, 1, 2, 3, 4, 5, 6, 7]));
 
         let actual_data_result = decrypt_aes_openssl(&encrypted_data, key);
         let actual_data = actual_data_result.unwrap();
@@ -686,7 +685,7 @@ mod tests {
         let private_key_file_contents = read_project_file("tests/resources/filen_private_key.txt");
         let private_key_metadata_encrypted = String::from_utf8_lossy(&private_key_file_contents);
         let private_key_decrypted = decrypt_metadata_str(&private_key_metadata_encrypted, &m_key)
-            .and_then(|str| Ok(SecVec::from(base64::decode(str).unwrap())))
+            .map(|str| SecVec::from(base64::decode(str).unwrap()))
             .unwrap();
         let public_key_file_contents = read_project_file("tests/resources/filen_public_key.txt");
         let public_key_file = base64::decode(public_key_file_contents).unwrap();
@@ -741,7 +740,7 @@ mod tests {
 
     #[test]
     fn decrypt_file_data_should_decrypt_raw_aes_cbc() {
-        let file_key: &[u8; 32] = "sh1YRHfx22Ij40tQBbt6BgpBlqkzch8Y".as_bytes().try_into().unwrap();
+        let file_key: &[u8; 32] = b"sh1YRHfx22Ij40tQBbt6BgpBlqkzch8Y";
         let file_encrypted_bytes = read_project_file("tests/resources/responses/download_file_aes_cbc_as_is.bin");
 
         let file_decrypted_bytes_result = decrypt_file_chunk(&file_encrypted_bytes, file_key, 1);

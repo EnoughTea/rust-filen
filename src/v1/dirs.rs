@@ -896,7 +896,7 @@ mod tests {
         let json = r#""trash""#;
         let expected = ContentKind::Trash;
 
-        let result = serde_json::from_str::<ContentKind>(&json);
+        let result = serde_json::from_str::<ContentKind>(json);
 
         assert_eq!(result.unwrap(), expected);
     }
@@ -906,7 +906,7 @@ mod tests {
         let json = r#""00000000-0000-0000-0000-000000000000""#;
         let expected = ContentKind::Folder(Uuid::nil());
 
-        let result = serde_json::from_str::<ContentKind>(&json);
+        let result = serde_json::from_str::<ContentKind>(json);
 
         assert_eq!(result.unwrap(), expected);
     }

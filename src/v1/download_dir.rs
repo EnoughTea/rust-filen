@@ -148,9 +148,9 @@ macro_rules! gen_download_and_decrypt_file {
                 &self.get_file_location(),
                 self.version,
                 file_key,
+                writer,
                 retry_settings,
                 filen_settings,
-                writer,
             )
         }
 
@@ -167,9 +167,9 @@ macro_rules! gen_download_and_decrypt_file {
                 &self.get_file_location(),
                 self.version,
                 file_key,
+                writer,
                 retry_settings,
                 filen_settings,
-                writer,
             )
             .await
         }

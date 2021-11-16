@@ -98,30 +98,18 @@ pub struct SyncClientMessageRequestPayload {
 utils::display_from_json!(SyncClientMessageRequestPayload);
 
 impl SyncClientMessageRequestPayload {
-    pub fn from_json(
-        api_key: SecUtf8,
-        json_value: serde_json::Value,
-        last_master_key: &SecUtf8,
-    ) -> SyncClientMessageRequestPayload {
+    pub fn from_json(api_key: SecUtf8, json_value: serde_json::Value, last_master_key: &SecUtf8) -> Self {
         let metadata =
             crypto::encrypt_metadata_str(&json_value.to_string(), last_master_key, METADATA_VERSION).unwrap();
-        SyncClientMessageRequestPayload {
+        Self {
             api_key,
             args: metadata,
         }
     }
 
-    pub fn from_data<T: Serialize>(
-        api_key: SecUtf8,
-        data: T,
-        last_master_key: &SecUtf8,
-    ) -> Result<SyncClientMessageRequestPayload> {
+    pub fn from_data<T: Serialize>(api_key: SecUtf8, data: T, last_master_key: &SecUtf8) -> Result<Self> {
         let json_value = serde_json::to_value(&data).context(CannotSerializeDataToJson {})?;
-        Ok(SyncClientMessageRequestPayload::from_json(
-            api_key,
-            json_value,
-            last_master_key,
-        ))
+        Ok(Self::from_json(api_key, json_value, last_master_key))
     }
 }
 

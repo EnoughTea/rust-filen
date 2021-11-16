@@ -36,8 +36,8 @@ pub struct RetrySettings {
 }
 
 impl RetrySettings {
-    pub fn new(max_tries: usize, initial_delay: Duration, exp_factor: u32, max_delay: Duration) -> RetrySettings {
-        RetrySettings {
+    pub const fn new(max_tries: usize, initial_delay: Duration, exp_factor: u32, max_delay: Duration) -> Self {
+        Self {
             initial_delay,
             exp_factor,
             max_delay,
@@ -52,19 +52,19 @@ impl RetrySettings {
     }
 
     #[cfg(feature = "async")]
-    pub async fn retry_async<T, CF, OpErr>(self: &RetrySettings, operation: CF) -> Result<T, OpErr>
+    pub async fn retry_async<T, CF, OpErr>(&self, operation: CF) -> Result<T, OpErr>
     where
-        CF: fure::CreateFuture<T, OpErr>,
-        OpErr: std::error::Error + Send + Sync,
+        CF: fure::CreateFuture<T, OpErr> + Send,
+        OpErr: std::error::Error + Send,
     {
         let exp_backoff = self.get_exp_backoff_iterator();
         let policy = fure::policies::attempts(fure::policies::backoff(exp_backoff), self.max_tries);
         fure::retry(operation, policy).await
     }
 
-    pub fn retry<O, R, OR, OpErr>(self: &RetrySettings, operation: O) -> Result<R, OpErr>
+    pub fn retry<O, R, OR, OpErr>(&self, operation: O) -> Result<R, OpErr>
     where
-        O: FnMut() -> OR,
+        O: FnMut() -> OR + Send,
         OR: Into<retry::OperationResult<R, OpErr>>,
         OpErr: std::error::Error + Send + Sync,
     {
@@ -79,22 +79,23 @@ impl RetrySettings {
     }
 
     /// Get a reference to the initial delay.
-    pub fn initial_delay(&self) -> &Duration {
+    #[must_use]
+    pub const fn initial_delay(&self) -> &Duration {
         &self.initial_delay
     }
 
     /// Get the exponential factor. If set to 0, [RetrySettings::max_delay] will always be used as a delay.
-    pub fn exp_factor(&self) -> u32 {
+    pub const fn exp_factor(&self) -> u32 {
         self.exp_factor
     }
 
     /// Get a reference to the maximum possible delay for exponential backoff.
-    pub fn max_delay(&self) -> &Duration {
+    pub const fn max_delay(&self) -> &Duration {
         &self.max_delay
     }
 
     /// Get a reference to the amount of retries to perform when something fails. If set to 0, no retries will be made.
-    pub fn max_tries(&self) -> usize {
+    pub const fn max_tries(&self) -> usize {
         self.max_tries
     }
 }

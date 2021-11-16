@@ -142,17 +142,17 @@ pub async fn download_file_chunk_async(
 pub fn download_and_decrypt_file_from_data_and_key<W: Write>(
     file_data: &FileData,
     file_key: &SecUtf8,
+    writer: &mut std::io::BufWriter<W>,
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
-    writer: &mut std::io::BufWriter<W>,
 ) -> Result<u64> {
     download_and_decrypt_file(
         &file_data.get_file_location(),
         file_data.version,
         file_key,
+        writer,
         retry_settings,
         filen_settings,
-        writer,
     )
 }
 
@@ -167,17 +167,17 @@ pub fn download_and_decrypt_file_from_data_and_key<W: Write>(
 pub async fn download_and_decrypt_file_from_data_and_key_async<W: Write>(
     file_data: &FileData,
     file_key: &SecUtf8,
+    writer: &mut std::io::BufWriter<W>,
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
-    writer: &mut std::io::BufWriter<W>,
 ) -> Result<u64> {
     download_and_decrypt_file_async(
         &file_data.get_file_location(),
         file_data.version,
         file_key,
+        writer,
         retry_settings,
         filen_settings,
-        writer,
     )
     .await
 }
@@ -190,9 +190,9 @@ pub fn download_and_decrypt_file<W: Write>(
     file_location: &FileLocation,
     version: u32,
     file_key: &SecUtf8,
+    writer: &mut std::io::BufWriter<W>,
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
-    writer: &mut std::io::BufWriter<W>,
 ) -> Result<u64> {
     let written_chunk_lengths = (0..file_location.chunks)
         .map(|chunk_index| {
@@ -231,9 +231,9 @@ pub async fn download_and_decrypt_file_async<W: Write>(
     file_location: &FileLocation,
     version: u32,
     file_key: &SecUtf8,
+    writer: &mut std::io::BufWriter<W>,
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
-    writer: &mut std::io::BufWriter<W>,
 ) -> Result<u64> {
     let download_and_decrypt_action = |batch_index: usize, batch_indices: Vec<u32>| async move {
         let batch_or_err = download_batch_async(file_location, &batch_indices, retry_settings, filen_settings).await;

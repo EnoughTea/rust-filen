@@ -387,14 +387,14 @@ mod tests {
         let private_key_metadata_encrypted = String::from_utf8_lossy(&private_key_file_contents).to_string();
         let m_key = SecUtf8::from("ed8d39b6c2d00ece398199a3e83988f1c4942b24");
         let expected = crypto::decrypt_metadata_str(&private_key_metadata_encrypted, &m_key)
-            .and_then(|str| Ok(SecVec::from(base64::decode(str).unwrap())))
+            .map(|str| SecVec::from(base64::decode(str).unwrap()))
             .unwrap();
         let user_key_pair = UserKeyPairInfoResponseData {
             public_key: None,
             private_key_metadata: Some(private_key_metadata_encrypted),
         };
 
-        let decrypted_private_key = user_key_pair.decrypt_private_key(&[SecUtf8::from(m_key)]).unwrap();
+        let decrypted_private_key = user_key_pair.decrypt_private_key(&[m_key]).unwrap();
 
         assert_eq!(decrypted_private_key.unsecure(), expected.unsecure());
     }

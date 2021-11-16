@@ -3,7 +3,7 @@
 /// Represents single file chunk bounds, defined by chunk starting byte and chunk length.
 /// Also stores this chunk's index in its file.
 #[derive(Copy, Clone, Debug)]
-pub(crate) struct FileChunkPosition {
+pub struct FileChunkPosition {
     /// Chunk index.
     pub index: u32,
 
@@ -16,7 +16,7 @@ pub(crate) struct FileChunkPosition {
 
 /// Used as an iterator calculating file chunk positions from the given file size and chunk size. Who needs for loops, right?
 #[derive(Copy, Clone, Debug)]
-pub(crate) struct FileChunkPositions {
+pub struct FileChunkPositions {
     current_index: u32,
     current_offset: u64,
     chunk_size: u32,
@@ -24,12 +24,12 @@ pub(crate) struct FileChunkPositions {
 }
 
 impl FileChunkPositions {
-    pub fn new(chunk_size: u32, file_size: u64) -> FileChunkPositions {
+    pub fn new(chunk_size: u32, file_size: u64) -> Self {
         if chunk_size == 0 {
             panic!("Chunk size cannot be 0");
         }
 
-        FileChunkPositions {
+        Self {
             current_index: 0,
             current_offset: 0,
             chunk_size,
@@ -115,13 +115,13 @@ mod tests {
 
     #[test]
     fn offsets_for_zero_is_zero() {
-        let zero = FileChunkPositions::new(1, 0u64).collect::<Vec<FileChunkPosition>>();
-        assert!(zero.is_empty());
+        let zero = FileChunkPositions::new(1, 0_u64);
+        assert_eq!(zero.count(), 0);
     }
 
     #[test]
     fn chunk_size_bigger_than_file_should_return_correctly_sized_offset() {
-        let size = 100u32;
+        let size = 100_u32;
         let offsets = FileChunkPositions::new(1024 * 1024, size as u64).collect::<Vec<FileChunkPosition>>();
         assert_eq!(offsets.len(), 1);
         assert_eq!(offsets[0].chunk_size, size);

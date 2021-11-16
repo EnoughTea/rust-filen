@@ -77,8 +77,7 @@ impl<'de> Deserialize<'de> for UserEventKind {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        let deserialized = Self::from_str(&s).unwrap_or_else(|_| Self::Unknown(s));
-        Ok(deserialized)
+        Ok(Self::from_str(&s).unwrap_or_else(|_| Self::Unknown(s)))
     }
 }
 
@@ -1089,28 +1088,29 @@ mod tests {
     fn unknown_user_event_kind_should_be_serialized() {
         let expected = r#""this is some unknown value""#;
 
-        let serialized =
+        let serialized_user_event_kind =
             serde_json::to_string(&UserEventKind::Unknown("this is some unknown value".to_owned())).unwrap();
 
-        assert_eq!(serialized, expected)
+        assert_eq!(serialized_user_event_kind, expected)
     }
 
     #[test]
     fn known_user_event_kind_should_be_deserialized() {
         let expected = UserEventKind::DeleteAll;
 
-        let deserialized = serde_json::from_str::<UserEventKind>(r#""deleteAll""#).unwrap();
+        let deserialized_user_event_kind = serde_json::from_str::<UserEventKind>(r#""deleteAll""#).unwrap();
 
-        assert_eq!(deserialized, expected)
+        assert_eq!(deserialized_user_event_kind, expected)
     }
 
     #[test]
     fn unknown_user_event_kind_should_be_deserialized() {
         let expected = UserEventKind::Unknown("this is some unknown value".to_owned());
 
-        let deserialized = serde_json::from_str::<UserEventKind>(r#""this is some unknown value""#).unwrap();
+        let deserialized_user_event_kind =
+            serde_json::from_str::<UserEventKind>(r#""this is some unknown value""#).unwrap();
 
-        assert_eq!(deserialized, expected)
+        assert_eq!(deserialized_user_event_kind, expected)
     }
 
     #[test]

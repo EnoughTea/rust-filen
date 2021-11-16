@@ -184,7 +184,7 @@ impl FileUploadProperties {
         version: u32,
         parent_folder_uuid: Uuid,
         last_master_key: &SecUtf8,
-    ) -> FileUploadProperties {
+    ) -> Self {
         let rm = utils::random_alphanumeric_string(32);
         let upload_key = utils::random_alphanumeric_string(32);
 
@@ -195,7 +195,7 @@ impl FileUploadProperties {
         let name_hashed = LocationNameMetadata::name_hashed(&file_properties.name);
 
         let file_chunks = calculate_chunk_count(FILE_CHUNK_SIZE, file_properties.size);
-        FileUploadProperties {
+        Self {
             uuid: Uuid::new_v4(),
             name_metadata: name_metadata_encrypted,
             name_hashed,
@@ -251,11 +251,8 @@ pub struct FileUploadInfo {
 }
 
 impl FileUploadInfo {
-    pub fn new(
-        upload_properties: FileUploadProperties,
-        chunk_responses: Vec<UploadFileChunkResponsePayload>,
-    ) -> FileUploadInfo {
-        FileUploadInfo {
+    pub fn new(upload_properties: FileUploadProperties, chunk_responses: Vec<UploadFileChunkResponsePayload>) -> Self {
+        Self {
             properties: upload_properties,
             chunk_responses,
         }
@@ -498,7 +495,7 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
 /// You can pass [crate::NO_RETRIES] if you really want to fail the entire file upload  even if a single chunk
 /// upload request fails temporarily, otherwise [crate::STANDARD_RETRIES] is a better fit.
 #[cfg(feature = "async")]
-pub async fn encrypt_and_upload_file_async<R: Read + Seek>(
+pub async fn encrypt_and_upload_file_async<R: Read + Seek + Send>(
     api_key: &SecUtf8,
     parent_uuid: Uuid,
     file_properties: &FileProperties,
@@ -609,7 +606,7 @@ fn upload_chunks<R: Read + Seek>(
 /// Returned file chunk upload responses are in order: first upload response corresponds to the
 /// first file chunk uploaded, and so on.
 #[cfg(feature = "async")]
-async fn upload_chunks_async<R: Read + Seek>(
+async fn upload_chunks_async<R: Read + Seek + Send>(
     api_key: &SecUtf8,
     file_chunk_size: u32,
     file_size: u64,
@@ -646,7 +643,7 @@ where
 {
     let file_chunk_positions = FileChunkPositions::new(file_chunk_size, file_size);
     file_chunk_positions.map(move |chunk_pos| {
-        let mut chunk_buf = vec![0u8; chunk_pos.chunk_size as usize];
+        let mut chunk_buf = vec![0_u8; chunk_pos.chunk_size as usize];
         reader
             .seek(SeekFrom::Start(chunk_pos.start_position))
             .and_then(|_| reader.read_exact(&mut chunk_buf))
@@ -666,7 +663,7 @@ fn send_dummy_chunk(
     assert!(file_size != 0);
 
     let last_index = ((file_size - 1) / chunk_size as u64) as u32;
-    let dummy_buf = vec![0u8; 0];
+    let dummy_buf = vec![0_u8; 0];
     retry_settings
         .retry(|| encrypt_and_upload_chunk(api_key, last_index + 1, &dummy_buf, upload_properties, filen_settings))
 }
@@ -683,7 +680,7 @@ async fn send_dummy_chunk_async(
     assert!(file_size != 0);
 
     let last_index = ((file_size - 1) / chunk_size as u64) as u32;
-    let dummy_buf = vec![0u8; 0];
+    let dummy_buf = vec![0_u8; 0];
     retry_settings
         .retry_async(|| {
             encrypt_and_upload_chunk_async(api_key, last_index + 1, &dummy_buf, upload_properties, filen_settings)
@@ -691,9 +688,9 @@ async fn send_dummy_chunk_async(
         .await
 }
 
-fn calculate_chunk_count(chunk_size: u32, file_size: u64) -> u32 {
-    let mut dummy_offset = 0u64;
-    let mut file_chunks = 0u32;
+const fn calculate_chunk_count(chunk_size: u32, file_size: u64) -> u32 {
+    let mut dummy_offset = 0_u64;
+    let mut file_chunks = 0_u32;
     while dummy_offset < file_size {
         file_chunks += 1;
         dummy_offset += chunk_size as u64;

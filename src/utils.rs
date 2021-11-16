@@ -8,7 +8,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 /// Generate random alphanumeric string of the specified length.
-pub(crate) fn random_alphanumeric_string(size: usize) -> String {
+pub fn random_alphanumeric_string(size: usize) -> String {
     thread_rng()
         .sample_iter(&Alphanumeric)
         .take(size)
@@ -17,12 +17,12 @@ pub(crate) fn random_alphanumeric_string(size: usize) -> String {
 }
 
 /// Converts the specified bytes into corresponding hex-encoded string.
-pub(crate) fn bytes_to_hex_string(data: &[u8]) -> String {
+pub fn bytes_to_hex_string(data: &[u8]) -> String {
     data.iter().map(|byte| format!("{:02x}", byte)).collect()
 }
 
 /// Treats given bytes as unicode scalar values and builds a string out of them.
-pub(crate) fn bytes_to_binary_string(bytes: &[u8]) -> String {
+pub fn bytes_to_binary_string(bytes: &[u8]) -> String {
     let mut buffer: String = String::with_capacity(bytes.len());
     for byte in bytes.iter() {
         buffer.push(*byte as char);
@@ -31,7 +31,7 @@ pub(crate) fn bytes_to_binary_string(bytes: &[u8]) -> String {
 }
 
 /// TODO: Remove when Result::flatten comes into stable compiler.
-pub(crate) fn flatten_result<V, E, F>(result: Result<Result<V, F>, E>) -> Result<V, E>
+pub fn flatten_result<V, E, F>(result: Result<Result<V, F>, E>) -> Result<V, E>
 where
     F: Into<E>,
 {
@@ -39,7 +39,7 @@ where
 }
 
 /// TODO: Remove when Result::flatten comes into stable compiler.
-pub(crate) fn flatten_result_with<V, F, E, O: FnOnce(F) -> E>(result: Result<Result<V, F>, E>, op: O) -> Result<V, E> {
+pub fn flatten_result_with<V, F, E, O: FnOnce(F) -> E>(result: Result<Result<V, F>, E>, op: O) -> Result<V, E> {
     match result {
         Ok(Ok(v)) => Ok(v),
         Ok(Err(f)) => Err(op(f)),
@@ -47,7 +47,7 @@ pub(crate) fn flatten_result_with<V, F, E, O: FnOnce(F) -> E>(result: Result<Res
     }
 }
 
-pub(crate) fn filen_file_location_to_api_endpoint(location: &FileChunkLocation) -> String {
+pub fn filen_file_location_to_api_endpoint(location: &FileChunkLocation) -> String {
     filen_file_address_to_api_endpoint(
         &location.region,
         &location.bucket,
@@ -56,12 +56,7 @@ pub(crate) fn filen_file_location_to_api_endpoint(location: &FileChunkLocation) 
     )
 }
 
-pub(crate) fn filen_file_address_to_api_endpoint(
-    region: &str,
-    bucket: &str,
-    file_uuid: &Uuid,
-    chunk_index: u32,
-) -> String {
+pub fn filen_file_address_to_api_endpoint(region: &str, bucket: &str, file_uuid: &Uuid, chunk_index: u32) -> String {
     vec![
         region,
         bucket,
@@ -72,7 +67,7 @@ pub(crate) fn filen_file_address_to_api_endpoint(
     .replace("//", "/")
 }
 
-pub(crate) fn api_key_json(api_key: &SecUtf8) -> Value {
+pub fn api_key_json(api_key: &SecUtf8) -> Value {
     json!({ "apiKey": api_key })
 }
 

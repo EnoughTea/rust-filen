@@ -44,26 +44,26 @@ pub struct FilenPasswordWithMasterKey {
 
 impl FilenPasswordWithMasterKey {
     /// Derives master key and login hash from user's password. Expects plain text password.
-    pub fn from_user_password(password: &SecUtf8) -> FilenPasswordWithMasterKey {
+    pub fn from_user_password(password: &SecUtf8) -> Self {
         let m_key = SecUtf8::from(crypto::hash_fn(password.unsecure()));
         let sent_password = SecUtf8::from(crypto::hash_password(password.unsecure()));
-        FilenPasswordWithMasterKey { m_key, sent_password }
+        Self { m_key, sent_password }
     }
 
     /// Derives master key and login hash from user's password and Filen salt (from /auth/info API call).
     /// Expects plain text password.
-    pub fn from_user_password_and_auth_info_salt(password: &SecUtf8, salt: &SecUtf8) -> FilenPasswordWithMasterKey {
+    pub fn from_user_password_and_auth_info_salt(password: &SecUtf8, salt: &SecUtf8) -> Self {
         let (password_bytes, salt_bytes) = (password.unsecure().as_bytes(), salt.unsecure().as_bytes());
         let pbkdf2_hash = crypto::derive_key_from_password_512(password_bytes, salt_bytes, 200_000);
-        FilenPasswordWithMasterKey::from_derived_key(&pbkdf2_hash)
+        Self::from_derived_key(&pbkdf2_hash)
     }
 
-    pub(crate) fn from_derived_key(derived_key: &[u8; 64]) -> FilenPasswordWithMasterKey {
+    pub(crate) fn from_derived_key(derived_key: &[u8; 64]) -> Self {
         let (m_key, password_part) = derived_key.split_at(derived_key.len() / 2);
         let m_key_hex = utils::bytes_to_hex_string(m_key);
         let sent_password = sha512(&utils::bytes_to_hex_string(password_part)).to_vec();
         let sent_password_hex = utils::bytes_to_hex_string(&sent_password);
-        FilenPasswordWithMasterKey {
+        Self {
             m_key: SecUtf8::from(m_key_hex),
             sent_password: SecUtf8::from(sent_password_hex),
         }
