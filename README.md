@@ -1,4 +1,11 @@
-# Library to call Filen.io API from Rust
+# rust_filen  &emsp; [![Build Status]][actions] [![Latest Version]][crates.io]
+
+[Build Status]: https://img.shields.io/github/workflow/status/EnoughTea/rust-filen/CI/main
+[actions]: https://github.com/EnoughTea/rust-filen/actions?query=branch%3Amain
+[Latest Version]: https://img.shields.io/crates/v/rust_filen.svg
+[crates.io]: https://crates.io/crates/rust_filen
+
+This is a library to call Filen.io API from Rust.
 
 [Filen.io](https://filen.io) is a cloud storage provider with an open-source [desktop client](https://github.com/FilenCloudDienste/filen-desktop). My goal was to write a library which calls Filen's API in a meaningful way, and to learn Rust in process.
 Filen's API was undocumented at time of writing and I tried to get it right by studying the client's sources, so take it all with a grain of salt.
