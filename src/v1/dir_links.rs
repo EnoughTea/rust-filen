@@ -1,4 +1,11 @@
-use crate::{crypto, filen_settings::*, queries, utils, v1::*};
+use crate::{
+    crypto, queries, utils,
+    v1::{
+        files, fs, response_payload, Expire, FileProperties, HasFileMetadata, HasLinkKey, HasLocationName, HasUuid,
+        ItemKind, Lazy, LocationNameMetadata, ParentOrBase, PasswordState, PlainResponsePayload,
+    },
+    FilenSettings,
+};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -10,7 +17,7 @@ use uuid::Uuid;
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub static LINK_EMPTY_PASSWORD_VALUE: Lazy<String> = Lazy::new(|| PasswordState::Empty.to_string());
-pub static LINK_EMPTY_PASSWORD_HASH: Lazy<String> = Lazy::new(|| crypto::hash_fn(&LINK_EMPTY_PASSWORD_VALUE));
+pub static LINK_EMPTY_PASSWORD_HASH: Lazy<String> = Lazy::new(|| crypto::hash_fn(LINK_EMPTY_PASSWORD_VALUE.clone()));
 pub static SEC_LINK_EMPTY_PASSWORD_VALUE: Lazy<SecUtf8> =
     Lazy::new(|| SecUtf8::from(LINK_EMPTY_PASSWORD_VALUE.as_str()));
 
@@ -66,7 +73,7 @@ pub enum DownloadBtnStateByte {
     Enable = 1,
 }
 
-/// Used for requests to [DIR_LINK_ADD_PATH] endpoint.
+/// Used for requests to `DIR_LINK_ADD_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirLinkAddRequestPayload {
     /// User-associated Filen API key.
@@ -219,7 +226,7 @@ impl DirLinkAddRequestPayload {
     }
 }
 
-/// Used for requests to [DIR_LINK_EDIT_PATH] endpoint.
+/// Used for requests to `DIR_LINK_EDIT_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirLinkEditRequestPayload {
     /// User-associated Filen API key.
@@ -258,16 +265,15 @@ impl DirLinkEditRequestPayload {
         expiration: Expire,
         link_plain_password: Option<&SecUtf8>,
     ) -> Self {
-        let (password_hashed, salt) = link_plain_password
-            .map(|password| crypto::encrypt_to_link_password_and_salt(password))
-            .unwrap_or_else(|| crypto::encrypt_to_link_password_and_salt(&SEC_LINK_EMPTY_PASSWORD_VALUE));
+        let (password_hashed, salt) = link_plain_password.map_or_else(
+            || crypto::encrypt_to_link_password_and_salt(&SEC_LINK_EMPTY_PASSWORD_VALUE),
+            |password| crypto::encrypt_to_link_password_and_salt(password),
+        );
         Self {
             api_key,
             download_btn,
             expiration,
-            password: link_plain_password
-                .map(|_| PasswordState::NotEmpty)
-                .unwrap_or(PasswordState::Empty),
+            password: link_plain_password.map_or(PasswordState::Empty, |_| PasswordState::NotEmpty),
             password_hashed,
             salt,
             uuid: item_uuid,
@@ -275,7 +281,7 @@ impl DirLinkEditRequestPayload {
     }
 }
 
-/// Used for requests to [DIR_LINK_REMOVE_PATH] endpoint.
+/// Used for requests to `DIR_LINK_REMOVE_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirLinkRemoveRequestPayload {
     /// User-associated Filen API key.
@@ -287,7 +293,7 @@ pub struct DirLinkRemoveRequestPayload {
 }
 utils::display_from_json!(DirLinkRemoveRequestPayload);
 
-/// Used for requests to [DIR_LINK_STATUS_PATH] endpoint.
+/// Used for requests to `DIR_LINK_STATUS_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirLinkStatusRequestPayload {
     /// User-associated Filen API key.
@@ -299,7 +305,7 @@ pub struct DirLinkStatusRequestPayload {
 }
 utils::display_from_json!(DirLinkStatusRequestPayload);
 
-/// Response data for [DIR_LINK_STATUS_PATH] endpoint.
+/// Response data for `DIR_LINK_STATUS_PATH` endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DirLinkStatusResponseData {
@@ -335,13 +341,13 @@ impl HasLinkKey for DirLinkStatusResponseData {
 }
 
 response_payload!(
-    /// Response for [DIR_LINK_STATUS_PATH] endpoint.
+    /// Response for `DIR_LINK_STATUS_PATH` endpoint.
     DirLinkStatusResponsePayload<DirLinkStatusResponseData>
 );
 
-/// Calls [DIR_LINK_ADD_PATH] endpoint. Used to add a folder or a file to a folder link.
+/// Calls `DIR_LINK_ADD_PATH` endpoint. Used to add a folder or a file to a folder link.
 ///
-/// Filen always creates a link without password first, and optionally sets password later using [dir_link_edit_request].
+/// Filen always creates a link without password first, and optionally sets password later using `dir_link_edit_request`.
 pub fn dir_link_add_request(
     payload: &DirLinkAddRequestPayload,
     filen_settings: &FilenSettings,
@@ -349,9 +355,9 @@ pub fn dir_link_add_request(
     queries::query_filen_api(DIR_LINK_ADD_PATH, payload, filen_settings).context(DirLinkAddQueryFailed {})
 }
 
-/// Calls [DIR_LINK_ADD_PATH] endpoint asynchronously. Used to add a folder or a file to a folder link.
+/// Calls `DIR_LINK_ADD_PATH` endpoint asynchronously. Used to add a folder or a file to a folder link.
 ///
-/// Filen always creates a link without password first, and optionally sets password later using [dir_link_edit_request].
+/// Filen always creates a link without password first, and optionally sets password later using `dir_link_edit_request`.
 #[cfg(feature = "async")]
 pub async fn dir_link_add_request_async(
     payload: &DirLinkAddRequestPayload,
@@ -362,7 +368,7 @@ pub async fn dir_link_add_request_async(
         .context(DirLinkAddQueryFailed {})
 }
 
-/// Calls [DIR_LINK_EDIT_PATH] endpoint. Used to edit given folder link.
+/// Calls `DIR_LINK_EDIT_PATH` endpoint. Used to edit given folder link.
 ///
 /// Filen always creates a link without password first, and optionally sets password later using this query.
 pub fn dir_link_edit_request(
@@ -372,7 +378,7 @@ pub fn dir_link_edit_request(
     queries::query_filen_api(DIR_LINK_EDIT_PATH, payload, filen_settings).context(DirLinkEditQueryFailed {})
 }
 
-/// Calls [DIR_LINK_EDIT_PATH] endpoint asynchronously. Used to edit given folder link.
+/// Calls `DIR_LINK_EDIT_PATH` endpoint asynchronously. Used to edit given folder link.
 ///
 /// Filen always creates a link without password first, and optionally sets password later using this query.
 #[cfg(feature = "async")]
@@ -385,7 +391,7 @@ pub async fn dir_link_edit_request_async(
         .context(DirLinkEditQueryFailed {})
 }
 
-/// Calls [DIR_LINK_REMOVE_PATH] endpoint. Used to remove given folder link.
+/// Calls `DIR_LINK_REMOVE_PATH` endpoint. Used to remove given folder link.
 pub fn dir_link_remove_request(
     payload: &DirLinkRemoveRequestPayload,
     filen_settings: &FilenSettings,
@@ -393,7 +399,7 @@ pub fn dir_link_remove_request(
     queries::query_filen_api(DIR_LINK_REMOVE_PATH, payload, filen_settings).context(DirLinkRemoveQueryFailed {})
 }
 
-/// Calls [DIR_LINK_REMOVE_PATH] endpoint asynchronously. Used to remove given folder link.
+/// Calls `DIR_LINK_REMOVE_PATH` endpoint asynchronously. Used to remove given folder link.
 #[cfg(feature = "async")]
 pub async fn dir_link_remove_request_async(
     payload: &DirLinkRemoveRequestPayload,
@@ -404,7 +410,7 @@ pub async fn dir_link_remove_request_async(
         .context(DirLinkRemoveQueryFailed {})
 }
 
-/// Calls [DIR_LINK_STATUS_PATH] endpoint. Used to check folder link status.
+/// Calls `DIR_LINK_STATUS_PATH` endpoint. Used to check folder link status.
 pub fn dir_link_status_request(
     payload: &DirLinkStatusRequestPayload,
     filen_settings: &FilenSettings,
@@ -412,7 +418,7 @@ pub fn dir_link_status_request(
     queries::query_filen_api(DIR_LINK_STATUS_PATH, payload, filen_settings).context(DirLinkStatusQueryFailed {})
 }
 
-/// Calls [DIR_LINK_STATUS_PATH] endpoint asynchronously. Used to check folder link status.
+/// Calls `DIR_LINK_STATUS_PATH` endpoint asynchronously. Used to check folder link status.
 #[cfg(feature = "async")]
 pub async fn dir_link_status_request_async(
     payload: &DirLinkStatusRequestPayload,
@@ -426,7 +432,7 @@ pub async fn dir_link_status_request_async(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::*;
+    use crate::test_utils::{validate_contract, validate_contract_async};
     use once_cell::sync::Lazy;
     use secstr::SecUtf8;
 

@@ -56,25 +56,23 @@ pub fn deserialize_from_file<U: DeserializeOwned>(response_file_path: &str) -> U
 }
 
 pub fn project_path() -> Result<Utf8PathBuf> {
-    match env::var("CARGO_MANIFEST_DIR") {
-        Ok(val) => Ok(Utf8PathBuf::from(val)),
-        _ => {
-            let curr_dir = env::current_dir().context(CurrentWorkingDirectoryIsUnaccessible {})?;
-            Utf8PathBuf::try_from(curr_dir.clone()).context(FileSystemPathIsNotUtf8 {
-                path: format!("{:?}", curr_dir),
-            })
-        }
+    if let Ok(val) = env::var("CARGO_MANIFEST_DIR") {
+        Ok(Utf8PathBuf::from(val))
+    } else {
+        let curr_dir = env::current_dir().context(CurrentWorkingDirectoryIsUnaccessible {})?;
+        Utf8PathBuf::try_from(curr_dir.clone()).context(FileSystemPathIsNotUtf8 {
+            path: format!("{:?}", curr_dir),
+        })
     }
 }
 
 pub fn project_path_for(file_path: &str) -> Utf8PathBuf {
-    match Path::new(&file_path).is_absolute() {
-        true => Utf8PathBuf::from(file_path),
-        false => {
-            let mut proj_dir = project_path().expect("Cannot get project path or it contains invalid UTF-8");
-            proj_dir.push(file_path);
-            proj_dir
-        }
+    if Path::new(&file_path).is_absolute() {
+        Utf8PathBuf::from(file_path)
+    } else {
+        let mut proj_dir = project_path().expect("Cannot get project path or it contains invalid UTF-8");
+        proj_dir.push(file_path);
+        proj_dir
     }
 }
 

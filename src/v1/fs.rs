@@ -1,7 +1,10 @@
 //! Contains structures common for Filen file&folder API.
-use crate::{crypto, utils, v1::*};
+use crate::{
+    crypto, utils,
+    v1::{files, fs, optional_uuid_from_empty_string, response_payload, FileLocation, FileProperties},
+};
 use secstr::{SecUtf8, SecVec};
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::json;
 use snafu::{Backtrace, ResultExt, Snafu};
 use std::{fmt, num::ParseIntError, str::FromStr};
@@ -69,7 +72,7 @@ utils::display_from_json!(Expire);
 impl FromStr for Expire {
     type Err = Error;
 
-    /// Tries to parse [Expire] from given string, which must be either "never" or amount of hours/days,
+    /// Tries to parse `Expire` from given string, which must be either "never" or amount of hours/days,
     /// e.g. "6h" or "30d".
     fn from_str(never_or_duration: &str) -> Result<Self, Self::Err> {
         if never_or_duration.eq_ignore_ascii_case("never") {
@@ -263,6 +266,7 @@ impl LocationNameMetadata {
     }
 
     /// Returns hashed given location name.
+    #[must_use]
     pub fn name_hashed(name: &str) -> String {
         crypto::hash_fn(&name.to_lowercase())
     }
@@ -427,7 +431,7 @@ pub trait HasUuid {
     fn uuid_ref(&self) -> &Uuid;
 }
 
-/// Used for requests to [DIR_TRASH_PATH] or [FILE_TRASH_PATH] endpoint.
+/// Used for requests to `DIR_TRASH_PATH` or `FILE_TRASH_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LocationTrashRequestPayload {
     /// User-associated Filen API key.
@@ -439,7 +443,7 @@ pub struct LocationTrashRequestPayload {
 }
 utils::display_from_json!(LocationTrashRequestPayload);
 
-/// Used for requests to [DIR_EXISTS_PATH] or [FILE_TRASH_PATH] endpoint.
+/// Used for requests to `DIR_EXISTS_PATH` or `FILE_TRASH_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LocationExistsRequestPayload {
     /// User-associated Filen API key.
@@ -457,6 +461,7 @@ pub struct LocationExistsRequestPayload {
 utils::display_from_json!(LocationExistsRequestPayload);
 
 impl LocationExistsRequestPayload {
+    #[must_use]
     pub fn new(api_key: SecUtf8, target_parent: ParentOrBase, target_name: &str) -> Self {
         let name_hashed = LocationNameMetadata::name_hashed(target_name);
         Self {
@@ -467,7 +472,7 @@ impl LocationExistsRequestPayload {
     }
 }
 
-/// Response data for [DIR_EXISTS_PATH] or [FILE_TRASH_PATH] endpoint.
+/// Response data for `DIR_EXISTS_PATH` or `FILE_TRASH_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct LocationExistsResponseData {
     /// True if folder or file with given name already exists in the parent folder; false otherwise.
@@ -481,7 +486,7 @@ pub struct LocationExistsResponseData {
 utils::display_from_json!(LocationExistsResponseData);
 
 response_payload!(
-    /// Response for [DIR_EXISTS_PATH] or [FILE_TRASH_PATH] endpoint.
+    /// Response for `DIR_EXISTS_PATH` or `FILE_TRASH_PATH` endpoint.
     LocationExistsResponsePayload<LocationExistsResponseData>
 );
 
@@ -496,7 +501,8 @@ pub enum ParentOrBase {
 utils::display_from_json!(ParentOrBase);
 
 impl ParentOrBase {
-    /// Creates [ParentOrNone] corresponding to this value.
+    /// Creates `ParentOrNone` corresponding to this value.
+    #[must_use]
     pub const fn as_parent_or_none(&self) -> ParentOrNone {
         match self {
             Self::Base => ParentOrNone::None,
@@ -508,7 +514,7 @@ impl ParentOrBase {
 impl FromStr for ParentOrBase {
     type Err = Error;
 
-    /// Tries to parse [ParentOrBase] from given string, which must be either "base" or hyphenated lowercased UUID.
+    /// Tries to parse `ParentOrBase` from given string, which must be either "base" or hyphenated lowercased UUID.
     fn from_str(base_or_id: &str) -> Result<Self, Self::Err> {
         if base_or_id.eq_ignore_ascii_case("base") {
             Ok(Self::Base)
@@ -568,7 +574,8 @@ pub enum ParentOrNone {
 utils::display_from_json!(ParentOrNone);
 
 impl ParentOrNone {
-    /// Creates [ParentOrBase] corresponding to this value.
+    /// Creates `ParentOrBase` corresponding to this value.
+    #[must_use]
     pub const fn as_parent_or_base(&self) -> ParentOrBase {
         match self {
             Self::None => ParentOrBase::Base,
@@ -580,7 +587,7 @@ impl ParentOrNone {
 impl FromStr for ParentOrNone {
     type Err = Error;
 
-    /// Tries to parse [ParentOrNone] from given string, which must be either "none" or hyphenated lowercased UUID.
+    /// Tries to parse `ParentOrNone` from given string, which must be either "none" or hyphenated lowercased UUID.
     fn from_str(none_or_id: &str) -> Result<Self, Self::Err> {
         if none_or_id.eq_ignore_ascii_case("none") {
             Ok(Self::None)

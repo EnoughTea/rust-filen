@@ -1,4 +1,5 @@
 //! This module contains general purpose functions (aka dump).
+#![allow(clippy::redundant_pub_crate)]
 #![doc(hidden)]
 
 use crate::v1::FileChunkLocation;
@@ -31,15 +32,15 @@ pub fn bytes_to_binary_string(bytes: &[u8]) -> String {
     buffer
 }
 
-/// TODO: Remove when Result::flatten comes into stable compiler.
+/// TODO: Remove when `Result::flatten` comes into stable compiler.
 pub fn flatten_result<V, E, F>(result: Result<Result<V, F>, E>) -> Result<V, E>
 where
     F: Into<E>,
 {
-    flatten_result_with(result, |e| e.into())
+    flatten_result_with(result, std::convert::Into::into)
 }
 
-/// TODO: Remove when Result::flatten comes into stable compiler.
+/// TODO: Remove when `Result::flatten` comes into stable compiler.
 pub fn flatten_result_with<V, F, E, O: FnOnce(F) -> E>(result: Result<Result<V, F>, E>, op: O) -> Result<V, E> {
     match result {
         Ok(Ok(v)) => Ok(v),
@@ -72,7 +73,7 @@ pub fn api_key_json(api_key: &SecUtf8) -> Value {
     json!({ "apiKey": api_key })
 }
 
-/// This macro generates a simple [std::fmt::Display] implementation using Serde's json! on self.
+/// This macro generates a simple `std::fmt::Display` implementation using Serde's json! on self.
 macro_rules! display_from_json {
     (
         $target_data_type:ty

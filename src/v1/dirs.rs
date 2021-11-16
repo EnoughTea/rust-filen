@@ -1,6 +1,15 @@
-use crate::{filen_settings::FilenSettings, queries, utils, v1::*};
+use crate::{
+    filen_settings::FilenSettings,
+    queries, utils,
+    v1::{
+        bool_from_int, bool_from_string, bool_to_int, bool_to_string, optional_bool_from_int, optional_bool_to_int,
+        response_payload, Deserializer, FileStorageInfo, HasFileMetadata, HasFiles, HasFolders, HasLocationName,
+        HasUuid, LocationColor, LocationExistsRequestPayload, LocationExistsResponsePayload, LocationKind,
+        LocationNameMetadata, LocationTrashRequestPayload, PlainResponsePayload, Serializer,
+    },
+};
 use secstr::SecUtf8;
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use snafu::{Backtrace, ResultExt, Snafu};
 use std::{fmt, str::FromStr};
@@ -132,7 +141,7 @@ impl Serialize for ContentKind {
     }
 }
 
-/// Used for requests to [USER_BASE_FOLDERS_PATH] endpoint.
+/// Used for requests to `USER_BASE_FOLDERS_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserBaseFoldersRequestPayload {
     /// User-associated Filen API key.
@@ -149,7 +158,7 @@ pub struct UserBaseFoldersRequestPayload {
 }
 utils::display_from_json!(UserBaseFoldersRequestPayload);
 
-/// One of the folders in response data for [USER_BASE_FOLDERS_PATH] endpoint.
+/// One of the folders in response data for `USER_BASE_FOLDERS_PATH` endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserBaseFolder {
@@ -205,7 +214,7 @@ pub struct UserBaseFoldersResponseData {
 utils::display_from_json!(UserBaseFoldersResponseData);
 
 response_payload!(
-    /// Response for [USER_BASE_FOLDERS_PATH] endpoint.
+    /// Response for `USER_BASE_FOLDERS_PATH` endpoint.
     UserBaseFoldersResponsePayload<UserBaseFoldersResponseData>
 );
 
@@ -215,7 +224,7 @@ impl HasFolders<UserBaseFolder> for UserBaseFoldersResponseData {
     }
 }
 
-/// One of the folders in response data for [USER_DIRS_PATH] endpoint.
+/// One of the folders in response data for `USER_DIRS_PATH` endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserDirData {
@@ -265,11 +274,12 @@ impl HasUuid for UserDirData {
 }
 
 response_payload!(
-    /// Response for [USER_DIRS_PATH] endpoint.
+    /// Response for `USER_DIRS_PATH` endpoint.
     UserDirsResponsePayload<Vec<UserDirData>>
 );
 
 impl UserDirsResponsePayload {
+    #[must_use]
     pub fn find_default_folder(&self) -> Option<UserDirData> {
         self.data
             .as_ref()
@@ -277,7 +287,7 @@ impl UserDirsResponsePayload {
     }
 }
 
-/// Used for requests to [DIR_CONTENT_PATH] endpoint.
+/// Used for requests to `DIR_CONTENT_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirContentRequestPayload {
     /// User-associated Filen API key.
@@ -303,6 +313,7 @@ pub struct DirContentRequestPayload {
 utils::display_from_json!(DirContentRequestPayload);
 
 impl DirContentRequestPayload {
+    #[must_use]
     pub fn new(api_key: SecUtf8, folder_uuid: ContentKind) -> Self {
         let folders = format!("[\"{}\"]", folder_uuid);
         Self {
@@ -315,7 +326,7 @@ impl DirContentRequestPayload {
     }
 }
 
-/// One of the files in response data for [DIR_CONTENT_PATH] endpoint.
+/// One of the files in response data for `DIR_CONTENT_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DirContentFile {
     /// File ID, UUID V4 in hyphenated lowercase format.
@@ -381,7 +392,7 @@ impl HasUuid for DirContentFile {
     }
 }
 
-/// One of the non-base folders in response data for [DIR_CONTENT_PATH] endpoint.
+/// One of the non-base folders in response data for `DIR_CONTENT_PATH` endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DirContentFolder {
@@ -442,7 +453,7 @@ impl HasUuid for DirContentFolder {
     }
 }
 
-/// One of the base folders in response data for [DIR_CONTENT_PATH] endpoint.
+/// One of the base folders in response data for `DIR_CONTENT_PATH` endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DirContentFolderInfo {
@@ -458,7 +469,7 @@ pub struct DirContentFolderInfo {
 }
 utils::display_from_json!(DirContentFolderInfo);
 
-/// Response data for [USER_DIRS_PATH] endpoint.
+/// Response data for `USER_DIRS_PATH` endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DirContentResponseData {
@@ -502,11 +513,11 @@ impl HasFolders<DirContentFolder> for DirContentResponseData {
 }
 
 response_payload!(
-    /// Response for [USER_DIRS_PATH] endpoint.
+    /// Response for `USER_DIRS_PATH` endpoint.
     DirContentResponsePayload<DirContentResponseData>
 );
 
-/// Used for requests to [DIR_CREATE_PATH] endpoint.
+/// Used for requests to `DIR_CREATE_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirCreateRequestPayload {
     /// User-associated Filen API key.
@@ -534,6 +545,7 @@ impl DirCreateRequestPayload {
     /// Payload used for creation of the special Filen sync folder that is created by Filen client
     /// to store all synced files.
     /// You should only use this if you are writing your own replacement client.
+    #[must_use]
     pub fn payload_for_sync_folder_creation(api_key: SecUtf8, last_master_key: &SecUtf8) -> Self {
         let mut payload = Self::new(api_key, FILEN_SYNC_FOLDER_NAME, last_master_key);
         payload.dir_type = LocationKind::Sync;
@@ -541,6 +553,7 @@ impl DirCreateRequestPayload {
     }
 
     /// Payload to create a new folder with the specified name.
+    #[must_use]
     pub fn new(api_key: SecUtf8, name: &str, last_master_key: &SecUtf8) -> Self {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(name, last_master_key);
         let name_hashed = LocationNameMetadata::name_hashed(name);
@@ -554,7 +567,7 @@ impl DirCreateRequestPayload {
     }
 }
 
-/// Used for requests to [DIR_SUB_CREATE_PATH] endpoint.
+/// Used for requests to `DIR_SUB_CREATE_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirSubCreateRequestPayload {
     /// User-associated Filen API key.
@@ -579,6 +592,7 @@ utils::display_from_json!(DirSubCreateRequestPayload);
 
 impl DirSubCreateRequestPayload {
     /// Payload to create a new sub-folder with the specified name.
+    #[must_use]
     pub fn new(api_key: SecUtf8, name: &str, parent: Uuid, last_master_key: &SecUtf8) -> Self {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(name, last_master_key);
         let name_hashed = LocationNameMetadata::name_hashed(name);
@@ -592,7 +606,7 @@ impl DirSubCreateRequestPayload {
     }
 }
 
-/// Used for requests to [DIR_MOVE_PATH] endpoint.
+/// Used for requests to `DIR_MOVE_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirMoveRequestPayload {
     /// User-associated Filen API key.
@@ -608,7 +622,7 @@ pub struct DirMoveRequestPayload {
 }
 utils::display_from_json!(DirMoveRequestPayload);
 
-/// Used for requests to [DIR_RENAME_PATH] endpoint.
+/// Used for requests to `DIR_RENAME_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirRenameRequestPayload {
     /// User-associated Filen API key.
@@ -629,6 +643,7 @@ pub struct DirRenameRequestPayload {
 utils::display_from_json!(DirRenameRequestPayload);
 
 impl DirRenameRequestPayload {
+    #[must_use]
     pub fn new(api_key: SecUtf8, folder_uuid: Uuid, new_folder_name: &str, last_master_key: &SecUtf8) -> Self {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(new_folder_name, last_master_key);
         let name_hashed = LocationNameMetadata::name_hashed(new_folder_name);
@@ -641,7 +656,7 @@ impl DirRenameRequestPayload {
     }
 }
 
-/// Used for requests to [DIR_RESTORE_PATH] endpoint.
+/// Used for requests to `DIR_RESTORE_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DirRestoreRequestPayload {
     /// User-associated Filen API key.
@@ -653,8 +668,8 @@ pub struct DirRestoreRequestPayload {
 }
 utils::display_from_json!(DirRestoreRequestPayload);
 
-/// Calls [USER_BASE_FOLDERS_PATH] endpoint. Used to get a list of user's *base* folders, also known as 'cloud drives'.
-/// Note the difference from [user_dirs_request], which returns a set of all user folders, cloud drives or not.
+/// Calls `USER_BASE_FOLDERS_PATH` endpoint. Used to get a list of user's *base* folders, also known as 'cloud drives'.
+/// Note the difference from `user_dirs_request`, which returns a set of all user folders, cloud drives or not.
 /// Includes Filen "Default" folder.
 pub fn user_base_folders_request(
     payload: &UserBaseFoldersRequestPayload,
@@ -663,9 +678,9 @@ pub fn user_base_folders_request(
     queries::query_filen_api(USER_BASE_FOLDERS_PATH, payload, filen_settings).context(UserBaseFoldersQueryFailed {})
 }
 
-/// Calls [USER_BASE_FOLDERS_PATH] endpoint asynchronously.
+/// Calls `USER_BASE_FOLDERS_PATH` endpoint asynchronously.
 /// Used to get a list of user's *base* folders, also known as 'cloud drives'.
-/// Note the difference from [user_dirs_request], which returns a set of all user folders, cloud drives or not.
+/// Note the difference from `user_dirs_request`, which returns a set of all user folders, cloud drives or not.
 /// Includes Filen "Default" folder.
 #[cfg(feature = "async")]
 pub async fn user_base_folders_request_async(
@@ -677,7 +692,7 @@ pub async fn user_base_folders_request_async(
         .context(UserBaseFoldersQueryFailed {})
 }
 
-/// Calls [USER_DIRS_PATH] endpoint. Used to get a list of user's folders.
+/// Calls `USER_DIRS_PATH` endpoint. Used to get a list of user's folders.
 /// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder,
 /// created by Filen's client.
 pub fn user_dirs_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<UserDirsResponsePayload> {
@@ -685,7 +700,7 @@ pub fn user_dirs_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> R
         .context(UserDirsQueryFailed {})
 }
 
-/// Calls [USER_DIRS_PATH] endpoint asynchronously. Used to get a list of user's folders.
+/// Calls `USER_DIRS_PATH` endpoint asynchronously. Used to get a list of user's folders.
 /// Always includes Filen "Default" folder, and may possibly include special "Filen Sync" folder,
 /// created by Filen's client.
 #[cfg(feature = "async")]
@@ -698,7 +713,7 @@ pub async fn user_dirs_request_async(
         .context(UserDirsQueryFailed {})
 }
 
-/// Calls [DIR_CONTENT_PATH] endpoint. Used to get a paginated set of user's files and folders in a way
+/// Calls `DIR_CONTENT_PATH` endpoint. Used to get a paginated set of user's files and folders in a way
 /// suited for presentation.
 pub fn dir_content_request(
     payload: &DirContentRequestPayload,
@@ -707,7 +722,7 @@ pub fn dir_content_request(
     queries::query_filen_api(DIR_CONTENT_PATH, payload, filen_settings).context(DirContentQueryFailed {})
 }
 
-/// Calls [DIR_CONTENT_PATH] endpoint asynchronously. Used to get a paginated set of user's files and folders in a way
+/// Calls `DIR_CONTENT_PATH` endpoint asynchronously. Used to get a paginated set of user's files and folders in a way
 /// suited for presentation.
 #[cfg(feature = "async")]
 pub async fn dir_content_request_async(
@@ -719,7 +734,7 @@ pub async fn dir_content_request_async(
         .context(DirContentQueryFailed {})
 }
 
-/// Calls [DIR_CREATE_PATH] endpoint. Creates parentless 'base' folder.
+/// Calls `DIR_CREATE_PATH` endpoint. Creates parentless 'base' folder.
 pub fn dir_create_request(
     payload: &DirCreateRequestPayload,
     filen_settings: &FilenSettings,
@@ -727,7 +742,7 @@ pub fn dir_create_request(
     queries::query_filen_api(DIR_CREATE_PATH, payload, filen_settings).context(DirCreateQueryFailed {})
 }
 
-/// Calls [DIR_CREATE_PATH] endpoint asynchronously. Creates parentless 'base' folder.
+/// Calls `DIR_CREATE_PATH` endpoint asynchronously. Creates parentless 'base' folder.
 #[cfg(feature = "async")]
 pub async fn dir_create_request_async(
     payload: &DirCreateRequestPayload,
@@ -738,7 +753,7 @@ pub async fn dir_create_request_async(
         .context(DirCreateQueryFailed {})
 }
 
-/// Calls [DIR_SUB_CREATE_PATH] endpoint. Creates a new folder within the given parent folder.
+/// Calls `DIR_SUB_CREATE_PATH` endpoint. Creates a new folder within the given parent folder.
 pub fn dir_sub_create_request(
     payload: &DirSubCreateRequestPayload,
     filen_settings: &FilenSettings,
@@ -746,7 +761,7 @@ pub fn dir_sub_create_request(
     queries::query_filen_api(DIR_SUB_CREATE_PATH, payload, filen_settings).context(DirSubCreateQueryFailed {})
 }
 
-/// Calls [DIR_SUB_CREATE_PATH] endpoint asynchronously. Creates a new folder within the given parent folder.
+/// Calls `DIR_SUB_CREATE_PATH` endpoint asynchronously. Creates a new folder within the given parent folder.
 #[cfg(feature = "async")]
 pub async fn dir_sub_create_request_async(
     payload: &DirSubCreateRequestPayload,
@@ -757,7 +772,7 @@ pub async fn dir_sub_create_request_async(
         .context(DirSubCreateQueryFailed {})
 }
 
-/// Calls [DIR_EXISTS_PATH] endpoint.
+/// Calls `DIR_EXISTS_PATH` endpoint.
 /// Checks if folder with the given name exists within the specified parent folder.
 pub fn dir_exists_request(
     payload: &LocationExistsRequestPayload,
@@ -766,7 +781,7 @@ pub fn dir_exists_request(
     queries::query_filen_api(DIR_EXISTS_PATH, payload, filen_settings).context(DirExistsQueryFailed {})
 }
 
-/// Calls [DIR_EXISTS_PATH] endpoint asynchronously.
+/// Calls `DIR_EXISTS_PATH` endpoint asynchronously.
 /// Checks if folder with the given name exists within the specified parent folder.
 #[cfg(feature = "async")]
 pub async fn dir_exists_request_async(
@@ -778,12 +793,12 @@ pub async fn dir_exists_request_async(
         .context(DirExistsQueryFailed {})
 }
 
-/// Calls [DIR_MOVE_PATH] endpoint.
+/// Calls `DIR_MOVE_PATH` endpoint.
 /// Moves folder with the given uuid to the specified parent folder. It is a good idea to check first if folder
 /// with the same name already exists within the parent folder.
 ///
-/// If folder is moved into a linked and/or shared folder, don't forget to call [dir_link_add_request]
-/// and/or [share_request] after a successfull move.
+/// If folder is moved into a linked and/or shared folder, don't forget to call `dir_link_add_request`
+/// and/or `share_request` after a successfull move.
 pub fn dir_move_request(
     payload: &DirMoveRequestPayload,
     filen_settings: &FilenSettings,
@@ -791,12 +806,12 @@ pub fn dir_move_request(
     queries::query_filen_api(DIR_MOVE_PATH, payload, filen_settings).context(DirMoveQueryFailed {})
 }
 
-/// Calls [DIR_MOVE_PATH] endpoint asynchronously.
+/// Calls `DIR_MOVE_PATH` endpoint asynchronously.
 /// Moves folder with the given uuid to the specified parent folder. It is a good idea to check first if folder
 /// with the same name already exists within the parent folder.
 ///
-/// If folder is moved into a linked and/or shared folder, don't forget to call [dir_link_add_request]
-/// and/or [share_request] after a successfull move.
+/// If folder is moved into a linked and/or shared folder, don't forget to call `dir_link_add_request`
+/// and/or `share_request` after a successfull move.
 #[cfg(feature = "async")]
 pub async fn dir_move_request_async(
     payload: &DirMoveRequestPayload,
@@ -807,7 +822,7 @@ pub async fn dir_move_request_async(
         .context(DirMoveQueryFailed {})
 }
 
-/// Calls [DIR_RENAME_PATH] endpoint.
+/// Calls `DIR_RENAME_PATH` endpoint.
 /// Changes name of the folder with given UUID to the specified name. It is a good idea to check first if folder
 /// with the new name already exists within the parent folder.
 pub fn dir_rename_request(
@@ -817,7 +832,7 @@ pub fn dir_rename_request(
     queries::query_filen_api(DIR_RENAME_PATH, payload, filen_settings).context(DirRenameQueryFailed {})
 }
 
-/// Calls [DIR_RENAME_PATH] endpoint asynchronously.
+/// Calls `DIR_RENAME_PATH` endpoint asynchronously.
 /// Changes name of the folder with given UUID to the specified name. It is a good idea to check first if folder
 /// with the new name already exists within the parent folder.
 #[cfg(feature = "async")]
@@ -830,7 +845,7 @@ pub async fn dir_rename_request_async(
         .context(DirRenameQueryFailed {})
 }
 
-/// Calls [DIR_RESTORE_PATH] endpoint. Used to restore folder from the 'trash' folder.
+/// Calls `DIR_RESTORE_PATH` endpoint. Used to restore folder from the 'trash' folder.
 pub fn dir_restore_request(
     payload: &DirRestoreRequestPayload,
     filen_settings: &FilenSettings,
@@ -838,7 +853,7 @@ pub fn dir_restore_request(
     queries::query_filen_api(DIR_RESTORE_PATH, payload, filen_settings).context(DirRestoreQueryFailed {})
 }
 
-/// Calls [DIR_RESTORE_PATH] endpoint asynchronously. Used to restore folder from the 'trash' folder.
+/// Calls `DIR_RESTORE_PATH` endpoint asynchronously. Used to restore folder from the 'trash' folder.
 #[cfg(feature = "async")]
 pub async fn dir_restore_request_async(
     payload: &DirRestoreRequestPayload,
@@ -849,7 +864,7 @@ pub async fn dir_restore_request_async(
         .context(DirRestoreQueryFailed {})
 }
 
-/// Calls [DIR_TRASH_PATH] endpoint.
+/// Calls `DIR_TRASH_PATH`] endpoint.
 /// Moves folder with given UUID to trash. Note that folder's UUID will still be considired existing,
 /// so you cannot create a new folder with it.
 pub fn dir_trash_request(
@@ -859,7 +874,7 @@ pub fn dir_trash_request(
     queries::query_filen_api(DIR_TRASH_PATH, payload, filen_settings).context(DirTrashQueryFailed {})
 }
 
-/// Calls [DIR_TRASH_PATH] endpoint asynchronously.
+/// Calls `DIR_TRASH_PATH` endpoint asynchronously.
 /// Moves folder with given UUID to trash. Note that folder's UUID will still be considired existing,
 /// so you cannot create a new folder with it.
 #[cfg(feature = "async")]
@@ -875,7 +890,10 @@ pub async fn dir_trash_request_async(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::*;
+    use crate::{
+        test_utils::{validate_contract, validate_contract_async},
+        v1::ParentOrBase,
+    };
     use once_cell::sync::Lazy;
     use pretty_assertions::assert_eq;
     use secstr::SecUtf8;

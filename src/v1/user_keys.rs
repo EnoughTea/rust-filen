@@ -1,4 +1,9 @@
-use crate::{crypto, filen_settings::FilenSettings, queries, utils, v1::*};
+use crate::{
+    crypto,
+    filen_settings::FilenSettings,
+    queries, utils,
+    v1::{response_payload, PlainResponsePayload, METADATA_VERSION},
+};
 use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -99,7 +104,7 @@ pub trait HasPublicKey {
     }
 }
 
-/// Response data for [USER_KEY_PAIR_INFO_PATH] endpoint.
+/// Response data for `USER_KEY_PAIR_INFO_PATH` endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserKeyPairInfoResponseData {
@@ -133,11 +138,11 @@ impl HasPublicKey for UserKeyPairInfoResponseData {
 }
 
 response_payload!(
-    /// Response for [USER_KEY_PAIR_INFO_PATH] endpoint.
+    /// Response for `USER_KEY_PAIR_INFO_PATH` endpoint.
     UserKeyPairInfoResponsePayload<UserKeyPairInfoResponseData>
 );
 
-/// Used for requests to [USER_KEY_PAIR_UPDATE_PATH] endpoint.
+/// Used for requests to `USER_KEY_PAIR_UPDATE_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserKeyPairUpdateRequestPayload {
     /// User-associated Filen API key.
@@ -157,7 +162,7 @@ pub struct UserKeyPairUpdateRequestPayload {
 utils::display_from_json!(UserKeyPairUpdateRequestPayload);
 
 impl UserKeyPairUpdateRequestPayload {
-    /// Creates [UserKeyPairUpdateRequestPayload] with Filen-compatible private and public key strings,
+    /// Creates `UserKeyPairUpdateRequestPayload` with Filen-compatible private and public key strings,
     /// given original keys bytes in PKCS#8 ASN.1 DER format.
     pub fn new(
         api_key: SecUtf8,
@@ -182,7 +187,7 @@ impl UserKeyPairUpdateRequestPayload {
     }
 }
 
-/// Used for requests to [USER_MASTER_KEYS_PATH] endpoint.
+/// Used for requests to `USER_MASTER_KEYS_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct MasterKeysFetchRequestPayload {
     /// User-associated Filen API key.
@@ -197,7 +202,7 @@ pub struct MasterKeysFetchRequestPayload {
 utils::display_from_json!(MasterKeysFetchRequestPayload);
 
 impl MasterKeysFetchRequestPayload {
-    /// Creates [MasterKeysFetchRequestPayload] from user's API key and user's master keys.
+    /// Creates `MasterKeysFetchRequestPayload` from user's API key and user's master keys.
     /// Assumes user's last master key is the last element of given master keys slice.
     fn new(api_key: SecUtf8, raw_master_keys: &[SecUtf8]) -> Result<Self> {
         ensure!(
@@ -221,7 +226,7 @@ impl MasterKeysFetchRequestPayload {
     }
 }
 
-/// Response data for [USER_MASTER_KEYS_PATH] endpoint.
+/// Response data for `USER_MASTER_KEYS_PATH` endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct MasterKeysFetchResponseData {
@@ -239,11 +244,11 @@ impl HasMasterKeys for MasterKeysFetchResponseData {
 }
 
 response_payload!(
-    /// Response for [USER_MASTER_KEYS_PATH] endpoint.
+    /// Response for `USER_MASTER_KEYS_PATH` endpoint.
     MasterKeysFetchResponsePayload<MasterKeysFetchResponseData>
 );
 
-/// Used for requests to [USER_PUBLIC_KEY_GET_PATH] endpoint.
+/// Used for requests to `USER_PUBLIC_KEY_GET_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserPublicKeyGetRequestPayload {
     /// Email of the user whose public key Filen should fetch.
@@ -251,7 +256,7 @@ pub struct UserPublicKeyGetRequestPayload {
 }
 utils::display_from_json!(UserPublicKeyGetRequestPayload);
 
-/// Response data for [USER_PUBLIC_KEY_GET_PATH] endpoint.
+/// Response data for `USER_PUBLIC_KEY_GET_PATH` endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserPublicKeyGetResponseData {
@@ -271,11 +276,11 @@ impl HasPublicKey for UserPublicKeyGetResponseData {
 }
 
 response_payload!(
-    /// Response for [USER_PUBLIC_KEY_GET_PATH] endpoint.
+    /// Response for `USER_PUBLIC_KEY_GET_PATH` endpoint.
     UserPublicKeyGetResponsePayload<UserPublicKeyGetResponseData>
 );
 
-/// Calls [USER_KEY_PAIR_INFO_PATH] endpoint. Used to get RSA public/private key pair.
+/// Calls `USER_KEY_PAIR_INFO_PATH` endpoint. Used to get RSA public/private key pair.
 pub fn user_key_pair_info_request(
     api_key: &SecUtf8,
     filen_settings: &FilenSettings,
@@ -284,7 +289,7 @@ pub fn user_key_pair_info_request(
         .context(UserKeyPairInfoQueryFailed {})
 }
 
-/// Calls [USER_KEY_PAIR_INFO_PATH] endpoint asynchronously. Used to get RSA public/private key pair.
+/// Calls `USER_KEY_PAIR_INFO_PATH` endpoint asynchronously. Used to get RSA public/private key pair.
 #[cfg(feature = "async")]
 pub async fn user_key_pair_info_request_async(
     api_key: &SecUtf8,
@@ -295,7 +300,7 @@ pub async fn user_key_pair_info_request_async(
         .context(UserKeyPairInfoQueryFailed {})
 }
 
-/// Calls [USER_KEY_PAIR_UPDATE_PATH] endpoint. Used to set user's RSA public/private key pair.
+/// Calls `USER_KEY_PAIR_UPDATE_PATH` endpoint. Used to set user's RSA public/private key pair.
 pub fn user_key_pair_update_request(
     payload: &UserKeyPairUpdateRequestPayload,
     filen_settings: &FilenSettings,
@@ -304,7 +309,7 @@ pub fn user_key_pair_update_request(
         .context(UserKeyPairUpdateQueryFailed {})
 }
 
-/// Calls [USER_KEY_PAIR_UPDATE_PATH] endpoint asynchronously. Used to set user's RSA public/private key pair.
+/// Calls `USER_KEY_PAIR_UPDATE_PATH` endpoint asynchronously. Used to set user's RSA public/private key pair.
 #[cfg(feature = "async")]
 pub async fn user_key_pair_update_request_async(
     payload: &UserKeyPairUpdateRequestPayload,
@@ -315,7 +320,7 @@ pub async fn user_key_pair_update_request_async(
         .context(UserKeyPairUpdateQueryFailed {})
 }
 
-/// Calls [USER_MASTER_KEYS_PATH] endpoint. Used to get/update user's master keys.
+/// Calls `USER_MASTER_KEYS_PATH` endpoint. Used to get/update user's master keys.
 /// With that method new user master keys, passed in request payload, get joined with current
 /// Filen-known user master keys, and resulting master keys chain is returned in response payload.
 pub fn user_master_keys_request(
@@ -325,7 +330,7 @@ pub fn user_master_keys_request(
     queries::query_filen_api(USER_MASTER_KEYS_PATH, payload, filen_settings).context(UserMasterKeysQueryFailed {})
 }
 
-/// Calls [USER_MASTER_KEYS_PATH] endpoint asynchronously. Used to get/update user's master keys.
+/// Calls `USER_MASTER_KEYS_PATH` endpoint asynchronously. Used to get/update user's master keys.
 /// With that method new user master keys, passed in request payload, get joined with current
 /// Filen-known user master keys, and resulting master keys chain is returned in response payload.
 #[cfg(feature = "async")]
@@ -338,7 +343,7 @@ pub async fn user_master_keys_request_async(
         .context(UserMasterKeysQueryFailed {})
 }
 
-/// Calls [USER_PUBLIC_KEY_GET_PATH] endpoint. Used to get any user's RSA public key.
+/// Calls `USER_PUBLIC_KEY_GET_PATH` endpoint. Used to get any user's RSA public key.
 pub fn user_public_key_get_request(
     payload: &UserPublicKeyGetRequestPayload,
     filen_settings: &FilenSettings,
@@ -346,7 +351,7 @@ pub fn user_public_key_get_request(
     queries::query_filen_api(USER_PUBLIC_KEY_GET_PATH, payload, filen_settings).context(UserPublicKeyGetQueryFailed {})
 }
 
-/// Calls [USER_PUBLIC_KEY_GET_PATH] endpoint asynchronously. Used to get any user's RSA public key.
+/// Calls `USER_PUBLIC_KEY_GET_PATH` endpoint asynchronously. Used to get any user's RSA public key.
 #[cfg(feature = "async")]
 pub async fn user_public_key_get_request_async(
     payload: &UserPublicKeyGetRequestPayload,
@@ -360,7 +365,7 @@ pub async fn user_public_key_get_request_async(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::*;
+    use crate::test_utils::{read_project_file, validate_contract, validate_contract_async};
     use once_cell::sync::Lazy;
     use pretty_assertions::assert_eq;
 

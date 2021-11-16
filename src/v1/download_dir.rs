@@ -1,4 +1,14 @@
-use crate::{crypto, filen_settings::FilenSettings, queries, utils, v1::*};
+#![allow(clippy::redundant_pub_crate)]
+use crate::{
+    crypto,
+    filen_settings::FilenSettings,
+    queries, utils,
+    v1::{
+        download_and_decrypt_file, download_and_decrypt_file_async, download_file, response_payload, FileStorageInfo,
+        FolderData, HasFileLocation, HasFileMetadata, HasFiles, HasFolders, HasLinkedFileMetadata,
+        HasLinkedLocationName, HasSharedFileMetadata, HasSharedLocationName, HasUuid, ParentOrBase,
+    },
+};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
@@ -26,7 +36,7 @@ pub enum Error {
         size: String,
         source: std::num::ParseIntError,
     },
-    
+
     #[snafu(display("Download and decrypt operation failed for linked file {}: {}", file_data, source))]
     DownloadAndDecryptLinkedFileFailed {
         file_data: Box<LinkedFileData>,
@@ -49,7 +59,7 @@ pub enum Error {
     DownloadDirQueryFailed { source: queries::Error },
 }
 
-/// Used for requests to [DOWNLOAD_DIR_LINK_PATH] endpoint.
+/// Used for requests to `DOWNLOAD_DIR_LINK_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DownloadDirLinkRequestPayload {
     /// Folder link ID; hyphenated lowercased UUID V4.
@@ -59,7 +69,7 @@ pub struct DownloadDirLinkRequestPayload {
     pub parent: Uuid,
 
     /// Folder link password.
-    /// 
+    ///
     /// Link's password can be read from link status queries.
     pub password: String,
 }
@@ -134,9 +144,8 @@ impl LinkedFileData {
 
 macro_rules! gen_download_and_decrypt_file {
     (
-        
     ) => {
-        /// Uses this file's properties to call [download_and_decrypt_file].
+        /// Uses this file's properties to call `download_and_decrypt_file`.
         pub fn download_and_decrypt_file<W: std::io::Write>(
             &self,
             file_key: &secstr::SecUtf8,
@@ -154,7 +163,7 @@ macro_rules! gen_download_and_decrypt_file {
             )
         }
 
-        /// Uses this file's properties to call [download_and_decrypt_file_async].
+        /// Uses this file's properties to call `download_and_decrypt_file_async`.
         #[cfg(feature = "async")]
         pub async fn download_and_decrypt_file_async<W: std::io::Write + Send>(
             &self,
@@ -177,7 +186,7 @@ macro_rules! gen_download_and_decrypt_file {
 }
 pub(crate) use gen_download_and_decrypt_file;
 
-/// Response data for [DOWNLOAD_DIR_LINK_PATH] endpoint.
+/// Response data for `DOWNLOAD_DIR_LINK_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DownloadDirLinkResponseData {
     pub folders: Vec<LinkedFolderData>,
@@ -187,11 +196,11 @@ pub struct DownloadDirLinkResponseData {
 utils::display_from_json!(DownloadDirLinkResponseData);
 
 response_payload!(
-    /// Response for [DOWNLOAD_DIR_LINK_PATH] endpoint.
+    /// Response for `DOWNLOAD_DIR_LINK_PATH` endpoint.
     DownloadDirLinkResponsePayload<DownloadDirLinkResponseData>
 );
 
-/// Used for requests to [DOWNLOAD_DIR_SHARED_PATH] endpoint.
+/// Used for requests to `DOWNLOAD_DIR_SHARED_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DownloadDirSharedRequestPayload {
     /// User-associated Filen API key.
@@ -270,7 +279,7 @@ impl SharedFileData {
     gen_download_and_decrypt_file!();
 }
 
-/// Response data for [DOWNLOAD_DIR_SHARED_PATH] endpoint.
+/// Response data for `DOWNLOAD_DIR_SHARED_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DownloadDirSharedResponseData {
     pub folders: Vec<SharedFolderData>,
@@ -280,11 +289,11 @@ pub struct DownloadDirSharedResponseData {
 utils::display_from_json!(DownloadDirSharedResponseData);
 
 response_payload!(
-    /// Response for [DOWNLOAD_DIR_SHARED_PATH] endpoint.
+    /// Response for `DOWNLOAD_DIR_SHARED_PATH` endpoint.
     DownloadDirSharedResponsePayload<DownloadDirSharedResponseData>
 );
 
-/// Used for requests to [DOWNLOAD_DIR_PATH] endpoint.
+/// Used for requests to `DOWNLOAD_DIR_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DownloadDirRequestPayload {
     /// User-associated Filen API key.
@@ -295,7 +304,7 @@ pub struct DownloadDirRequestPayload {
     pub uuid: Uuid,
 }
 
-/// Response data for [DOWNLOAD_DIR_PATH] endpoint.
+/// Response data for `DOWNLOAD_DIR_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DownloadDirResponseData {
     pub folders: Vec<FolderData>,
@@ -371,7 +380,7 @@ impl HasUuid for FileData {
 
 impl FileData {
     /// Decrypt name, size and mime metadata. File key is contained within file metadata in
-    /// [DownloadedFileData::metadata] field, which can be decrypted with [DownloadedFileData::decrypt_file_metadata]
+    /// `DownloadedFileData::metadata` field, which can be decrypted with `DownloadedFileData::decrypt_file_metadata`
     /// call.
     pub fn decrypt_name_size_mime(&self, file_key: &SecUtf8) -> Result<FileNameSizeMime> {
         let name =
@@ -402,13 +411,13 @@ pub struct FileNameSizeMime {
 utils::display_from_json!(FileNameSizeMime);
 
 response_payload!(
-    /// Response for [DOWNLOAD_DIR_PATH] endpoint.
+    /// Response for `DOWNLOAD_DIR_PATH` endpoint.
     DownloadDirResponsePayload<DownloadDirResponseData>
 );
 
-/// Calls [DOWNLOAD_DIR_LINK_PATH] endpoint. Used to check contents of a linked folder.
+/// Calls `DOWNLOAD_DIR_LINK_PATH` endpoint. Used to check contents of a linked folder.
 ///
-/// Link UUID and password can be found out with [dir_link_status_request] using folder UUID.
+/// Link UUID and password can be found out with `dir_link_status_request` using folder UUID.
 pub fn download_dir_link_request(
     payload: &DownloadDirLinkRequestPayload,
     filen_settings: &FilenSettings,
@@ -416,9 +425,9 @@ pub fn download_dir_link_request(
     queries::query_filen_api(DOWNLOAD_DIR_LINK_PATH, payload, filen_settings).context(DownloadDirLinkQueryFailed {})
 }
 
-/// Calls [DOWNLOAD_DIR_LINK_PATH] endpoint asynchronously. Used to check contents of a linked folder.
+/// Calls `DOWNLOAD_DIR_LINK_PATH` endpoint asynchronously. Used to check contents of a linked folder.
 ///
-/// Link UUID and password can be found out with [dir_link_status_request] using folder UUID.
+/// Link UUID and password can be found out with `dir_link_status_request` using folder UUID.
 #[cfg(feature = "async")]
 pub async fn download_dir_link_request_async(
     payload: &DownloadDirLinkRequestPayload,
@@ -429,7 +438,7 @@ pub async fn download_dir_link_request_async(
         .context(DownloadDirLinkQueryFailed {})
 }
 
-/// Calls [DOWNLOAD_DIR_SHARED_PATH] endpoint. Used to check contents of a 'received' folder:
+/// Calls `DOWNLOAD_DIR_SHARED_PATH` endpoint. Used to check contents of a 'received' folder:
 /// folder someone shared with a user.
 pub fn download_dir_shared_request(
     payload: &DownloadDirSharedRequestPayload,
@@ -438,7 +447,7 @@ pub fn download_dir_shared_request(
     queries::query_filen_api(DOWNLOAD_DIR_SHARED_PATH, payload, filen_settings).context(DownloadDirSharedQueryFailed {})
 }
 
-/// Calls [DOWNLOAD_DIR_SHARED_PATH] endpoint asynchronously. Used to check contents of a 'received' folder:
+/// Calls `DOWNLOAD_DIR_SHARED_PATH` endpoint asynchronously. Used to check contents of a 'received' folder:
 /// folder someone shared with a user.
 #[cfg(feature = "async")]
 pub async fn download_dir_shared_request_async(
@@ -450,9 +459,9 @@ pub async fn download_dir_shared_request_async(
         .context(DownloadDirSharedQueryFailed {})
 }
 
-/// Calls [DOWNLOAD_DIR_PATH] endpoint. Used to get a user's folder with given ID and its sub-folders and files.
-/// 
-/// For shared folders use [download_dir_shared_request], and for linked folders use [download_dir_link_request].
+/// Calls `DOWNLOAD_DIR_PATH` endpoint. Used to get a user's folder with given ID and its sub-folders and files.
+///
+/// For shared folders use `download_dir_shared_request`, and for linked folders use `download_dir_link_request`.
 pub fn download_dir_request(
     payload: &DownloadDirRequestPayload,
     filen_settings: &FilenSettings,
@@ -460,11 +469,11 @@ pub fn download_dir_request(
     queries::query_filen_api(DOWNLOAD_DIR_PATH, payload, filen_settings).context(DownloadDirQueryFailed {})
 }
 
-/// Calls [DOWNLOAD_DIR_PATH] endpoint asynchronously. 
+/// Calls `DOWNLOAD_DIR_PATH` endpoint asynchronously.
 /// Used to get a user's folder with given ID and its sub-folders and files.
-/// 
-/// For shared folders use [download_dir_shared_request_async],
-/// and for linked folders use [download_dir_link_request_async].
+///
+/// For shared folders use `download_dir_shared_request_async`,
+/// and for linked folders use `download_dir_link_request_async`.
 #[cfg(feature = "async")]
 pub async fn download_dir_request_async(
     payload: &DownloadDirRequestPayload,
@@ -478,7 +487,7 @@ pub async fn download_dir_request_async(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::*;
+    use crate::test_utils::{deserialize_from_file, validate_contract, validate_contract_async};
     use once_cell::sync::Lazy;
     use secstr::SecUtf8;
 
@@ -496,10 +505,10 @@ mod tests {
         let test_file_metadata_result = test_file.decrypt_file_metadata(&[m_key]);
         let test_file_metadata = test_file_metadata_result.unwrap();
         assert_eq!(test_file_metadata.key.unsecure(), "sh1YRHfx22Ij40tQBbt6BgpBlqkzch8Y");
-        assert_eq!(test_file_metadata.last_modified, 1383742218);
+        assert_eq!(test_file_metadata.last_modified, 1_383_742_218);
         assert_eq!(test_file_metadata.mime, "image/png");
         assert_eq!(test_file_metadata.name, "lina.png");
-        assert_eq!(test_file_metadata.size, 133641);
+        assert_eq!(test_file_metadata.size, 133_641);
 
         let test_file_name_size_mime_result = test_file.decrypt_name_size_mime(&test_file_metadata.key);
         let test_file_name_size_mime = test_file_name_size_mime_result.unwrap();

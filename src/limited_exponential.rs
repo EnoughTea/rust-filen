@@ -12,7 +12,7 @@ pub struct LimitedExponential {
 }
 
 impl LimitedExponential {
-    /// Creates a new [LimitedExponential] from the corresponding [RetrySettings] params.
+    /// Creates a new `LimitedExponential` from the corresponding `RetrySettings` params.
     pub const fn from_retry_settings(settings: &RetrySettings) -> Self {
         Self {
             current: settings.initial_delay().as_millis() as u64,

@@ -7,7 +7,7 @@ const RETRY_EXP_FACTOR: u32 = 2;
 const RETRY_INITIAL_DELAY_MILLIS: u64 = 1000;
 const RETRY_MAX_DELAY_MILLIS: u64 = 15000;
 
-/// 'No retries' retry settings with [RetrySettings::max_tries] set to 0.
+/// 'No retries' retry settings with `RetrySettings::max_tries` set to 0.
 pub static NO_RETRIES: Lazy<RetrySettings> = Lazy::new(RetrySettings::default);
 
 /// Retry settings to retry 5 times with 1, 2, 4, 8 and 15 seconds pause between retries.
@@ -18,8 +18,8 @@ pub static STANDARD_RETRIES: Lazy<RetrySettings> = Lazy::new(|| RetrySettings {
 
 /// Parameters for exponential backoff retry strategy with random jitter. Default instance performs no retries.
 ///
-/// Turn any API query into retriable if needed: call [RetrySettings::retry] for sync operations and
-/// [RetrySettings::retry_async] for futures.
+/// Turn any API query into retriable if needed: call `RetrySettings::retry` for sync operations and
+/// `RetrySettings::retry_async` for futures.
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub struct RetrySettings {
     /// Initial delay for exponential backoff.
@@ -36,6 +36,7 @@ pub struct RetrySettings {
 }
 
 impl RetrySettings {
+    #[must_use]
     pub const fn new(max_tries: usize, initial_delay: Duration, exp_factor: u32, max_delay: Duration) -> Self {
         Self {
             initial_delay,
@@ -51,6 +52,7 @@ impl RetrySettings {
             .take(self.max_tries)
     }
 
+    /// Retry the given asynchronous operation until it succeeds, or until retry count run out.
     #[cfg(feature = "async")]
     pub async fn retry_async<T, CF, OpErr>(&self, operation: CF) -> Result<T, OpErr>
     where
@@ -63,6 +65,11 @@ impl RetrySettings {
         fure::retry(operation, policy).await
     }
 
+    /// Retry the given operation synchronously until it succeeds, or until retry count run out.
+    ///
+    /// # Panics
+    ///
+    /// Will panic on `retry::Error::Internal` emitting by `operation`.
     pub fn retry<O, R, OR, OpErr>(&self, operation: O) -> Result<R, OpErr>
     where
         O: Send + FnMut() -> OR,
@@ -85,17 +92,20 @@ impl RetrySettings {
         &self.initial_delay
     }
 
-    /// Get the exponential factor. If set to 0, [RetrySettings::max_delay] will always be used as a delay.
+    /// Get the exponential factor. If set to 0, `RetrySettings::max_delay` will always be used as a delay.
+    #[must_use]
     pub const fn exp_factor(&self) -> u32 {
         self.exp_factor
     }
 
     /// Get a reference to the maximum possible delay for exponential backoff.
+    #[must_use]
     pub const fn max_delay(&self) -> &Duration {
         &self.max_delay
     }
 
     /// Get a reference to the amount of retries to perform when something fails. If set to 0, no retries will be made.
+    #[must_use]
     pub const fn max_tries(&self) -> usize {
         self.max_tries
     }

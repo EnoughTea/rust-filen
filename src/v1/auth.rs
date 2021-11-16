@@ -1,4 +1,9 @@
-use crate::{crypto, filen_settings::FilenSettings, queries, utils, v1::*};
+use crate::{
+    crypto,
+    filen_settings::FilenSettings,
+    queries, utils,
+    v1::{response_payload, HasMasterKeys, HasPrivateKey},
+};
 use easy_hasher::easy_hasher::sha512;
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
@@ -44,6 +49,7 @@ pub struct FilenPasswordWithMasterKey {
 
 impl FilenPasswordWithMasterKey {
     /// Derives master key and login hash from user's password. Expects plain text password.
+    #[must_use]
     pub fn from_user_password(password: &SecUtf8) -> Self {
         let m_key = SecUtf8::from(crypto::hash_fn(password.unsecure()));
         let sent_password = SecUtf8::from(crypto::hash_password(password.unsecure()));
@@ -52,6 +58,7 @@ impl FilenPasswordWithMasterKey {
 
     /// Derives master key and login hash from user's password and Filen salt (from /auth/info API call).
     /// Expects plain text password.
+    #[must_use]
     pub fn from_user_password_and_auth_info_salt(password: &SecUtf8, salt: &SecUtf8) -> Self {
         let (password_bytes, salt_bytes) = (password.unsecure().as_bytes(), salt.unsecure().as_bytes());
         let pbkdf2_hash = crypto::derive_key_from_password_512(password_bytes, salt_bytes, 200_000);
@@ -70,7 +77,7 @@ impl FilenPasswordWithMasterKey {
     }
 }
 
-/// Used for requests to [AUTH_INFO_PATH] endpoint.
+/// Used for requests to `AUTH_INFO_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct AuthInfoRequestPayload {
     /// Registered user email.
@@ -121,18 +128,18 @@ impl AuthInfoResponseData {
 }
 
 response_payload!(
-    /// Response for [AUTH_INFO_PATH] endpoint.
+    /// Response for `AUTH_INFO_PATH` endpoint.
     AuthInfoResponsePayload<AuthInfoResponseData>
 );
 
-/// Used for requests to [LOGIN_PATH] endpoint.
+/// Used for requests to `LOGIN_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LoginRequestPayload {
     /// Registered user email.
     pub email: SecUtf8,
 
     /// Filen-processed password. Note that this is not a registered user password, but its hash.
-    /// Use one of [FilenPasswordWithMasterKey]::from... methods to calculate it.
+    /// Use one of `FilenPasswordWithMasterKey`::from... methods to calculate it.
     pub password: SecUtf8,
 
     /// Registered user 2FA key, if present. XXXXXX means no 2FA key.
@@ -188,7 +195,7 @@ response_payload!(
     LoginResponsePayload<LoginResponseData>
 );
 
-/// Calls [AUTH_INFO_PATH] endpoint. Used to get used auth version and Filen salt.
+/// Calls `AUTH_INFO_PATH` endpoint. Used to get used auth version and Filen salt.
 pub fn auth_info_request(
     payload: &AuthInfoRequestPayload,
     filen_settings: &FilenSettings,
@@ -196,7 +203,7 @@ pub fn auth_info_request(
     queries::query_filen_api(AUTH_INFO_PATH, payload, filen_settings).context(AuthInfoQueryFailed {})
 }
 
-/// Calls [AUTH_INFO_PATH] endpoint asynchronously. Used to get used auth version and Filen salt.
+/// Calls `AUTH_INFO_PATH` endpoint asynchronously. Used to get used auth version and Filen salt.
 #[cfg(feature = "async")]
 pub async fn auth_info_request_async(
     payload: &AuthInfoRequestPayload,
@@ -207,14 +214,14 @@ pub async fn auth_info_request_async(
         .context(AuthInfoQueryFailed {})
 }
 
-/// Calls [LOGIN_PATH] endpoint. Used to get API key, master keys and private key.
+/// Calls `LOGIN_PATH` endpoint. Used to get API key, master keys and private key.
 pub fn login_request(payload: &LoginRequestPayload, filen_settings: &FilenSettings) -> Result<LoginResponsePayload> {
     queries::query_filen_api(LOGIN_PATH, payload, filen_settings).context(LoginQueryFailed {
         auth_version: payload.auth_version,
     })
 }
 
-/// Calls [LOGIN_PATH] endpoint asynchronously. Used to get API key, master keys and private key.
+/// Calls `LOGIN_PATH` endpoint asynchronously. Used to get API key, master keys and private key.
 #[cfg(feature = "async")]
 pub async fn login_request_async(
     payload: &LoginRequestPayload,
@@ -229,10 +236,8 @@ pub async fn login_request_async(
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        test_utils::{self, *},
-        v1::auth::*,
-    };
+    use super::*;
+    use crate::test_utils::{self, validate_contract, validate_contract_async};
     use pretty_assertions::assert_eq;
 
     #[test]

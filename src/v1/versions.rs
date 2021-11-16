@@ -1,4 +1,8 @@
-use crate::{filen_settings::*, queries, utils, v1::*};
+use crate::{
+    queries, utils,
+    v1::{bool_from_int, bool_to_int, response_payload, FileStorageInfo},
+    FilenSettings,
+};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -19,7 +23,7 @@ pub enum Error {
     FileVersionsQueryFailed { source: queries::Error },
 }
 
-/// Used for requests to [FILE_ARCHIVE_RESTORE_PATH] endpoint.
+/// Used for requests to `FILE_ARCHIVE_RESTORE_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FileArchiveRestoreRequestPayload {
     /// User-associated Filen API key.
@@ -35,7 +39,7 @@ pub struct FileArchiveRestoreRequestPayload {
 }
 utils::display_from_json!(FileArchiveRestoreRequestPayload);
 
-/// Response data for [FILE_ARCHIVE_RESTORE_PATH] endpoint.
+/// Response data for `FILE_ARCHIVE_RESTORE_PATH` endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FileArchiveRestoreResponseData {
@@ -74,7 +78,7 @@ pub struct FileArchiveRestoreResponseData {
 utils::display_from_json!(FileArchiveRestoreResponseData);
 
 response_payload!(
-    /// Response for [FILE_ARCHIVE_RESTORE_PATH] endpoint.
+    /// Response for `FILE_ARCHIVE_RESTORE_PATH` endpoint.
     FileArchiveRestoreResponsePayload<FileArchiveRestoreResponseData>
 );
 
@@ -103,7 +107,7 @@ pub struct FileVersion {
     pub version: u32,
 }
 
-/// Used for requests to [FILE_VERSIONS_PATH] endpoint.
+/// Used for requests to `FILE_VERSIONS_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FileVersionsRequestPayload {
     /// User-associated Filen API key.
@@ -115,7 +119,7 @@ pub struct FileVersionsRequestPayload {
 }
 utils::display_from_json!(FileVersionsRequestPayload);
 
-/// Response data for [FILE_VERSIONS_PATH] endpoint.
+/// Response data for `FILE_VERSIONS_PATH` endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FileVersionsResponseData {
@@ -126,11 +130,11 @@ pub struct FileVersionsResponseData {
 utils::display_from_json!(FileVersionsResponseData);
 
 response_payload!(
-    /// Response for [FILE_VERSIONS_PATH] endpoint.
+    /// Response for `FILE_VERSIONS_PATH` endpoint.
     FileVersionsResponsePayload<FileVersionsResponseData>
 );
 
-/// Calls [FILE_ARCHIVE_RESTORE_PATH] endpoint. Used to get versions of the given file.
+/// Calls `FILE_ARCHIVE_RESTORE_PATH` endpoint. Used to get versions of the given file.
 pub fn file_archive_restore_request(
     payload: &FileArchiveRestoreRequestPayload,
     filen_settings: &FilenSettings,
@@ -139,7 +143,7 @@ pub fn file_archive_restore_request(
         .context(FileArchiveRestoreQueryFailed {})
 }
 
-/// Calls [FILE_ARCHIVE_RESTORE_PATH] endpoint asynchronously. Used to get versions of the given file.
+/// Calls `FILE_ARCHIVE_RESTORE_PATH` endpoint asynchronously. Used to get versions of the given file.
 #[cfg(feature = "async")]
 pub async fn file_archive_restore_request_async(
     payload: &FileArchiveRestoreRequestPayload,
@@ -150,7 +154,7 @@ pub async fn file_archive_restore_request_async(
         .context(FileArchiveRestoreQueryFailed {})
 }
 
-/// Calls [FILE_VERSIONS_PATH] endpoint. Used to get versions of the given file.
+/// Calls `FILE_VERSIONS_PATH` endpoint. Used to get versions of the given file.
 pub fn file_versions_request(
     payload: &FileVersionsRequestPayload,
     filen_settings: &FilenSettings,
@@ -158,7 +162,7 @@ pub fn file_versions_request(
     queries::query_filen_api(FILE_VERSIONS_PATH, payload, filen_settings).context(FileVersionsQueryFailed {})
 }
 
-/// Calls [FILE_VERSIONS_PATH] endpoint asynchronously. Used to get versions of the given file.
+/// Calls `FILE_VERSIONS_PATH` endpoint asynchronously. Used to get versions of the given file.
 #[cfg(feature = "async")]
 pub async fn file_versions_request_async(
     payload: &FileVersionsRequestPayload,
@@ -172,7 +176,7 @@ pub async fn file_versions_request_async(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::*;
+    use crate::test_utils::{validate_contract, validate_contract_async};
     use once_cell::sync::Lazy;
 
     static API_KEY: Lazy<SecUtf8> =

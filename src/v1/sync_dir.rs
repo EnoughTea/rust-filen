@@ -1,4 +1,10 @@
-use crate::{filen_settings::FilenSettings, queries, utils, v1::*};
+use crate::{
+    queries, utils,
+    v1::{
+        bool_from_string, bool_to_string, response_payload, FolderData, HasFileMetadata, HasFiles, HasFolders, HasUuid,
+    },
+    FilenSettings,
+};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
@@ -14,7 +20,7 @@ pub enum Error {
     GetDirQueryFailed { source: queries::Error },
 }
 
-/// Used for requests to [GET_DIR_PATH] endpoint.
+/// Used for requests to `GET_DIR_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct GetDirRequestPayload {
     /// User-associated Filen API key.
@@ -37,7 +43,7 @@ pub struct GetDirRequestPayload {
 }
 utils::display_from_json!(GetDirRequestPayload);
 
-/// Response data for [GET_DIR_PATH] endpoint.
+/// Response data for `GET_DIR_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct GetDirResponseData {
     pub folders: Vec<FolderData>,
@@ -96,11 +102,11 @@ impl HasUuid for SyncedFileData {
 }
 
 response_payload!(
-    /// Response for [GET_DIR_PATH] endpoint.
+    /// Response for `GET_DIR_PATH` endpoint.
     GetDirResponsePayload<GetDirResponseData>
 );
 
-/// Calls [GET_DIR_PATH] endpoint. It fetches the entire Filen sync folder contents, with option
+/// Calls `GET_DIR_PATH` endpoint. It fetches the entire Filen sync folder contents, with option
 /// to return empty data if nothing has been changed since the last call.
 pub fn get_dir_request(
     payload: &GetDirRequestPayload,
@@ -109,7 +115,7 @@ pub fn get_dir_request(
     queries::query_filen_api(GET_DIR_PATH, payload, filen_settings).context(GetDirQueryFailed {})
 }
 
-/// Calls [GET_DIR_PATH] endpoint asynchronously. It fetches the entire Filen sync folder contents, with option
+/// Calls `GET_DIR_PATH` endpoint asynchronously. It fetches the entire Filen sync folder contents, with option
 /// to return empty data if nothing has been changed since the last call.
 #[cfg(feature = "async")]
 pub async fn get_dir_request_async(
@@ -124,7 +130,7 @@ pub async fn get_dir_request_async(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::*;
+    use crate::test_utils::{validate_contract, validate_contract_async};
     use once_cell::sync::Lazy;
     use secstr::SecUtf8;
 

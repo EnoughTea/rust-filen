@@ -1,9 +1,16 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use crate::{filen_settings::*, queries, utils, v1::*};
+use crate::{
+    queries, utils,
+    v1::{
+        bool_from_int, bool_to_int, files, fs, response_payload, FileProperties, FileStorageInfo, HasFileLocation,
+        HasFileMetadata, HasLocationName, HasUuid, ItemKind, LocationColor, LocationNameMetadata,
+    },
+    FilenSettings,
+};
 use secstr::SecUtf8;
-use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};
 use snafu::{Backtrace, ResultExt, Snafu};
 use std::fmt;
 use std::net::Ipv4Addr;
@@ -285,7 +292,7 @@ impl HasUuid for FolderEventInfo {
     }
 }
 
-/// Used for requests to [USER_EVENTS_PATH] endpoint.
+/// Used for requests to `USER_EVENTS_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserEventsRequestPayload {
     /// User-associated Filen API key.
@@ -947,7 +954,7 @@ impl<'de> Deserialize<'de> for UserEvent {
     }
 }
 
-/// Response data for [USER_EVENTS_PATH] endpoint.
+/// Response data for `USER_EVENTS_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserEventsResponseData {
     /// List of filtered user events.
@@ -959,11 +966,11 @@ pub struct UserEventsResponseData {
 utils::display_from_json!(UserEventsResponseData);
 
 response_payload!(
-    /// Response for [USER_EVENTS_PATH] endpoint.
+    /// Response for `USER_EVENTS_PATH` endpoint.
     UserEventsResponsePayload<UserEventsResponseData>
 );
 
-/// Used for requests to [USER_EVENTS_GET_PATH] endpoint.
+/// Used for requests to `USER_EVENTS_GET_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserEventsGetRequestPayload {
     /// User-associated Filen API key.
@@ -975,11 +982,11 @@ pub struct UserEventsGetRequestPayload {
 }
 
 response_payload!(
-    /// Response for [USER_EVENTS_GET_PATH] endpoint.
+    /// Response for `USER_EVENTS_GET_PATH` endpoint.
     UserEventsGetResponsePayload<UserEvent>
 );
 
-/// Calls [USER_EVENTS_PATH] endpoint.
+/// Calls `USER_EVENTS_PATH` endpoint.
 pub fn user_events_request(
     payload: &UserEventsRequestPayload,
     filen_settings: &FilenSettings,
@@ -987,7 +994,7 @@ pub fn user_events_request(
     queries::query_filen_api(USER_EVENTS_PATH, payload, filen_settings).context(UserEventsQueryFailed {})
 }
 
-/// Calls [USER_EVENTS_PATH] endpoint asynchronously.
+/// Calls `USER_EVENTS_PATH` endpoint asynchronously.
 #[cfg(feature = "async")]
 pub async fn user_events_request_async(
     payload: &UserEventsRequestPayload,
@@ -998,7 +1005,7 @@ pub async fn user_events_request_async(
         .context(UserEventsQueryFailed {})
 }
 
-/// Calls [USER_EVENTS_GET_PATH] endpoint.
+/// Calls `USER_EVENTS_GET_PATH` endpoint.
 pub fn user_events_get_request(
     payload: &UserEventsGetRequestPayload,
     filen_settings: &FilenSettings,
@@ -1006,7 +1013,7 @@ pub fn user_events_get_request(
     queries::query_filen_api(USER_EVENTS_GET_PATH, payload, filen_settings).context(UserEventsGetQueryFailed {})
 }
 
-/// Calls [USER_EVENTS_GET_PATH] endpoint asynchronously.
+/// Calls `USER_EVENTS_GET_PATH` endpoint asynchronously.
 #[cfg(feature = "async")]
 pub async fn user_events_get_request_async(
     payload: &UserEventsGetRequestPayload,
@@ -1064,7 +1071,7 @@ pub(crate) use user_event_struct;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::*;
+    use crate::test_utils::{validate_contract, validate_contract_async};
     use once_cell::sync::Lazy;
     use pretty_assertions::assert_eq;
     use secstr::SecUtf8;
@@ -1078,7 +1085,7 @@ mod tests {
 
         let serialized = serde_json::to_string(&UserEventKind::DeleteAll).unwrap();
 
-        assert_eq!(serialized, expected)
+        assert_eq!(serialized, expected);
     }
 
     #[test]
@@ -1088,7 +1095,7 @@ mod tests {
         let serialized_user_event_kind =
             serde_json::to_string(&UserEventKind::Unknown("this is some unknown value".to_owned())).unwrap();
 
-        assert_eq!(serialized_user_event_kind, expected)
+        assert_eq!(serialized_user_event_kind, expected);
     }
 
     #[test]
@@ -1097,7 +1104,7 @@ mod tests {
 
         let deserialized_user_event_kind = serde_json::from_str::<UserEventKind>(r#""deleteAll""#).unwrap();
 
-        assert_eq!(deserialized_user_event_kind, expected)
+        assert_eq!(deserialized_user_event_kind, expected);
     }
 
     #[test]
@@ -1107,7 +1114,7 @@ mod tests {
         let deserialized_user_event_kind =
             serde_json::from_str::<UserEventKind>(r#""this is some unknown value""#).unwrap();
 
-        assert_eq!(deserialized_user_event_kind, expected)
+        assert_eq!(deserialized_user_event_kind, expected);
     }
 
     #[test]

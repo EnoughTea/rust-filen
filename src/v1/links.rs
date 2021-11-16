@@ -1,4 +1,14 @@
-use crate::{queries, utils, v1::*, *};
+use crate::{
+    queries, secstr, utils, uuid, v1,
+    v1::{
+        crypto, dir_link_add_request, dir_link_add_request_async, dir_links, download_dir, download_dir_request,
+        download_dir_request_async, file_links, link_edit_request, link_edit_request_async, response_payload,
+        Backtrace, DirLinkAddRequestPayload, DownloadBtnState, DownloadDirRequestPayload, Expire, FileProperties,
+        FilenResponse, HasFileMetadata, HasLinkKey, HasLocationName, HasUuid, LinkEditRequestPayload,
+        LocationNameMetadata, ParentOrBase, PlainResponsePayload, METADATA_VERSION,
+    },
+    FilenSettings, RetrySettings,
+};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -50,7 +60,7 @@ pub enum Error {
     LinkEditQueryFailed { source: file_links::Error },
 }
 
-/// Used for requests to [LINK_DIR_ITEM_RENAME_PATH] endpoint.
+/// Used for requests to `LINK_DIR_ITEM_RENAME_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LinkDirItemRenameRequestPayload {
     /// User-associated Filen API key.
@@ -70,6 +80,7 @@ pub struct LinkDirItemRenameRequestPayload {
 utils::display_from_json!(LinkDirItemRenameRequestPayload);
 
 impl LinkDirItemRenameRequestPayload {
+    #[must_use]
     pub fn from_file_properties(
         api_key: SecUtf8,
         link_uuid: Uuid,
@@ -86,6 +97,7 @@ impl LinkDirItemRenameRequestPayload {
         }
     }
 
+    #[must_use]
     pub fn from_folder_name(
         api_key: SecUtf8,
         link_uuid: Uuid,
@@ -103,7 +115,7 @@ impl LinkDirItemRenameRequestPayload {
     }
 }
 
-/// Used for requests to [LINK_DIR_ITEM_STATUS_PATH] endpoint.
+/// Used for requests to `LINK_DIR_ITEM_STATUS_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LinkDirItemStatusRequestPayload {
     /// User-associated Filen API key.
@@ -115,7 +127,7 @@ pub struct LinkDirItemStatusRequestPayload {
 }
 utils::display_from_json!(LinkDirItemStatusRequestPayload);
 
-/// Response data for [LINK_DIR_ITEM_STATUS_PATH] endpoint.
+/// Response data for `LINK_DIR_ITEM_STATUS_PATH` endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct LinkDirItemStatusResponseData {
@@ -129,11 +141,11 @@ pub struct LinkDirItemStatusResponseData {
 utils::display_from_json!(LinkDirItemStatusResponseData);
 
 response_payload!(
-    /// Response for [LINK_DIR_ITEM_STATUS_PATH] endpoint.
+    /// Response for `LINK_DIR_ITEM_STATUS_PATH` endpoint.
     LinkDirItemStatusResponsePayload<LinkDirItemStatusResponseData>
 );
 
-/// Used for requests to [LINK_DIR_STATUS_PATH] endpoint.
+/// Used for requests to `LINK_DIR_STATUS_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LinkDirStatusRequestPayload {
     /// User-associated Filen API key.
@@ -167,6 +179,7 @@ impl HasLinkKey for LinkIdWithKey {
 
 impl LinkIdWithKey {
     /// Generates a new link uuid and a link key metadata.
+    #[must_use]
     pub fn generate(last_master_key: &SecUtf8) -> Self {
         let (link_uuid, link_key_plain) = Self::generate_unencrypted();
         let link_key_metadata =
@@ -178,12 +191,13 @@ impl LinkIdWithKey {
     }
 
     /// Generates a new link uuid and a link key.
+    #[must_use]
     pub fn generate_unencrypted() -> (Uuid, SecUtf8) {
         (Uuid::new_v4(), SecUtf8::from(utils::random_alphanumeric_string(32)))
     }
 }
 
-/// Response data for [LINK_DIR_STATUS_PATH] endpoint.
+/// Response data for `LINK_DIR_STATUS_PATH` endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct LinkDirStatusResponseData {
@@ -197,11 +211,11 @@ pub struct LinkDirStatusResponseData {
 utils::display_from_json!(LinkDirStatusResponseData);
 
 response_payload!(
-    /// Response for [LINK_DIR_STATUS_PATH] endpoint.
+    /// Response for `LINK_DIR_STATUS_PATH` endpoint.
     LinkDirStatusResponsePayload<LinkDirStatusResponseData>
 );
 
-/// Calls [LINK_DIR_ITEM_RENAME_PATH] endpoint.
+/// Calls `LINK_DIR_ITEM_RENAME_PATH` endpoint.
 pub fn link_dir_item_rename_request(
     payload: &LinkDirItemRenameRequestPayload,
     filen_settings: &FilenSettings,
@@ -210,7 +224,7 @@ pub fn link_dir_item_rename_request(
         .context(LinkDirItemRenameQueryFailed {})
 }
 
-/// Calls [LINK_DIR_ITEM_RENAME_PATH] endpoint asynchronously.
+/// Calls `LINK_DIR_ITEM_RENAME_PATH` endpoint asynchronously.
 #[cfg(feature = "async")]
 pub async fn link_dir_item_rename_request_async(
     payload: &LinkDirItemRenameRequestPayload,
@@ -221,7 +235,7 @@ pub async fn link_dir_item_rename_request_async(
         .context(LinkDirItemRenameQueryFailed {})
 }
 
-/// Calls [LINK_DIR_ITEM_STATUS_PATH] endpoint.
+/// Calls `LINK_DIR_ITEM_STATUS_PATH` endpoint.
 pub fn link_dir_item_status_request(
     payload: &LinkDirItemStatusRequestPayload,
     filen_settings: &FilenSettings,
@@ -230,7 +244,7 @@ pub fn link_dir_item_status_request(
         .context(LinkDirItemStatusQueryFailed {})
 }
 
-/// Calls [LINK_DIR_ITEM_STATUS_PATH] endpoint asynchronously.
+/// Calls `LINK_DIR_ITEM_STATUS_PATH` endpoint asynchronously.
 #[cfg(feature = "async")]
 pub async fn link_dir_item_status_request_async(
     payload: &LinkDirItemStatusRequestPayload,
@@ -241,7 +255,7 @@ pub async fn link_dir_item_status_request_async(
         .context(LinkDirItemStatusQueryFailed {})
 }
 
-/// Calls [LINK_DIR_STATUS_PATH] endpoint. Used to check if given folder has links and return them, if any.
+/// Calls `LINK_DIR_STATUS_PATH` endpoint. Used to check if given folder has links and return them, if any.
 pub fn link_dir_status_request(
     payload: &LinkDirStatusRequestPayload,
     filen_settings: &FilenSettings,
@@ -249,7 +263,7 @@ pub fn link_dir_status_request(
     queries::query_filen_api(LINK_DIR_STATUS_PATH, payload, filen_settings).context(LinkDirStatusQueryFailed {})
 }
 
-/// Calls [LINK_DIR_STATUS_PATH] endpoint asynchronously.
+/// Calls `LINK_DIR_STATUS_PATH` endpoint asynchronously.
 /// Used to check if given folder has links and return them, if any.
 #[cfg(feature = "async")]
 pub async fn link_dir_status_request_async(
@@ -499,7 +513,7 @@ pub fn link_folder_recursively(
     };
 
     let content_payload = DownloadDirRequestPayload {
-        api_key: api_key.to_owned(),
+        api_key: api_key.clone(),
         uuid: folder_uuid,
     };
     let contents_response = retry_settings
@@ -525,7 +539,7 @@ pub fn link_folder_recursively(
                     folder.parent.clone()
                 };
                 add_folder_to_link(
-                    api_key.to_owned(),
+                    api_key.clone(),
                     folder,
                     parent,
                     link_id_with_key.link_uuid,
@@ -544,7 +558,7 @@ pub fn link_folder_recursively(
         .map(|file| {
             retry_settings.retry(|| {
                 add_file_to_link(
-                    api_key.to_owned(),
+                    api_key.clone(),
                     file,
                     ParentOrBase::Folder(file.parent),
                     link_id_with_key.link_uuid,
@@ -581,7 +595,7 @@ pub async fn link_folder_recursively_async(
     };
 
     let content_payload = DownloadDirRequestPayload {
-        api_key: api_key.to_owned(),
+        api_key: api_key.clone(),
         uuid: folder_uuid,
     };
     let contents_response = retry_settings
@@ -604,7 +618,7 @@ pub async fn link_folder_recursively_async(
                 folder.parent.clone()
             };
             add_folder_to_link_async(
-                api_key.to_owned(),
+                api_key.clone(),
                 folder,
                 parent,
                 link_id_with_key_clone.link_uuid,
@@ -623,7 +637,7 @@ pub async fn link_folder_recursively_async(
         retry_settings.retry_async(move || async move {
             let link_id_with_key_clone = link_id_with_key_clone();
             add_file_to_link_async(
-                api_key.to_owned(),
+                api_key.clone(),
                 file,
                 ParentOrBase::Folder(file.parent),
                 link_id_with_key_clone.link_uuid,
@@ -643,7 +657,7 @@ pub async fn link_folder_recursively_async(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::*;
+    use crate::test_utils::{validate_contract, validate_contract_async};
     use once_cell::sync::Lazy;
     use secstr::SecUtf8;
 

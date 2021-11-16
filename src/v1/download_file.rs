@@ -1,5 +1,13 @@
-use crate::{crypto, filen_settings::FilenSettings, queries, retry_settings::RetrySettings, utils, v1::*};
+use crate::{
+    crypto,
+    filen_settings::FilenSettings,
+    queries,
+    retry_settings::RetrySettings,
+    utils,
+    v1::{FileData, HasFileLocation},
+};
 use secstr::SecUtf8;
+use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::{convert::TryInto, fmt, io::Write};
 use uuid::Uuid;
@@ -58,6 +66,7 @@ impl FileLocation {
         }
     }
 
+    #[must_use]
     pub fn get_file_chunk_location(&self, chunk_index: u32) -> FileChunkLocation {
         FileChunkLocation::new(&self.region, &self.bucket, self.file_uuid, chunk_index)
     }
@@ -127,18 +136,18 @@ pub async fn download_file_chunk_async(
     queries::download_from_filen_async(&api_endpoint, filen_settings)
         .await
         .context(CannotDownloadFileChunk {
-            location: file_chunk_location.to_owned(),
+            location: file_chunk_location.clone(),
         })
 }
 
-/// Synchronously downloads and decrypts the file defined by given [DownloadedFileData] from Filen download server.
+/// Synchronously downloads and decrypts the file defined by given `DownloadedFileData` from Filen download server.
 /// Returns total size of downloaded encrypted chunks.
 /// All file chunks are downloaded and decrypted sequentially one by one, with each decrypted chunk immediately written
 /// to the provided writer.
 ///
-/// Note that file download is explicitly retriable and requires RetrySettings as an argument.
-/// You can pass [crate::NO_RETRIES] if you really want to fail the entire file download even if a single chunk
-/// download request fails temporarily, otherwise [crate::STANDARD_RETRIES] is a better fit.
+/// Note that file download is explicitly retriable and requires `RetrySettings` as an argument.
+/// You can pass `crate::NO_RETRIES` if you really want to fail the entire file download even if a single chunk
+/// download request fails temporarily, otherwise `crate::STANDARD_RETRIES` is a better fit.
 pub fn download_and_decrypt_file_from_data_and_key<W: Write>(
     file_data: &FileData,
     file_key: &SecUtf8,
@@ -156,13 +165,13 @@ pub fn download_and_decrypt_file_from_data_and_key<W: Write>(
     )
 }
 
-/// Asynchronously downloads and decrypts the file defined by given [DownloadedFileData] from Filen download server.
+/// Asynchronously downloads and decrypts the file defined by given `DownloadedFileData` from Filen download server.
 /// Returns total size of downloaded encrypted chunks.
 /// All file chunks are downloaded and decrypted in concurrently first, and then written to the provided writer.
 ///
-/// Note that file download is explicitly retriable and requires RetrySettings as an argument.
-/// You can pass [crate::NO_RETRIES] if you really want to fail the entire file download even if a single chunk
-/// download request fails temporarily, otherwise [crate::STANDARD_RETRIES] is a better fit.
+/// Note that file download is explicitly retriable and requires `RetrySettings` as an argument.
+/// You can pass `crate::NO_RETRIES` if you really want to fail the entire file download even if a single chunk
+/// download request fails temporarily, otherwise `crate::STANDARD_RETRIES` is a better fit.
 #[cfg(feature = "async")]
 pub async fn download_and_decrypt_file_from_data_and_key_async<W: Write + Send>(
     file_data: &FileData,

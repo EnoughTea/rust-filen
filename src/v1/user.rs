@@ -1,9 +1,14 @@
-use crate::{filen_settings::*, queries, utils, v1::*};
+use crate::{
+    queries, utils,
+    v1::{bool_from_int, bool_to_int, response_payload, FilenResponse, Uuid},
+    FilenSettings,
+};
 use secstr::SecUtf8;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};
 use snafu::{ResultExt, Snafu};
 use std::str::FromStr;
+use strum::{Display, EnumString};
 use url::Url;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -24,9 +29,10 @@ pub enum Error {
     UserInfoQueryFailed { source: queries::Error },
 }
 
+#[allow(clippy::doc_markdown)]
 /// One of payment gateways Filen currently support.
 ///
-/// Currently observed: paypal, paypal_sale, stripe, stripe_sale, coinbase.
+/// Currently observed: "paypal", "paypal_sale", "stripe", "stripe_sale", "coinbase".
 #[derive(Clone, Debug, Display, EnumString, Eq, Hash, PartialEq)]
 #[strum(ascii_case_insensitive, serialize_all = "snake_case")]
 pub enum FilenPaymentGateway {
@@ -68,7 +74,7 @@ pub struct UserSubInvoice {
     /// Invoice ID; hyphenated lowercased UUID V4.
     pub id: Uuid,
 
-    /// Corresponding [UserSub::id]; hyphenated lowercased UUID V4.
+    /// Corresponding `UserSub::id`; hyphenated lowercased UUID V4.
     #[serde(rename = "subId")]
     pub sub_id: Uuid,
 
@@ -130,7 +136,7 @@ pub struct UserSub {
 }
 utils::display_from_json!(UserSub);
 
-/// Response data for [USER_GET_ACCOUNT_PATH] endpoint.
+/// Response data for `USER_GET_ACCOUNT_PATH` endpoint.
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -198,7 +204,7 @@ pub struct UserGetAccountResponseData {
 }
 utils::display_from_json!(UserGetAccountResponseData);
 
-/// Response for [USER_GET_ACCOUNT_PATH] endpoint.
+/// Response for `USER_GET_ACCOUNT_PATH` endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct UserGetAccountResponsePayload {
@@ -227,7 +233,7 @@ impl FilenResponse<UserGetAccountResponseData> for UserGetAccountResponsePayload
     }
 }
 
-/// Response data for [USER_GET_SETTINGS_PATH] endpoint.
+/// Response data for `USER_GET_SETTINGS_PATH` endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserGetSettingsResponseData {
@@ -268,11 +274,11 @@ pub struct UserGetSettingsResponseData {
 utils::display_from_json!(UserGetSettingsResponseData);
 
 response_payload!(
-    /// Response for [USER_GET_SETTINGS_PATH] endpoint.
+    /// Response for `USER_GET_SETTINGS_PATH` endpoint.
     UserGetSettingsResponsePayload<UserGetSettingsResponseData>
 );
 
-/// Response data for [USER_INFO_PATH] endpoint.
+/// Response data for `USER_INFO_PATH` endpoint.
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -304,11 +310,11 @@ pub struct UserInfoResponseData {
 utils::display_from_json!(UserInfoResponseData);
 
 response_payload!(
-    /// Response for [USER_INFO_PATH] endpoint.
+    /// Response for `USER_INFO_PATH` endpoint.
     UserInfoResponsePayload<UserInfoResponseData>
 );
 
-/// Calls [USER_GET_ACCOUNT_PATH] endpoint.
+/// Calls `USER_GET_ACCOUNT_PATH` endpoint.
 /// Used to get various account-associated data, such as plans, invoices, referrals.
 pub fn user_get_account_request(
     api_key: &SecUtf8,
@@ -318,7 +324,7 @@ pub fn user_get_account_request(
         .context(UserGetAccountQueryFailed {})
 }
 
-/// Calls [USER_GET_ACCOUNT_PATH] endpoint asynchronously.
+/// Calls `USER_GET_ACCOUNT_PATH` endpoint asynchronously.
 /// Used to get various account-associated data, such as plans, invoices, referrals.
 #[cfg(feature = "async")]
 pub async fn user_get_account_request_async(
@@ -330,7 +336,7 @@ pub async fn user_get_account_request_async(
         .context(UserGetAccountQueryFailed {})
 }
 
-/// Calls [USER_GET_SETTINGS_PATH] endpoint. Used to 2FA settings, versioned and unfinished storage sizes.
+/// Calls `USER_GET_SETTINGS_PATH` endpoint. Used to 2FA settings, versioned and unfinished storage sizes.
 pub fn user_get_settings_request(
     api_key: &SecUtf8,
     filen_settings: &FilenSettings,
@@ -339,7 +345,7 @@ pub fn user_get_settings_request(
         .context(UserGetSettingsQueryFailed {})
 }
 
-/// Calls [USER_GET_SETTINGS_PATH] endpoint asynchronously.
+/// Calls `USER_GET_SETTINGS_PATH` endpoint asynchronously.
 /// Used to 2FA settings, versioned and unfinished storage sizes.
 #[cfg(feature = "async")]
 pub async fn user_get_settings_request_async(
@@ -351,13 +357,13 @@ pub async fn user_get_settings_request_async(
         .context(UserGetSettingsQueryFailed {})
 }
 
-/// Calls [USER_INFO_PATH] endpoint.
+/// Calls `USER_INFO_PATH` endpoint.
 pub fn user_info_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<UserInfoResponsePayload> {
     queries::query_filen_api(USER_INFO_PATH, &utils::api_key_json(api_key), filen_settings)
         .context(UserInfoQueryFailed {})
 }
 
-/// Calls [USER_INFO_PATH] endpoint asynchronously.
+/// Calls `USER_INFO_PATH` endpoint asynchronously.
 #[cfg(feature = "async")]
 pub async fn user_info_request_async(
     api_key: &SecUtf8,
@@ -371,7 +377,7 @@ pub async fn user_info_request_async(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::*;
+    use crate::test_utils::{validate_contract, validate_contract_async};
     use once_cell::sync::Lazy;
     use secstr::SecUtf8;
 

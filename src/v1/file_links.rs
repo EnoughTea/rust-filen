@@ -1,4 +1,11 @@
-use crate::{filen_settings::*, queries, utils, v1::*};
+use crate::{
+    queries, utils,
+    v1::{
+        crypto, response_payload, DownloadBtnState, DownloadBtnStateByte, Expire, PasswordState, PlainResponsePayload,
+        SEC_LINK_EMPTY_PASSWORD_VALUE,
+    },
+    FilenSettings,
+};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -31,7 +38,7 @@ pub enum LinkState {
     Enable,
 }
 
-/// Used for requests to [LINK_EDIT_PATH] endpoint.
+/// Used for requests to `LINK_EDIT_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LinkEditRequestPayload {
     /// User-associated Filen API key.
@@ -70,6 +77,7 @@ pub struct LinkEditRequestPayload {
 utils::display_from_json!(LinkEditRequestPayload);
 
 impl LinkEditRequestPayload {
+    #[must_use]
     pub fn new(
         api_key: SecUtf8,
         file_uuid: Uuid,
@@ -79,17 +87,16 @@ impl LinkEditRequestPayload {
         link_uuid: Option<Uuid>,
         link_plain_password: Option<&SecUtf8>,
     ) -> Self {
-        let (password_hashed, salt) = link_plain_password
-            .map(|password| crypto::encrypt_to_link_password_and_salt(password))
-            .unwrap_or_else(|| crypto::encrypt_to_link_password_and_salt(&SEC_LINK_EMPTY_PASSWORD_VALUE));
+        let (password_hashed, salt) = link_plain_password.map_or_else(
+            || crypto::encrypt_to_link_password_and_salt(&SEC_LINK_EMPTY_PASSWORD_VALUE),
+            |password| crypto::encrypt_to_link_password_and_salt(password),
+        );
         Self {
             api_key,
             download_btn,
             expiration,
             file_uuid,
-            password: link_plain_password
-                .map(|_| PasswordState::NotEmpty)
-                .unwrap_or(PasswordState::Empty),
+            password: link_plain_password.map_or(PasswordState::Empty, |_| PasswordState::NotEmpty),
             password_hashed,
             salt,
             link_type: state,
@@ -97,6 +104,7 @@ impl LinkEditRequestPayload {
         }
     }
 
+    #[must_use]
     pub fn enabled(
         api_key: SecUtf8,
         file_uuid: Uuid,
@@ -116,6 +124,7 @@ impl LinkEditRequestPayload {
         )
     }
 
+    #[must_use]
     pub fn disabled(api_key: SecUtf8, file_uuid: Uuid, link_uuid: Uuid) -> Self {
         Self::new(
             api_key,
@@ -129,7 +138,7 @@ impl LinkEditRequestPayload {
     }
 }
 
-/// Used for requests to [LINK_STATUS_PATH] endpoint.
+/// Used for requests to `LINK_STATUS_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LinkStatusRequestPayload {
     /// User-associated Filen API key.
@@ -142,7 +151,7 @@ pub struct LinkStatusRequestPayload {
 }
 utils::display_from_json!(LinkStatusRequestPayload);
 
-/// Response data for [LINK_STATUS_PATH] endpoint.
+/// Response data for `LINK_STATUS_PATH` endpoint.
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct LinkStatusResponseData {
@@ -170,11 +179,11 @@ pub struct LinkStatusResponseData {
 utils::display_from_json!(LinkStatusResponseData);
 
 response_payload!(
-    /// Response for [LINK_STATUS_PATH] endpoint.
+    /// Response for `LINK_STATUS_PATH` endpoint.
     LinkStatusResponsePayload<LinkStatusResponseData>
 );
 
-/// Calls [LINK_EDIT_PATH] endpoint. Used to edit given file link.
+/// Calls `LINK_EDIT_PATH` endpoint. Used to edit given file link.
 pub fn link_edit_request(
     payload: &LinkEditRequestPayload,
     filen_settings: &FilenSettings,
@@ -182,7 +191,7 @@ pub fn link_edit_request(
     queries::query_filen_api(LINK_EDIT_PATH, payload, filen_settings).context(LinkEditQueryFailed {})
 }
 
-/// Calls [LINK_EDIT_PATH] endpoint asynchronously. Used to edit given file link.
+/// Calls `LINK_EDIT_PATH` endpoint asynchronously. Used to edit given file link.
 #[cfg(feature = "async")]
 pub async fn link_edit_request_async(
     payload: &LinkEditRequestPayload,
@@ -193,7 +202,7 @@ pub async fn link_edit_request_async(
         .context(LinkEditQueryFailed {})
 }
 
-/// Calls [LINK_STATUS_PATH] endpoint. Used to check file link status.
+/// Calls `LINK_STATUS_PATH` endpoint. Used to check file link status.
 pub fn link_status_request(
     payload: &LinkStatusRequestPayload,
     filen_settings: &FilenSettings,
@@ -201,7 +210,7 @@ pub fn link_status_request(
     queries::query_filen_api(LINK_STATUS_PATH, payload, filen_settings).context(LinkStatusQueryFailed {})
 }
 
-/// Calls [LINK_STATUS_PATH] endpoint asynchronously. Used to check file link status.
+/// Calls `LINK_STATUS_PATH` endpoint asynchronously. Used to check file link status.
 #[cfg(feature = "async")]
 pub async fn link_status_request_async(
     payload: &LinkStatusRequestPayload,
@@ -215,7 +224,7 @@ pub async fn link_status_request_async(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::*;
+    use crate::test_utils::{validate_contract, validate_contract_async};
     use once_cell::sync::Lazy;
     use secstr::SecUtf8;
 

@@ -1,4 +1,4 @@
-//! Contains [FilenSettings] used to provide Filen-specific information to API calls.
+//! Contains `FilenSettings` used to provide Filen-specific information to API calls.
 use std::time::Duration;
 
 use once_cell::sync::Lazy;

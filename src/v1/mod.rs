@@ -14,7 +14,7 @@ pub use {
 
 use crate::{crypto, utils};
 use once_cell::sync::Lazy;
-use serde::*;
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::skip_serializing_none;
 use snafu::{Backtrace, Snafu};
 use strum::{Display, EnumString};

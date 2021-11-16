@@ -1,4 +1,8 @@
-use crate::{filen_settings::FilenSettings, queries, utils, v1::*};
+use crate::{
+    queries, utils,
+    v1::{bool_from_int, bool_to_int, response_payload},
+    FilenSettings,
+};
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
@@ -17,7 +21,7 @@ pub enum Error {
     UserSyncGetDataQueryFailed { source: queries::Error },
 }
 
-/// Response data for [USER_SYNC_GET_DATA_PATH] endpoint.
+/// Response data for `USER_SYNC_GET_DATA_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UserSyncGetDataResponseData {
     /// User's email.
@@ -42,11 +46,11 @@ pub struct UserSyncGetDataResponseData {
 utils::display_from_json!(UserSyncGetDataResponseData);
 
 response_payload!(
-    /// Response for [USER_SYNC_GET_DATA_PATH] endpoint.
+    /// Response for `USER_SYNC_GET_DATA_PATH` endpoint.
     UserSyncGetDataResponsePayload<UserSyncGetDataResponseData>
 );
 
-/// Response data for [USER_USAGE_PATH] endpoint.
+/// Response data for `USER_USAGE_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UserUsageResponseData {
     /// Uploaded files count.
@@ -74,11 +78,11 @@ pub struct UserUsageResponseData {
 utils::display_from_json!(UserUsageResponseData);
 
 response_payload!(
-    /// Response for [USER_USAGE_PATH] endpoint.
+    /// Response for `USER_USAGE_PATH` endpoint.
     UserUsageResponsePayload<UserUsageResponseData>
 );
 
-/// Calls [USER_SYNC_GET_DATA] endpoint. Used to fetch user sync storage stats.
+/// Calls `USER_SYNC_GET_DATA` endpoint. Used to fetch user sync storage stats.
 pub fn user_sync_get_data_request(
     api_key: &SecUtf8,
     filen_settings: &FilenSettings,
@@ -87,7 +91,7 @@ pub fn user_sync_get_data_request(
         .context(UserSyncGetDataQueryFailed {})
 }
 
-/// Calls [USER_SYNC_GET_DATA] endpoint asynchronously. Used to fetch user sync storage stats.
+/// Calls `USER_SYNC_GET_DATA` endpoint asynchronously. Used to fetch user sync storage stats.
 #[cfg(feature = "async")]
 pub async fn user_sync_get_data_request_async(
     api_key: &SecUtf8,
@@ -98,13 +102,13 @@ pub async fn user_sync_get_data_request_async(
         .context(UserSyncGetDataQueryFailed {})
 }
 
-/// Calls [USER_USAGE_PATH] endpoint. Used to fetch user general usage stats.
+/// Calls `USER_USAGE_PATH` endpoint. Used to fetch user general usage stats.
 pub fn user_usage_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<UserUsageResponsePayload> {
     queries::query_filen_api(USER_USAGE_PATH, &utils::api_key_json(api_key), filen_settings)
         .context(UserUsageQueryFailed {})
 }
 
-/// Calls [USER_USAGE_PATH] endpoint asynchronously. Used to fetch user general usage stats.
+/// Calls `USER_USAGE_PATH` endpoint asynchronously. Used to fetch user general usage stats.
 #[cfg(feature = "async")]
 pub async fn user_usage_request_async(
     api_key: &SecUtf8,

@@ -129,11 +129,11 @@ pub async fn download_from_filen_async(api_endpoint: &str, filen_settings: &File
 /// Sends POST with given data blob to one of Filen upload servers.
 pub fn upload_to_filen<U: DeserializeOwned>(
     api_endpoint: &str,
-    blob: Vec<u8>,
+    blob: &[u8],
     filen_settings: &FilenSettings,
 ) -> Result<U> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.upload_servers)?;
-    let upload_result = post_blob(filen_endpoint.as_str(), &blob, filen_settings.request_timeout.as_secs());
+    let upload_result = post_blob(filen_endpoint.as_str(), blob, filen_settings.request_timeout.as_secs());
     deserialize_response(upload_result, || {
         format!("Failed to upload file chunk to '{}'", filen_endpoint)
     })
@@ -143,11 +143,11 @@ pub fn upload_to_filen<U: DeserializeOwned>(
 #[cfg(feature = "async")]
 pub async fn upload_to_filen_async<U: DeserializeOwned>(
     api_endpoint: &str,
-    blob: Vec<u8>,
+    blob: &[u8],
     filen_settings: &FilenSettings,
 ) -> Result<U> {
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.upload_servers)?;
-    let upload_result = post_blob_async(filen_endpoint.as_str(), &blob, filen_settings.request_timeout.as_secs()).await;
+    let upload_result = post_blob_async(filen_endpoint.as_str(), blob, filen_settings.request_timeout.as_secs()).await;
     deserialize_response_async(upload_result, || {
         format!("Failed to upload file chunk (async) to '{}'", filen_endpoint)
     })

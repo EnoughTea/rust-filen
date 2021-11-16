@@ -1,21 +1,21 @@
-use std::{
-    cmp::*,
-    convert::TryInto,
-    io::{BufReader, Read, Seek, SeekFrom},
-};
-
 use crate::{
     crypto,
     file_chunk_pos::{FileChunkPosition, FileChunkPositions},
-    filen_settings::FilenSettings,
-    queries,
-    retry_settings::RetrySettings,
-    utils,
-    v1::*,
+    queries, utils,
+    v1::{
+        bool_from_int, bool_to_int, response_payload, Expire, FileChunkLocation, FileProperties, LocationNameMetadata,
+        PlainResponsePayload,
+    },
+    FilenSettings, RetrySettings,
 };
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use snafu::{Backtrace, ResultExt, Snafu};
+use std::{
+    cmp::{Eq, PartialEq},
+    convert::TryInto,
+    io::{BufReader, Read, Seek, SeekFrom},
+};
 use url::Url;
 use uuid::Uuid;
 
@@ -77,7 +77,7 @@ pub enum Error {
     UserUnfinishedDeleteQueryFailed { source: queries::Error },
 }
 
-/// Response data for [UPLOAD_PATH] endpoint.
+/// Response data for `UPLOAD_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UploadFileChunkResponseData {
     /// Server's bucket where file is stored.
@@ -103,11 +103,11 @@ pub struct UploadFileChunkResponseData {
     pub delete_timestamp: u64,
 }
 response_payload!(
-    /// Response for [UPLOAD_PATH] endpoint.
+    /// Response for `UPLOAD_PATH` endpoint.
     UploadFileChunkResponsePayload<UploadFileChunkResponseData>
 );
 
-/// Used for requests to [UPLOAD_DONE_PATH] endpoint.
+/// Used for requests to `UPLOAD_DONE_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UploadDoneRequestPayload {
     /// Uploaded file ID, UUID V4 in hyphenated lowercase format.
@@ -119,7 +119,7 @@ pub struct UploadDoneRequestPayload {
 }
 utils::display_from_json!(UploadDoneRequestPayload);
 
-/// Used for requests to [UPLOAD_STOP_PATH] endpoint.
+/// Used for requests to `UPLOAD_STOP_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UploadStopRequestPayload {
     /// Uploaded file ID, UUID V4 in hyphenated lowercase format.
@@ -172,13 +172,14 @@ pub struct FileUploadProperties {
 
     /// Determines how file bytes should be encrypted/decrypted.
     /// File is encrypted using roughly the same algorithm as metadata encryption,
-    /// use [crypto::encrypt_file_data] and [crypto::decrypt_file_data] for the task.
+    /// use `crypto::encrypt_file_data` and `crypto::decrypt_file_data` for the task.
     pub version: u32,
 }
 
 impl FileUploadProperties {
-    /// Assigns file upload properties from given [FileProperties], parent folder and user's last master key.
+    /// Assigns file upload properties from given `FileProperties`, parent folder and user's last master key.
     /// 'version' determines how file bytes should be encrypted/decrypted, for now Filen uses version = 1 everywhere.
+    #[must_use]
     pub fn from_file_properties(
         file_properties: &FileProperties,
         version: u32,
@@ -213,6 +214,7 @@ impl FileUploadProperties {
     }
 
     /// Produces percent-encoded string of query parameters for Filen upload endpoint, using this properties.
+    #[must_use]
     pub fn to_query_params(&self, chunk_index: u32, api_key: &SecUtf8) -> String {
         let query_builder = Url::parse_with_params(
             "https://localhost?",
@@ -238,6 +240,7 @@ impl FileUploadProperties {
     }
 
     /// Produces API endpoint for file upload using this properties.
+    #[must_use]
     pub fn to_api_endpoint(&self, chunk_index: u32, api_key: &SecUtf8) -> String {
         format!("{}?{}", UPLOAD_PATH, self.to_query_params(chunk_index, api_key))
     }
@@ -251,6 +254,7 @@ pub struct FileUploadInfo {
 }
 
 impl FileUploadInfo {
+    #[must_use]
     pub fn new(upload_properties: FileUploadProperties, chunk_responses: Vec<UploadFileChunkResponsePayload>) -> Self {
         Self {
             properties: upload_properties,
@@ -258,13 +262,12 @@ impl FileUploadInfo {
         }
     }
 
-    /// Retrieves uploaded file chunks locations, taking them from [FileUploadInfo::chunk_responses].
+    /// Retrieves uploaded file chunks locations, taking them from `FileUploadInfo::chunk_responses`.
     pub fn get_file_chunk_locations(&self) -> Result<Vec<FileChunkLocation>> {
         let chunk_datas = self
             .chunk_responses
             .iter()
-            .map(|chunk_response| chunk_response.data.clone())
-            .flatten()
+            .filter_map(|chunk_response| chunk_response.data.clone())
             .enumerate();
 
         let locations = chunk_datas
@@ -289,7 +292,7 @@ impl FileUploadInfo {
 }
 utils::display_from_json!(FileUploadInfo);
 
-/// Calls [UPLOAD_DONE_PATH] endpoint. Used to mark upload as done after all file chunks (+1 dummy chunk) were uploaded.
+/// Calls `UPLOAD_DONE_PATH` endpoint. Used to mark upload as done after all file chunks (+1 dummy chunk) were uploaded.
 pub fn upload_done_request(
     payload: &UploadDoneRequestPayload,
     filen_settings: &FilenSettings,
@@ -297,7 +300,7 @@ pub fn upload_done_request(
     queries::query_filen_api(UPLOAD_DONE_PATH, payload, filen_settings).context(UploadDoneQueryFailed {})
 }
 
-/// Calls [UPLOAD_DONE_PATH] endpoint asynchronously. Used to mark upload as done after all file chunks
+/// Calls `UPLOAD_DONE_PATH` endpoint asynchronously. Used to mark upload as done after all file chunks
 /// (+1 dummy chunk) were uploaded.
 #[cfg(feature = "async")]
 pub async fn upload_done_request_async(
@@ -309,7 +312,7 @@ pub async fn upload_done_request_async(
         .context(UploadDoneQueryFailed {})
 }
 
-/// Calls [UPLOAD_STOP_PATH] endpoint.
+/// Calls `UPLOAD_STOP_PATH` endpoint.
 /// Theoretically, can be used to stop upload in progress, but Filen never uses it.
 pub fn upload_stop_request(
     payload: &UploadStopRequestPayload,
@@ -318,7 +321,7 @@ pub fn upload_stop_request(
     queries::query_filen_api(UPLOAD_STOP_PATH, payload, filen_settings).context(UploadStopQueryFailed {})
 }
 
-/// Calls [UPLOAD_STOP_PATH] endpoint asynchronously.
+/// Calls `UPLOAD_STOP_PATH` endpoint asynchronously.
 /// Theoretically, can be used to stop upload in progress, but Filen never uses it.
 #[cfg(feature = "async")]
 pub async fn upload_stop_request_async(
@@ -330,7 +333,7 @@ pub async fn upload_stop_request_async(
         .context(UploadStopQueryFailed {})
 }
 
-/// Calls [UPLOAD_PATH] endpoint. Used to encrypt and upload a file chunk to Filen.
+/// Calls `UPLOAD_PATH` endpoint. Used to encrypt and upload a file chunk to Filen.
 /// After uploading all file chunks, upload additional empty chunk with incremented chunk index.
 /// That way Filen knows that file uploading is complete, and 'upload done' call for file's upload key will succeed.
 pub fn encrypt_and_upload_chunk(
@@ -351,7 +354,7 @@ pub fn encrypt_and_upload_chunk(
     let api_endpoint = upload_properties.to_api_endpoint(chunk_index, api_key);
     queries::upload_to_filen::<UploadFileChunkResponsePayload>(
         &api_endpoint,
-        chunk_encrypted.into_bytes(),
+        chunk_encrypted.as_bytes(),
         filen_settings,
     )
     .context(UploadQueryFailed {
@@ -360,7 +363,7 @@ pub fn encrypt_and_upload_chunk(
     })
 }
 
-/// Calls [UPLOAD_PATH] endpoint asynchronously. Used to encrypt and upload a file chunk to Filen.
+/// Calls `UPLOAD_PATH` endpoint asynchronously. Used to encrypt and upload a file chunk to Filen.
 /// After uploading all file chunks, upload additional empty chunk with incremented chunk index.
 /// That way Filen knows that file uploading is complete, and 'upload done' call for file's upload key will succeed.
 #[cfg(feature = "async")]
@@ -383,7 +386,7 @@ pub async fn encrypt_and_upload_chunk_async(
     let api_endpoint = upload_properties.to_api_endpoint(chunk_index, api_key);
     queries::upload_to_filen_async::<UploadFileChunkResponsePayload>(
         &api_endpoint,
-        chunk_encrypted.into_bytes(),
+        chunk_encrypted.as_bytes(),
         filen_settings,
     )
     .await
@@ -393,7 +396,7 @@ pub async fn encrypt_and_upload_chunk_async(
     })
 }
 
-/// Calls [USER_UNFINISHED_DELETE_PATH] endpoint. Used to delete all unfinished file uploads.
+/// Calls `USER_UNFINISHED_DELETE_PATH` endpoint. Used to delete all unfinished file uploads.
 pub fn user_unfinished_delete_request(
     api_key: &SecUtf8,
     filen_settings: &FilenSettings,
@@ -406,7 +409,7 @@ pub fn user_unfinished_delete_request(
     .context(UserUnfinishedDeleteQueryFailed {})
 }
 
-/// Calls [USER_UNFINISHED_DELETE_PATH] endpoint asynchronously. Used to delete all unfinished file uploads.
+/// Calls `USER_UNFINISHED_DELETE_PATH` endpoint asynchronously. Used to delete all unfinished file uploads.
 #[cfg(feature = "async")]
 pub async fn user_unfinished_delete_request_async(
     api_key: &SecUtf8,
@@ -491,9 +494,9 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
 ///
 /// 'version' determines how file bytes should be encrypted/decrypted, for now Filen uses version = 1 everywhere.
 ///
-/// Note that file upload is explicitly retriable and always requires RetrySettings as an argument.
-/// You can pass [crate::NO_RETRIES] if you really want to fail the entire file upload  even if a single chunk
-/// upload request fails temporarily, otherwise [crate::STANDARD_RETRIES] is a better fit.
+/// Note that file upload is explicitly retriable and always requires `RetrySettings` as an argument.
+/// You can pass `crate::NO_RETRIES` if you really want to fail the entire file upload  even if a single chunk
+/// upload request fails temporarily, otherwise `crate::STANDARD_RETRIES` is a better fit.
 #[cfg(feature = "async")]
 pub async fn encrypt_and_upload_file_async<R: Read + Seek + Send>(
     api_key: &SecUtf8,
@@ -638,8 +641,7 @@ fn read_into_chunks_and_process<'reader, R, ProcType, ProcResult>(
 ) -> impl Iterator<Item = Result<ProcResult>> + 'reader
 where
     R: Read + Seek,
-    ProcType: Fn(FileChunkPosition, Vec<u8>) -> ProcResult,
-    ProcType: 'reader,
+    ProcType: 'reader + Fn(FileChunkPosition, Vec<u8>) -> ProcResult,
 {
     let file_chunk_positions = FileChunkPositions::new(file_chunk_size, file_size);
     file_chunk_positions.map(move |chunk_pos| {

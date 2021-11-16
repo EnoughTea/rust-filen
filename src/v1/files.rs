@@ -4,7 +4,15 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::{crypto, filen_settings::FilenSettings, queries, utils, v1::*};
+use crate::{
+    crypto,
+    filen_settings::FilenSettings,
+    queries, utils,
+    v1::{
+        response_payload, DirContentFile, LocationExistsRequestPayload, LocationExistsResponsePayload,
+        LocationNameMetadata, LocationTrashRequestPayload, PlainResponsePayload, METADATA_VERSION,
+    },
+};
 use secstr::{SecUtf8, SecVec};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -154,7 +162,7 @@ impl FileProperties {
 
     /// Fills file properties from local file properties. File key will be randomly generated.
     pub fn from_local_path(local_file_path: &Path) -> Result<Self> {
-        match local_file_path.file_name().and_then(|filename| filename.to_str()) {
+        match local_file_path.file_name().and_then(std::ffi::OsStr::to_str) {
             Some(file_name) => Self::from_name_and_local_path(file_name, local_file_path),
             None => FilePathDoesNotContainValidFilename {}.fail(),
         }
@@ -182,6 +190,7 @@ impl FileProperties {
     }
 
     /// Encrypts file properties to a metadata string.
+    #[must_use]
     pub fn encrypt_file_metadata(file_properties: &Self, last_master_key: &SecUtf8) -> String {
         let metadata_json = json!(file_properties).to_string();
         crypto::encrypt_metadata_str(&metadata_json, last_master_key, METADATA_VERSION).unwrap()
@@ -214,6 +223,7 @@ impl FileProperties {
         Ok(base64::encode(&encrypted))
     }
 
+    #[must_use]
     pub fn to_metadata_string(&self, last_master_key: &SecUtf8) -> String {
         Self::encrypt_file_metadata(self, last_master_key)
     }
@@ -222,20 +232,23 @@ impl FileProperties {
         Self::encrypt_file_metadata_rsa(self, rsa_public_key_bytes)
     }
 
+    #[must_use]
     pub fn name_encrypted(&self) -> String {
         crypto::encrypt_metadata_str(&self.name, &self.key, METADATA_VERSION).unwrap()
     }
 
+    #[must_use]
     pub fn size_encrypted(&self) -> String {
         crypto::encrypt_metadata_str(&self.size.to_string(), &self.key, METADATA_VERSION).unwrap()
     }
 
+    #[must_use]
     pub fn mime_encrypted(&self) -> String {
         crypto::encrypt_metadata_str(&self.mime.to_string(), &self.key, METADATA_VERSION).unwrap()
     }
 }
 
-/// Used for requests to [FILE_ARCHIVE_PATH] endpoint.
+/// Used for requests to `FILE_ARCHIVE_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FileArchiveRequestPayload {
     /// User-associated Filen API key.
@@ -251,7 +264,7 @@ pub struct FileArchiveRequestPayload {
 }
 utils::display_from_json!(FileArchiveRequestPayload);
 
-/// Used for requests to [FILE_MOVE_PATH] endpoint.
+/// Used for requests to `FILE_MOVE_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FileMoveRequestPayload {
     /// User-associated Filen API key.
@@ -268,7 +281,7 @@ pub struct FileMoveRequestPayload {
 }
 utils::display_from_json!(FileMoveRequestPayload);
 
-/// Used for requests to [FILE_RENAME_PATH] endpoint.
+/// Used for requests to `FILE_RENAME_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FileRenameRequestPayload {
     /// User-associated Filen API key.
@@ -293,6 +306,7 @@ pub struct FileRenameRequestPayload {
 utils::display_from_json!(FileRenameRequestPayload);
 
 impl FileRenameRequestPayload {
+    #[must_use]
     pub fn new(
         api_key: SecUtf8,
         uuid: Uuid,
@@ -313,7 +327,7 @@ impl FileRenameRequestPayload {
     }
 }
 
-/// Used for requests to [FILE_RESTORE_PATH] endpoint.
+/// Used for requests to `FILE_RESTORE_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FileRestoreRequestPayload {
     /// User-associated Filen API key.
@@ -325,24 +339,24 @@ pub struct FileRestoreRequestPayload {
 }
 utils::display_from_json!(FileRestoreRequestPayload);
 
-/// Used for requests to [RM_PATH] endpoint.
+/// Used for requests to `RM_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct RmRequestPayload {
     /// ID of the file to delete; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 
     /// Random alphanumeric string associated with the file. After file uploading, 'rm' can be viewed with
-    /// queries like [file_versions_request] or [dir_content_request].
+    /// queries like `file_versions_request` or `dir_content_request`.
     pub rm: String,
 }
 utils::display_from_json!(RmRequestPayload);
 
 response_payload!(
-    /// Response for [USER_RECENT_PATH] endpoint.
+    /// Response for `USER_RECENT_PATH` endpoint.
     UserRecentResponsePayload<Vec<DirContentFile>>
 );
 
-/// Calls [FILE_ARCHIVE_PATH] endpoint.
+/// Calls `FILE_ARCHIVE_PATH` endpoint.
 /// Replaces one version of a file with another version of the same file.
 /// Used when the file you want to upload already exists, so existing file needs to be archived first.
 pub fn file_archive_request(
@@ -352,7 +366,7 @@ pub fn file_archive_request(
     queries::query_filen_api(FILE_ARCHIVE_PATH, payload, filen_settings).context(FileArchieveQueryFailed {})
 }
 
-/// Calls [FILE_ARCHIVE_PATH] endpoint asynchronously.
+/// Calls `FILE_ARCHIVE_PATH` endpoint asynchronously.
 /// Replaces one version of a file with another version of the same file.
 /// Used when the file you want to upload already exists, so existing file needs to be archived first.
 #[cfg(feature = "async")]
@@ -365,7 +379,7 @@ pub async fn file_archive_request_async(
         .context(FileArchieveQueryFailed {})
 }
 
-/// Calls [FILE_EXISTS_PATH] endpoint.
+/// Calls `FILE_EXISTS_PATH` endpoint.
 /// Checks if file with the given name exists within the specified parent folder.
 pub fn file_exists_request(
     payload: &LocationExistsRequestPayload,
@@ -374,7 +388,7 @@ pub fn file_exists_request(
     queries::query_filen_api(FILE_EXISTS_PATH, payload, filen_settings).context(FileExistsQueryFailed {})
 }
 
-/// Calls [FILE_EXISTS_PATH] endpoint asynchronously.
+/// Calls `FILE_EXISTS_PATH` endpoint asynchronously.
 /// Checks if file with the given name exists within the specified parent folder.
 #[cfg(feature = "async")]
 pub async fn file_exists_request_async(
@@ -386,12 +400,12 @@ pub async fn file_exists_request_async(
         .context(FileExistsQueryFailed {})
 }
 
-/// Calls [FILE_MOVE_PATH] endpoint.
+/// Calls `FILE_MOVE_PATH` endpoint.
 /// Moves file with the given uuid to the specified parent folder. It is a good idea to check first if file
 /// with the same name already exists within the parent folder.
 ///
-/// If file is moved into a linked and/or shared folder, don't forget to call [dir_link_add_request]
-/// and/or [share_request] after a successfull move.
+/// If file is moved into a linked and/or shared folder, don't forget to call `dir_link_add_request`
+/// and/or `share_request` after a successfull move.
 pub fn file_move_request(
     payload: &FileMoveRequestPayload,
     filen_settings: &FilenSettings,
@@ -399,12 +413,12 @@ pub fn file_move_request(
     queries::query_filen_api(FILE_MOVE_PATH, payload, filen_settings).context(FileMoveQueryFailed {})
 }
 
-/// Calls [FILE_MOVE_PATH] endpoint asynchronously.
+/// Calls `FILE_MOVE_PATH` endpoint asynchronously.
 /// Moves file with the given uuid to the specified parent folder. It is a good idea to check first if file
 /// with the same name already exists within the parent folder.
 ///
-/// If file is moved into a linked and/or shared folder, don't forget to call [dir_link_add_request]
-/// and/or [share_request] after a successfull move.
+/// If file is moved into a linked and/or shared folder, don't forget to call `dir_link_add_request`
+/// and/or `share_request` after a successfull move.
 #[cfg(feature = "async")]
 pub async fn file_move_request_async(
     payload: &FileMoveRequestPayload,
@@ -415,7 +429,7 @@ pub async fn file_move_request_async(
         .context(FileMoveQueryFailed {})
 }
 
-/// Calls [FILE_RENAME_PATH] endpoint.
+/// Calls `FILE_RENAME_PATH` endpoint.
 /// Changes name of the file with given UUID to the specified name. It is a good idea to check first if file
 /// with the new name already exists within the parent folder.
 pub fn file_rename_request(
@@ -425,7 +439,7 @@ pub fn file_rename_request(
     queries::query_filen_api(FILE_RENAME_PATH, payload, filen_settings).context(FileRenameQueryFailed {})
 }
 
-/// Calls [FILE_RENAME_PATH] endpoint asynchronously.
+/// Calls `FILE_RENAME_PATH` endpoint asynchronously.
 /// Changes name of the file with given UUID to the specified name. It is a good idea to check first if file
 /// with the new name already exists within the parent folder.
 #[cfg(feature = "async")]
@@ -438,7 +452,7 @@ pub async fn file_rename_request_async(
         .context(FileRenameQueryFailed {})
 }
 
-/// Calls [FILE_RESTORE_PATH] endpoint. Used to restore file from the 'trash' folder.
+/// Calls `FILE_RESTORE_PATH` endpoint. Used to restore file from the 'trash' folder.
 pub fn file_restore_request(
     payload: &FileRestoreRequestPayload,
     filen_settings: &FilenSettings,
@@ -446,7 +460,7 @@ pub fn file_restore_request(
     queries::query_filen_api(FILE_RESTORE_PATH, payload, filen_settings).context(FileRestoreQueryFailed {})
 }
 
-/// Calls [FILE_RESTORE_PATH] endpoint asynchronously. Used to restore file from the 'trash' folder.
+/// Calls `FILE_RESTORE_PATH` endpoint asynchronously. Used to restore file from the 'trash' folder.
 #[cfg(feature = "async")]
 pub async fn file_restore_request_async(
     payload: &FileRestoreRequestPayload,
@@ -457,7 +471,7 @@ pub async fn file_restore_request_async(
         .context(FileRestoreQueryFailed {})
 }
 
-/// Calls [FILE_TRASH_PATH] endpoint.
+/// Calls `FILE_TRASH_PATH` endpoint.
 /// Moves file with given UUID to trash. Note that file's UUID will still be considired existing,
 /// so you cannot create a new file with it.
 pub fn file_trash_request(
@@ -467,7 +481,7 @@ pub fn file_trash_request(
     queries::query_filen_api(FILE_TRASH_PATH, payload, filen_settings).context(FileTrashQueryFailed {})
 }
 
-/// Calls [FILE_TRASH_PATH] endpoint asynchronously.
+/// Calls `FILE_TRASH_PATH` endpoint asynchronously.
 /// Moves file with given UUID to trash. Note that file's UUID will still be considired existing,
 /// so you cannot create a new file with it.
 #[cfg(feature = "async")]
@@ -480,12 +494,12 @@ pub async fn file_trash_request_async(
         .context(FileTrashQueryFailed {})
 }
 
-/// Calls [RM_PATH] endpoint. Used to delete file.
+/// Calls `RM_PATH` endpoint. Used to delete file.
 pub fn rm_request(payload: &RmRequestPayload, filen_settings: &FilenSettings) -> Result<PlainResponsePayload> {
     queries::query_filen_api(RM_PATH, payload, filen_settings).context(RmQueryFailed {})
 }
 
-/// Calls [RM_PATH] endpoint asynchronously. Used to delete file.
+/// Calls `RM_PATH` endpoint asynchronously. Used to delete file.
 #[cfg(feature = "async")]
 pub async fn rm_request_async(
     payload: &RmRequestPayload,
@@ -496,13 +510,13 @@ pub async fn rm_request_async(
         .context(RmQueryFailed {})
 }
 
-/// Calls [USER_DELETE_ALL_PATH] endpoint. Used to delete *all* user files and folders.
+/// Calls `USER_DELETE_ALL_PATH` endpoint. Used to delete *all* user files and folders.
 pub fn user_delete_all_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<UserRecentResponsePayload> {
     queries::query_filen_api(USER_DELETE_ALL_PATH, &utils::api_key_json(api_key), filen_settings)
         .context(UserDeleteAllQueryFailed {})
 }
 
-/// Calls [USER_DELETE_ALL_PATH] endpoint. Used to delete *all* user files and folders.
+/// Calls `USER_DELETE_ALL_PATH` endpoint. Used to delete *all* user files and folders.
 #[cfg(feature = "async")]
 pub async fn user_delete_all_request_async(
     api_key: &SecUtf8,
@@ -513,13 +527,13 @@ pub async fn user_delete_all_request_async(
         .context(UserDeleteAllQueryFailed {})
 }
 
-/// Calls [USER_RECENT_PATH] endpoint. Used to fetch recent files.
+/// Calls `USER_RECENT_PATH` endpoint. Used to fetch recent files.
 pub fn user_recent_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<UserRecentResponsePayload> {
     queries::query_filen_api(USER_RECENT_PATH, &utils::api_key_json(api_key), filen_settings)
         .context(UserRecentQueryFailed {})
 }
 
-/// Calls [USER_RECENT_PATH] endpoint asynchronously. Used to fetch recent files.
+/// Calls `USER_RECENT_PATH` endpoint asynchronously. Used to fetch recent files.
 #[cfg(feature = "async")]
 pub async fn user_recent_request_async(
     api_key: &SecUtf8,
@@ -533,7 +547,10 @@ pub async fn user_recent_request_async(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::*;
+    use crate::{
+        test_utils::{validate_contract, validate_contract_async},
+        v1::ParentOrBase,
+    };
     use once_cell::sync::Lazy;
     use secstr::SecUtf8;
     use std::str::FromStr;
