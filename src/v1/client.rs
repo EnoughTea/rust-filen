@@ -105,6 +105,7 @@ pub struct SyncClientMessageRequestPayload {
 utils::display_from_json!(SyncClientMessageRequestPayload);
 
 impl SyncClientMessageRequestPayload {
+    #[allow(clippy::missing_panics_doc)]
     #[must_use]
     pub fn from_json(api_key: SecUtf8, json_value: &serde_json::Value, last_master_key: &SecUtf8) -> Self {
         // Cannot panic, since METADATA_VERSION is supported by definition and json_value.to_string() is valid UTF-8

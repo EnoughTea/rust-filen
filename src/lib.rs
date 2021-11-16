@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 #![crate_type = "staticlib"]
 #![forbid(unsafe_code)]
 

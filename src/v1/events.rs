@@ -95,8 +95,9 @@ impl Serialize for UserEventKind {
     where
         S: Serializer,
     {
+        #[allow(clippy::wildcard_enum_match_arm)]
         match self {
-            UserEventKind::Unknown(value) => serializer.serialize_str(value),
+            &UserEventKind::Unknown(ref value) => serializer.serialize_str(value),
             other => serializer.serialize_str(&other.to_string()),
         }
     }
@@ -131,9 +132,9 @@ impl FromStr for UserEventFilter {
 
 impl fmt::Display for UserEventFilter {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
+        match *self {
             UserEventFilter::All => write!(f, "all"),
-            UserEventFilter::Specific(user_event_kind) => user_event_kind.fmt(f),
+            UserEventFilter::Specific(ref user_event_kind) => user_event_kind.fmt(f),
         }
     }
 }
@@ -164,9 +165,9 @@ impl Serialize for UserEventFilter {
     where
         S: Serializer,
     {
-        match self {
+        match *self {
             UserEventFilter::All => serializer.serialize_str("all"),
-            UserEventFilter::Specific(user_event_kind) => user_event_kind.serialize(serializer),
+            UserEventFilter::Specific(ref user_event_kind) => user_event_kind.serialize(serializer),
         }
     }
 }
@@ -447,7 +448,7 @@ utils::display_from_json!(FileRenamedInfo);
 
 impl FileRenamedInfo {
     /// Decrypts old file metadata string.
-    fn decrypt_old_file_metadata(&self, master_keys: &[SecUtf8]) -> Result<FileProperties, files::Error> {
+    pub fn decrypt_old_file_metadata(&self, master_keys: &[SecUtf8]) -> Result<FileProperties, files::Error> {
         FileProperties::decrypt_file_metadata(&self.old_metadata, master_keys)
     }
 }
@@ -602,7 +603,7 @@ utils::display_from_json!(FolderRenamedInfo);
 
 impl FolderRenamedInfo {
     /// Decrypts old name metadata into a location name.
-    fn decrypt_old_name_metadata(&self, master_keys: &[SecUtf8]) -> Result<String, fs::Error> {
+    pub fn decrypt_old_name_metadata(&self, master_keys: &[SecUtf8]) -> Result<String, fs::Error> {
         LocationNameMetadata::decrypt_name_from_metadata(&self.old_name_metadata, master_keys)
     }
 }
@@ -839,6 +840,8 @@ pub(crate) struct UserEventDeserializeHelper {
 }
 
 impl<'de> Deserialize<'de> for UserEvent {
+    // I know this deserialization is ugly, but I cannot think of better alternative
+    #[allow(clippy::too_many_lines)]
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,

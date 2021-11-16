@@ -179,9 +179,11 @@ impl HasLinkKey for LinkIdWithKey {
 
 impl LinkIdWithKey {
     /// Generates a new link uuid and a link key metadata.
+    #[allow(clippy::missing_panics_doc)]
     #[must_use]
     pub fn generate(last_master_key: &SecUtf8) -> Self {
         let (link_uuid, link_key_plain) = Self::generate_unencrypted();
+        // Cannot panic due to the way encrypt_metadata_str is implemented.
         let link_key_metadata =
             crypto::encrypt_metadata_str(link_key_plain.unsecure(), last_master_key, METADATA_VERSION).unwrap();
         Self {

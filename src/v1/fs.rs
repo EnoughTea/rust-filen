@@ -102,7 +102,7 @@ impl<'de> Deserialize<'de> for Expire {
         D: Deserializer<'de>,
     {
         let never_or_duration_repr = String::deserialize(deserializer)?;
-        str::parse::<Self>(&never_or_duration_repr).map_err(|_| {
+        str::parse::<Self>(&never_or_duration_repr).map_err(|_err| {
             de::Error::invalid_value(
                 de::Unexpected::Str(&never_or_duration_repr),
                 &"\"never\" or duration with time units, e.g. \"6h\" or \"1d\"",
@@ -217,8 +217,10 @@ pub struct LocationNameMetadata {
 
 impl LocationNameMetadata {
     /// Puts the given name into Filen-expected JSON { name: "some name" } and encrypts it into metadata.
+    #[allow(clippy::missing_panics_doc)]
     pub fn encrypt_name_to_metadata<S: Into<String>>(name: S, key: &SecUtf8) -> String {
         let name_json = json!(Self { name: name.into() }).to_string();
+        // Cannot panic due to the way encrypt_metadata_str is implemented.
         crypto::encrypt_metadata_str(&name_json, key, super::METADATA_VERSION).unwrap()
     }
 
@@ -504,9 +506,9 @@ impl ParentOrBase {
     /// Creates `ParentOrNone` corresponding to this value.
     #[must_use]
     pub const fn as_parent_or_none(&self) -> ParentOrNone {
-        match self {
+        match *self {
             Self::Base => ParentOrNone::None,
-            Self::Folder(id) => ParentOrNone::Folder(*id),
+            Self::Folder(id) => ParentOrNone::Folder(id),
         }
     }
 }
@@ -577,9 +579,9 @@ impl ParentOrNone {
     /// Creates `ParentOrBase` corresponding to this value.
     #[must_use]
     pub const fn as_parent_or_base(&self) -> ParentOrBase {
-        match self {
+        match *self {
             Self::None => ParentOrBase::Base,
-            Self::Folder(id) => ParentOrBase::Folder(*id),
+            Self::Folder(id) => ParentOrBase::Folder(id),
         }
     }
 }

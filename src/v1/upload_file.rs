@@ -10,7 +10,7 @@ use crate::{
 };
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
-use snafu::{Backtrace, ResultExt, Snafu};
+use snafu::{ensure, Backtrace, ResultExt, Snafu};
 use std::{
     cmp::{Eq, PartialEq},
     convert::TryInto,
@@ -29,6 +29,9 @@ const USER_UNFINISHED_DELETE_PATH: &str = "/v1/user/unfinished/delete";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
+    #[snafu(display("Caller provided invalid argument: {}", message))]
+    BadArgument { message: String, backtrace: Backtrace },
+
     #[snafu(display(
         "Chunk of size '{}' encryption failed, file key size was '{}' and file version was '{}'",
         chunk_size,
@@ -217,8 +220,10 @@ impl FileUploadProperties {
     }
 
     /// Produces percent-encoded string of query parameters for Filen upload endpoint, using this properties.
+    #[allow(clippy::missing_panics_doc)]
     #[must_use]
     pub fn to_query_params(&self, chunk_index: u32, api_key: &SecUtf8) -> String {
+        // Cannot panic, all query parts are valid.
         let query_builder = Url::parse_with_params(
             "https://localhost?",
             &[
@@ -676,7 +681,12 @@ fn send_dummy_chunk(
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<UploadFileChunkResponsePayload> {
-    assert!(file_size != 0);
+    ensure!(
+        file_size > 0,
+        BadArgument {
+            message: "file size should be > 0"
+        }
+    );
 
     let last_index = ((file_size - 1) / chunk_size as u64) as u32;
     let dummy_buf = vec![0_u8; 0];

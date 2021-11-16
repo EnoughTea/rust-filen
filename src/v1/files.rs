@@ -190,10 +190,11 @@ impl FileProperties {
     }
 
     /// Encrypts file properties to a metadata string.
+    #[allow(clippy::missing_panics_doc)]
     #[must_use]
     pub fn encrypt_file_metadata(file_properties: &Self, last_master_key: &SecUtf8) -> String {
         let metadata_json = json!(file_properties).to_string();
-        // Cannot panic, since METADATA_VERSION is supported by definition and metadata_json is valid UTF-8
+        // Cannot panic due to the way encrypt_metadata_str is implemented.
         crypto::encrypt_metadata_str(&metadata_json, last_master_key, METADATA_VERSION).unwrap()
     }
 
@@ -233,19 +234,25 @@ impl FileProperties {
         Self::encrypt_file_metadata_rsa(self, rsa_public_key_bytes)
     }
 
+    #[allow(clippy::missing_panics_doc)]
     #[must_use]
     pub fn name_encrypted(&self) -> String {
+        // Cannot panic due to the way encrypt_metadata_str is implemented.
         crypto::encrypt_metadata_str(&self.name, &self.key, METADATA_VERSION).unwrap()
     }
 
+    #[allow(clippy::missing_panics_doc)]
     #[must_use]
     pub fn size_encrypted(&self) -> String {
+        // Cannot panic due to the way encrypt_metadata_str is implemented.
         crypto::encrypt_metadata_str(&self.size.to_string(), &self.key, METADATA_VERSION).unwrap()
     }
 
+    #[allow(clippy::missing_panics_doc)]
     #[must_use]
     pub fn mime_encrypted(&self) -> String {
-        crypto::encrypt_metadata_str(&self.mime.to_string(), &self.key, METADATA_VERSION).unwrap()
+        // Cannot panic due to the way encrypt_metadata_str is implemented.
+        crypto::encrypt_metadata_str(&self.mime, &self.key, METADATA_VERSION).unwrap()
     }
 }
 

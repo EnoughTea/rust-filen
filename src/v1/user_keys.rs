@@ -204,20 +204,20 @@ utils::display_from_json!(MasterKeysFetchRequestPayload);
 impl MasterKeysFetchRequestPayload {
     /// Creates `MasterKeysFetchRequestPayload` from user's API key and user's master keys.
     /// Assumes user's last master key is the last element of given master keys slice.
-    fn new(api_key: SecUtf8, raw_master_keys: &[SecUtf8]) -> Result<Self> {
+    pub fn new(api_key: SecUtf8, raw_master_keys: &[SecUtf8]) -> Result<Self> {
+        let empty_key = SecUtf8::from("");
+        let last_master_key = raw_master_keys.last().unwrap_or(&empty_key);
+
         ensure!(
-            !raw_master_keys.is_empty(),
+            !last_master_key.unsecure().is_empty(),
             BadArgument {
-                message: "given raw master keys should not be empty"
+                message: "given raw master keys should not be empty or last master key should not be empty"
             }
         );
 
-        let master_keys_metadata = crypto::encrypt_master_keys_metadata(
-            raw_master_keys,
-            raw_master_keys.last().unwrap(),
-            super::METADATA_VERSION,
-        )
-        .context(EncryptMasterKeysFailed {})?;
+        let master_keys_metadata =
+            crypto::encrypt_master_keys_metadata(raw_master_keys, last_master_key, super::METADATA_VERSION)
+                .context(EncryptMasterKeysFailed {})?;
 
         Ok(Self {
             api_key,

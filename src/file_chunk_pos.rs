@@ -47,7 +47,7 @@ impl Iterator for FileChunkPositions {
         }
 
         let last_index = ((self.file_size - 1) / self.chunk_size as u64) as u32;
-        if self.current_index <= last_index {
+        (self.current_index <= last_index).then(|| {
             let maybe_next_offset = self.current_offset.checked_add(self.chunk_size as u64);
             let next_offset = maybe_next_offset.unwrap_or_default();
             let current_chunk_size = if next_offset == 0 || next_offset > self.file_size {
@@ -64,10 +64,8 @@ impl Iterator for FileChunkPositions {
 
             self.current_index += 1;
             self.current_offset = maybe_next_offset.unwrap_or(self.file_size);
-            Some(result)
-        } else {
-            None
-        }
+            result
+        })
     }
 }
 

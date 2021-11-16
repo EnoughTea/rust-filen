@@ -192,9 +192,9 @@ pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
         let possible_salted_mark = data.get(..OPENSSL_SALT_PREFIX.len()).unwrap_or_default();
         let possible_version_mark = data.get(..FILEN_VERSION_LENGTH).unwrap_or_default();
         if possible_salted_mark == OPENSSL_SALT_PREFIX_BASE64 {
-            Ok(1_i32)
+            Ok(1)
         } else if possible_salted_mark == OPENSSL_SALT_PREFIX {
-            Ok(-1_i32) // Means data is base_64 decoded already, so we won't have to decode later.
+            Ok(-1) // Means data is base_64 decoded already, so we won't have to decode later.
         } else {
             let possible_version_string = String::from_utf8_lossy(possible_version_mark);
             possible_version_string
@@ -211,11 +211,11 @@ pub fn decrypt_metadata(data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
 
     let metadata_version = read_metadata_version(data)?;
     match metadata_version {
-        -1_i32 => decrypt_aes_openssl(data, key), // Deprecated since August 2021
-        1_i32 => base64::decode(data)
+        -1 => decrypt_aes_openssl(data, key), // Deprecated since August 2021
+        1 => base64::decode(data)
             .context(CannotDecodeBase64 {})
             .and_then(|decoded| decrypt_aes_openssl(&decoded, key)), // Deprecated since August 2021
-        2_i32 => decrypt_aes_gcm_base64(data.get(FILEN_VERSION_LENGTH..).unwrap_or_default(), key),
+        2 => decrypt_aes_gcm_base64(data.get(FILEN_VERSION_LENGTH..).unwrap_or_default(), key),
         version => UnsupportedFilenMetadataVersion {
             metadata_version: version,
         }

@@ -500,7 +500,7 @@ mod tests {
         let download_dir_response: DownloadDirResponsePayload =
             deserialize_from_file("tests/resources/responses/download_dir.json");
         let data = download_dir_response.data.unwrap();
-        let test_file = data.files.get(0).unwrap();
+        let test_file = &data.files[0];
 
         let test_file_metadata_result = test_file.decrypt_file_metadata(&[m_key]);
         let test_file_metadata = test_file_metadata_result.unwrap();

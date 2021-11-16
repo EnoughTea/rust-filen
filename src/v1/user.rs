@@ -60,8 +60,9 @@ impl Serialize for FilenPaymentGateway {
     where
         S: Serializer,
     {
+        #[allow(clippy::wildcard_enum_match_arm)]
         match self {
-            FilenPaymentGateway::Unknown(value) => serializer.serialize_str(value),
+            &FilenPaymentGateway::Unknown(ref value) => serializer.serialize_str(value),
             other => serializer.serialize_str(&other.to_string()),
         }
     }

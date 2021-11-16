@@ -11,12 +11,10 @@ use serde::Serialize;
 use serde_json::json;
 use snafu::{ResultExt, Snafu};
 use std::convert::TryFrom;
-use std::env;
 use std::fmt;
-use std::fs::File;
-use std::io::Read;
 use std::path::Path;
 use std::time::Duration;
+use std::{env, fs};
 use url::Url;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -78,16 +76,9 @@ pub fn project_path_for(file_path: &str) -> Utf8PathBuf {
     }
 }
 
-/// Reads file at the specified path to the end.
-pub fn read_file<P: AsRef<Path>>(file_path: P) -> Result<Vec<u8>, std::io::Error> {
-    let mut f = File::open(&file_path)?;
-    let mut buffer = Vec::new();
-    f.read_to_end(&mut buffer).map(|_read_bytes| buffer)
-}
-
 pub fn read_project_file(file_path: &str) -> Vec<u8> {
     let target_path = project_path_for(file_path);
-    read_file(&target_path).unwrap_or_else(|_| panic!("Cannot read file: {}", target_path))
+    fs::read(&target_path).unwrap_or_else(|_| panic!("Cannot read file: {}", target_path))
 }
 
 pub fn setup_json_mock<'server, T: Serialize, U: Serialize>(

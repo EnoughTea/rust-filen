@@ -258,7 +258,7 @@ pub struct DirLinkEditRequestPayload {
 utils::display_from_json!(DirLinkEditRequestPayload);
 
 impl DirLinkEditRequestPayload {
-    fn new<S: Into<String>>(
+    pub fn new<S: Into<String>>(
         api_key: SecUtf8,
         download_btn: DownloadBtnState,
         item_uuid: Uuid,
