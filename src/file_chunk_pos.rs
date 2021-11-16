@@ -15,7 +15,7 @@ pub struct FileChunkPosition {
 }
 
 /// Used as an iterator calculating file chunk positions from the given file size and chunk size. Who needs for loops, right?
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct FileChunkPositions {
     current_index: u32,
     current_offset: u64,
@@ -49,7 +49,8 @@ impl Iterator for FileChunkPositions {
         let last_index = ((self.file_size - 1) / self.chunk_size as u64) as u32;
         if self.current_index <= last_index {
             let maybe_next_offset = self.current_offset.checked_add(self.chunk_size as u64);
-            let current_chunk_size = if maybe_next_offset.is_none() || maybe_next_offset.unwrap() > self.file_size {
+            let next_offset = maybe_next_offset.unwrap_or_default();
+            let current_chunk_size = if next_offset == 0 || next_offset > self.file_size {
                 (self.file_size - self.current_offset) as u32
             } else {
                 self.chunk_size

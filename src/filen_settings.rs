@@ -8,6 +8,7 @@ use url::Url;
 
 pub static DEFAULT_FILEN_SETTINGS: Lazy<FilenSettings> = Lazy::new(FilenSettings::default);
 
+#[allow(clippy::unwrap_used)]
 static DEFAULT_API_SERVERS: Lazy<Vec<Url>> = Lazy::new(|| {
     vec![
         Url::parse("https://api.filen.io/").unwrap(),
@@ -19,6 +20,7 @@ static DEFAULT_API_SERVERS: Lazy<Vec<Url>> = Lazy::new(|| {
     ]
 });
 
+#[allow(clippy::unwrap_used)]
 static DEFAULT_DOWNLOAD_SERVERS: Lazy<Vec<Url>> = Lazy::new(|| {
     vec![
         Url::parse("https://down.filen.io/").unwrap(),
@@ -30,6 +32,7 @@ static DEFAULT_DOWNLOAD_SERVERS: Lazy<Vec<Url>> = Lazy::new(|| {
     ]
 });
 
+#[allow(clippy::unwrap_used)]
 static DEFAULT_UPLOAD_SERVERS: Lazy<Vec<Url>> = Lazy::new(|| {
     vec![
         Url::parse("https://up.filen.io/").unwrap(),
@@ -48,6 +51,7 @@ const UPLOAD_TIMEOUT_SECS: u64 = 3600;
 /// Filen-specific information for API calls, such as Filen server URLs.
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[non_exhaustive]
 pub struct FilenSettings {
     /// List of API servers which will be randomly queried.
     #[serde(rename = "apiServers")]

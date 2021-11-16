@@ -24,6 +24,7 @@ pub fn bytes_to_hex_string(data: &[u8]) -> String {
 }
 
 /// Treats given bytes as unicode scalar values and builds a string out of them.
+#[allow(clippy::as_conversions)]
 pub fn bytes_to_binary_string(bytes: &[u8]) -> String {
     let mut buffer: String = String::with_capacity(bytes.len());
     for byte in bytes.iter() {

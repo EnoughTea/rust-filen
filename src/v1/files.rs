@@ -193,6 +193,7 @@ impl FileProperties {
     #[must_use]
     pub fn encrypt_file_metadata(file_properties: &Self, last_master_key: &SecUtf8) -> String {
         let metadata_json = json!(file_properties).to_string();
+        // Cannot panic, since METADATA_VERSION is supported by definition and metadata_json is valid UTF-8
         crypto::encrypt_metadata_str(&metadata_json, last_master_key, METADATA_VERSION).unwrap()
     }
 

@@ -14,9 +14,12 @@ use crate::filen_settings::FilenSettings;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
+#[allow(clippy::unwrap_used)]
 #[cfg(feature = "async")]
 static ASYNC_CLIENT: Lazy<reqwest::Client> =
     Lazy::new(|| reqwest::Client::builder().user_agent(CRATE_USER_AGENT).build().unwrap());
+
+#[allow(clippy::unwrap_used)]
 #[cfg(feature = "async")]
 static BLOCKING_CLIENT: Lazy<reqwest::blocking::Client> = Lazy::new(|| {
     reqwest::blocking::Client::builder()

@@ -57,6 +57,9 @@ pub enum Error {
     #[snafu(display("Filen did not accept uploaded dummy chunk: {}", message))]
     DummyChunkNotAccepted { message: String, backtrace: Backtrace },
 
+    #[snafu(display("File key be an alphanumeric string of 32 chars"))]
+    FileKeyShouldHave32Chars { source: std::array::TryFromSliceError },
+
     #[snafu(display("Cannot read file chunks due to IO error: {}", source))]
     SeekReadError { source: std::io::Error },
 
@@ -343,7 +346,13 @@ pub fn encrypt_and_upload_chunk(
     upload_properties: &FileUploadProperties,
     filen_settings: &FilenSettings,
 ) -> Result<UploadFileChunkResponsePayload> {
-    let file_key = upload_properties.file_key.unsecure().as_bytes().try_into().unwrap();
+    let file_key: &[u8; crypto::AES_CBC_KEY_LENGTH] = upload_properties
+        .file_key
+        .unsecure()
+        .as_bytes()
+        .try_into()
+        .context(FileKeyShouldHave32Chars {})?;
+
     let chunk_encrypted =
         crypto::encrypt_file_chunk(chunk, file_key, upload_properties.version).context(ChunkEncryptionError {
             chunk_size: chunk.len(),
@@ -374,7 +383,12 @@ pub async fn encrypt_and_upload_chunk_async(
     upload_properties: &FileUploadProperties,
     filen_settings: &FilenSettings,
 ) -> Result<UploadFileChunkResponsePayload> {
-    let file_key = upload_properties.file_key.unsecure().as_bytes().try_into().unwrap();
+    let file_key: &[u8; crypto::AES_CBC_KEY_LENGTH] = upload_properties
+        .file_key
+        .unsecure()
+        .as_bytes()
+        .try_into()
+        .context(FileKeyShouldHave32Chars {})?;
     let chunk_encrypted =
         crypto::encrypt_file_chunk(chunk, file_key, upload_properties.version).context(ChunkEncryptionError {
             chunk_size: chunk.len(),

@@ -37,6 +37,7 @@ pub enum Error {
     },
 }
 
+#[allow(clippy::unwrap_used)]
 pub fn init_server() -> (MockServer, FilenSettings) {
     let server = MockServer::start();
     let filen_settings = FilenSettings {
@@ -52,7 +53,8 @@ pub fn init_server() -> (MockServer, FilenSettings) {
 
 pub fn deserialize_from_file<U: DeserializeOwned>(response_file_path: &str) -> U {
     let response_contents = read_project_file(response_file_path);
-    serde_json::from_slice(&response_contents).unwrap()
+    serde_json::from_slice(&response_contents)
+        .unwrap_or_else(|_| panic!("Project file '{}' could not be deserialized", response_file_path))
 }
 
 pub fn project_path() -> Result<Utf8PathBuf> {

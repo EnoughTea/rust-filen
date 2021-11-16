@@ -24,13 +24,13 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 type HmacSha512 = Hmac<sha2::Sha512>;
 
-const OPENSSL_SALT_PREFIX: &[u8] = b"Salted__";
-const OPENSSL_SALT_PREFIX_BASE64: &[u8] = b"U2FsdGVk";
-const OPENSSL_SALT_LENGTH: usize = 8;
-const AES_CBC_IV_LENGTH: usize = 16;
-const AES_CBC_KEY_LENGTH: usize = 32;
-const AES_GCM_IV_LENGTH: usize = 12;
-const FILEN_VERSION_LENGTH: usize = 3;
+pub const OPENSSL_SALT_PREFIX: &[u8] = b"Salted__";
+pub const OPENSSL_SALT_PREFIX_BASE64: &[u8] = b"U2FsdGVk";
+pub const OPENSSL_SALT_LENGTH: usize = 8;
+pub const AES_CBC_IV_LENGTH: usize = 16;
+pub const AES_CBC_KEY_LENGTH: usize = 32;
+pub const AES_GCM_IV_LENGTH: usize = 12;
+pub const FILEN_VERSION_LENGTH: usize = 3;
 
 #[derive(Snafu, Debug)]
 pub enum Error {
