@@ -1,10 +1,12 @@
+#[cfg(feature = "async")]
+use crate::v1::download_dir_request_async;
 use crate::{
     queries, utils, v1,
     v1::{
         bool_from_int, bool_from_string, bool_to_int, bool_to_string, crypto, download_dir, download_dir_request,
-        download_dir_request_async, files, fs, response_payload, Backtrace, CryptoError, DownloadDirRequestPayload,
-        FileProperties, FileStorageInfo, HasFileMetadata, HasLocationName, HasPublicKey, HasUuid, ItemKind,
-        LocationColor, LocationNameMetadata, ParentOrNone, PlainResponsePayload,
+        files, fs, response_payload, Backtrace, CryptoError, DownloadDirRequestPayload, FileProperties,
+        FileStorageInfo, HasFileMetadata, HasLocationName, HasPublicKey, HasUuid, ItemKind, LocationColor,
+        LocationNameMetadata, ParentOrNone, PlainResponsePayload,
     },
     FilenSettings, SettingsBundle,
 };
@@ -1058,7 +1060,9 @@ pub async fn share_folder_recursively_async(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{validate_contract, validate_contract_async};
+    use crate::test_utils::validate_contract;
+    #[cfg(feature = "async")]
+    use crate::test_utils::validate_contract_async;
     use once_cell::sync::Lazy;
     use secstr::SecUtf8;
 

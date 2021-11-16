@@ -1074,7 +1074,9 @@ pub(crate) use user_event_struct;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{validate_contract, validate_contract_async};
+    use crate::test_utils::validate_contract;
+    #[cfg(feature = "async")]
+    use crate::test_utils::validate_contract_async;
     use once_cell::sync::Lazy;
     use pretty_assertions::assert_eq;
     use secstr::SecUtf8;

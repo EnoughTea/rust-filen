@@ -213,7 +213,9 @@ pub async fn trash_empty_request_async(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{validate_contract, validate_contract_async};
+    use crate::test_utils::validate_contract;
+    #[cfg(feature = "async")]
+    use crate::test_utils::validate_contract_async;
 
     #[test]
     fn current_versions_request_should_have_proper_contract() {

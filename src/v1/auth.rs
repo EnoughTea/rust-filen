@@ -237,7 +237,9 @@ pub async fn login_request_async(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{self, validate_contract, validate_contract_async};
+    #[cfg(feature = "async")]
+    use crate::test_utils::validate_contract_async;
+    use crate::test_utils::{self, validate_contract};
     use pretty_assertions::assert_eq;
 
     #[test]

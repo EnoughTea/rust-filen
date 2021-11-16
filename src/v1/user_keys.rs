@@ -365,7 +365,9 @@ pub async fn user_public_key_get_request_async(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{read_project_file, validate_contract, validate_contract_async};
+    #[cfg(feature = "async")]
+    use crate::test_utils::validate_contract_async;
+    use crate::test_utils::{read_project_file, validate_contract};
     use once_cell::sync::Lazy;
     use pretty_assertions::assert_eq;
 

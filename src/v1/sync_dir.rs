@@ -130,7 +130,9 @@ pub async fn get_dir_request_async(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{validate_contract, validate_contract_async};
+    use crate::test_utils::validate_contract;
+    #[cfg(feature = "async")]
+    use crate::test_utils::validate_contract_async;
     use once_cell::sync::Lazy;
     use secstr::SecUtf8;
 

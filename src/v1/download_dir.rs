@@ -1,12 +1,14 @@
 #![allow(clippy::redundant_pub_crate)]
+#[cfg(feature = "async")]
+use crate::v1::download_and_decrypt_file_async;
 use crate::{
     crypto,
     filen_settings::FilenSettings,
     queries, utils,
     v1::{
-        download_and_decrypt_file, download_and_decrypt_file_async, download_file, response_payload, FileStorageInfo,
-        FolderData, HasFileLocation, HasFileMetadata, HasFiles, HasFolders, HasLinkedFileMetadata,
-        HasLinkedLocationName, HasSharedFileMetadata, HasSharedLocationName, HasUuid, ParentOrBase,
+        download_and_decrypt_file, download_file, response_payload, FileStorageInfo, FolderData, HasFileLocation,
+        HasFileMetadata, HasFiles, HasFolders, HasLinkedFileMetadata, HasLinkedLocationName, HasSharedFileMetadata,
+        HasSharedLocationName, HasUuid, ParentOrBase,
     },
 };
 use secstr::SecUtf8;
@@ -483,7 +485,9 @@ pub async fn download_dir_request_async(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{deserialize_from_file, validate_contract, validate_contract_async};
+    #[cfg(feature = "async")]
+    use crate::test_utils::validate_contract_async;
+    use crate::test_utils::{deserialize_from_file, validate_contract};
     use once_cell::sync::Lazy;
     use secstr::SecUtf8;
 

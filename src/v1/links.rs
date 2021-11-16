@@ -1,14 +1,16 @@
+#[cfg(feature = "async")]
+use crate::v1::{dir_link_add_request_async, download_dir_request_async, link_edit_request_async};
 use crate::{
     queries, secstr, utils, uuid, v1,
     v1::{
-        crypto, dir_link_add_request, dir_link_add_request_async, dir_links, download_dir, download_dir_request,
-        download_dir_request_async, file_links, link_edit_request, link_edit_request_async, response_payload,
-        Backtrace, DirLinkAddRequestPayload, DownloadBtnState, DownloadDirRequestPayload, Expire, FileProperties,
-        FilenResponse, HasFileMetadata, HasLinkKey, HasLocationName, HasUuid, LinkEditRequestPayload,
+        crypto, dir_link_add_request, dir_links, download_dir, download_dir_request, file_links, link_edit_request,
+        response_payload, Backtrace, DirLinkAddRequestPayload, DownloadBtnState, DownloadDirRequestPayload, Expire,
+        FileProperties, FilenResponse, HasFileMetadata, HasLinkKey, HasLocationName, HasUuid, LinkEditRequestPayload,
         LocationNameMetadata, ParentOrBase, PlainResponsePayload, METADATA_VERSION,
     },
     FilenSettings, SettingsBundle,
 };
+
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -659,7 +661,9 @@ pub async fn link_folder_recursively_async(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{validate_contract, validate_contract_async};
+    use crate::test_utils::validate_contract;
+    #[cfg(feature = "async")]
+    use crate::test_utils::validate_contract_async;
     use once_cell::sync::Lazy;
     use secstr::SecUtf8;
 

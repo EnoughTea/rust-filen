@@ -555,10 +555,9 @@ pub async fn user_recent_request_async(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        test_utils::{validate_contract, validate_contract_async},
-        v1::ParentOrBase,
-    };
+    #[cfg(feature = "async")]
+    use crate::test_utils::validate_contract_async;
+    use crate::{test_utils::validate_contract, v1::ParentOrBase};
     use once_cell::sync::Lazy;
     use secstr::SecUtf8;
     use std::str::FromStr;
