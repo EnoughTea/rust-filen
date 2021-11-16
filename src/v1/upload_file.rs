@@ -6,7 +6,7 @@ use crate::{
         bool_from_int, bool_to_int, response_payload, Expire, FileChunkLocation, FileProperties, LocationNameMetadata,
         PlainResponsePayload,
     },
-    FilenSettings, RetrySettings,
+    FilenSettings, SettingsBundle,
 };
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
@@ -454,8 +454,7 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
     version: u32,
     last_master_key: &SecUtf8,
     reader: &mut BufReader<R>,
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
+    settings: &SettingsBundle,
 ) -> Result<FileUploadInfo> {
     let upload_properties =
         FileUploadProperties::from_file_properties(file_properties, version, parent_uuid, last_master_key);
@@ -464,9 +463,8 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
         FILE_CHUNK_SIZE,
         file_properties.size,
         &upload_properties,
-        retry_settings,
-        filen_settings,
         reader,
+        settings,
     )?;
 
     let finalize_action = |chunk_upload_responses: Vec<UploadFileChunkResponsePayload>| {
@@ -475,8 +473,7 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
             file_properties.size,
             api_key,
             &upload_properties,
-            retry_settings,
-            filen_settings,
+            settings,
         )
         .and_then(|dummy_chunk_response| {
             if dummy_chunk_response.status {
@@ -484,8 +481,9 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
                     uuid: upload_properties.uuid,
                     upload_key: upload_properties.upload_key.clone(),
                 };
-                let mark_done_response =
-                    retry_settings.retry(|| upload_done_request(&upload_done_payload, filen_settings))?;
+                let mark_done_response = settings
+                    .retry
+                    .call(|| upload_done_request(&upload_done_payload, &settings.filen))?;
                 if mark_done_response.status {
                     Ok(FileUploadInfo::new(upload_properties, chunk_upload_responses))
                 } else {
@@ -524,8 +522,7 @@ pub async fn encrypt_and_upload_file_async<R: Read + Seek + Send>(
     version: u32,
     last_master_key: &SecUtf8,
     reader: &mut BufReader<R>,
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
+    settings: &SettingsBundle,
 ) -> Result<FileUploadInfo> {
     let upload_properties =
         FileUploadProperties::from_file_properties(file_properties, version, parent_uuid, last_master_key);
@@ -534,9 +531,8 @@ pub async fn encrypt_and_upload_file_async<R: Read + Seek + Send>(
         FILE_CHUNK_SIZE,
         file_properties.size,
         &upload_properties,
-        retry_settings,
-        filen_settings,
         reader,
+        settings,
     )
     .await?;
 
@@ -546,8 +542,7 @@ pub async fn encrypt_and_upload_file_async<R: Read + Seek + Send>(
             file_properties.size,
             api_key,
             &upload_properties,
-            retry_settings,
-            filen_settings,
+            settings,
         )
         .await?;
         if dummy_chunk_response.status {
@@ -555,8 +550,9 @@ pub async fn encrypt_and_upload_file_async<R: Read + Seek + Send>(
                 uuid: upload_properties.uuid,
                 upload_key: upload_properties.upload_key.clone(),
             };
-            let mark_done_response = retry_settings
-                .retry_async(|| upload_done_request_async(&upload_done_payload, filen_settings))
+            let mark_done_response = settings
+                .retry
+                .call_async(|| upload_done_request_async(&upload_done_payload, &settings.filen))
                 .await?;
             if mark_done_response.status {
                 Ok(FileUploadInfo::new(upload_properties, chunk_upload_responses))
@@ -611,13 +607,13 @@ fn upload_chunks<R: Read + Seek>(
     file_chunk_size: u32,
     file_size: u64,
     upload_properties: &FileUploadProperties,
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
     reader: &mut BufReader<R>,
+    settings: &SettingsBundle,
 ) -> Result<Vec<UploadFileChunkResponsePayload>> {
     let chunk_processor = |chunk_pos: FileChunkPosition, chunk: Vec<u8>| {
-        retry_settings
-            .retry(|| encrypt_and_upload_chunk(api_key, chunk_pos.index, &chunk, upload_properties, filen_settings))
+        settings
+            .retry
+            .call(|| encrypt_and_upload_chunk(api_key, chunk_pos.index, &chunk, upload_properties, &settings.filen))
     };
     read_into_chunks_and_process(file_chunk_size, file_size, reader, chunk_processor)
         .flatten()
@@ -633,14 +629,14 @@ async fn upload_chunks_async<R: Read + Seek + Send>(
     file_chunk_size: u32,
     file_size: u64,
     upload_properties: &FileUploadProperties,
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
     reader: &mut BufReader<R>,
+    settings: &SettingsBundle,
 ) -> Result<Vec<UploadFileChunkResponsePayload>> {
     let chunk_processor = |chunk_pos: FileChunkPosition, chunk: Vec<u8>| async move {
-        retry_settings
-            .retry_async(|| {
-                encrypt_and_upload_chunk_async(api_key, chunk_pos.index, &chunk, upload_properties, filen_settings)
+        settings
+            .retry
+            .call_async(|| {
+                encrypt_and_upload_chunk_async(api_key, chunk_pos.index, &chunk, upload_properties, &settings.filen)
             })
             .await
     };
@@ -678,8 +674,7 @@ fn send_dummy_chunk(
     file_size: u64,
     api_key: &SecUtf8,
     upload_properties: &FileUploadProperties,
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
+    settings: &SettingsBundle,
 ) -> Result<UploadFileChunkResponsePayload> {
     ensure!(
         file_size > 0,
@@ -690,8 +685,9 @@ fn send_dummy_chunk(
 
     let last_index = ((file_size - 1) / chunk_size as u64) as u32;
     let dummy_buf = vec![0_u8; 0];
-    retry_settings
-        .retry(|| encrypt_and_upload_chunk(api_key, last_index + 1, &dummy_buf, upload_properties, filen_settings))
+    settings
+        .retry
+        .call(|| encrypt_and_upload_chunk(api_key, last_index + 1, &dummy_buf, upload_properties, &settings.filen))
 }
 
 #[cfg(feature = "async")]
@@ -700,16 +696,16 @@ async fn send_dummy_chunk_async(
     file_size: u64,
     api_key: &SecUtf8,
     upload_properties: &FileUploadProperties,
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
+    settings: &SettingsBundle,
 ) -> Result<UploadFileChunkResponsePayload> {
     assert!(file_size != 0);
 
     let last_index = ((file_size - 1) / chunk_size as u64) as u32;
     let dummy_buf = vec![0_u8; 0];
-    retry_settings
-        .retry_async(|| {
-            encrypt_and_upload_chunk_async(api_key, last_index + 1, &dummy_buf, upload_properties, filen_settings)
+    settings
+        .retry
+        .call_async(|| {
+            encrypt_and_upload_chunk_async(api_key, last_index + 1, &dummy_buf, upload_properties, &settings.filen)
         })
         .await
 }

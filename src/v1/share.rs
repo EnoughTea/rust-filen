@@ -3,10 +3,10 @@ use crate::{
     v1::{
         bool_from_int, bool_from_string, bool_to_int, bool_to_string, crypto, download_dir, download_dir_request,
         download_dir_request_async, files, fs, response_payload, Backtrace, CryptoError, DownloadDirRequestPayload,
-        FileProperties, FileStorageInfo, FilenResponse, HasFileMetadata, HasLocationName, HasPublicKey, HasUuid,
-        ItemKind, LocationColor, LocationNameMetadata, ParentOrNone, PlainResponsePayload,
+        FileProperties, FileStorageInfo, HasFileMetadata, HasLocationName, HasPublicKey, HasUuid, ItemKind,
+        LocationColor, LocationNameMetadata, ParentOrNone, PlainResponsePayload,
     },
-    FilenSettings, RetrySettings,
+    FilenSettings, SettingsBundle,
 };
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,8 @@ use snafu::{ResultExt, Snafu};
 use std::cmp::Ordering;
 use strum::{Display, EnumString};
 use uuid::Uuid;
+
+use super::FilenResponse;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -938,15 +940,15 @@ pub fn share_folder_recursively(
     receiver_email: &str,
     receiver_public_key_bytes: &[u8],
     master_keys: &[SecUtf8],
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
+    settings: &SettingsBundle,
 ) -> Result<()> {
     let content_payload = DownloadDirRequestPayload {
         api_key: api_key.clone(),
         uuid: folder_uuid,
     };
-    let contents_response = retry_settings
-        .retry(|| download_dir_request(&content_payload, filen_settings))
+    let contents_response = settings
+        .retry
+        .call(|| download_dir_request(&content_payload, &settings.filen))
         .context(DownloadDirRequestFailed {})?;
     let contents = contents_response
         .data_or_err()
@@ -956,7 +958,7 @@ pub fn share_folder_recursively(
         .folders
         .iter()
         .map(|folder| {
-            retry_settings.retry(|| {
+            settings.retry.call(|| {
                 share_folder(
                     api_key.clone(),
                     folder,
@@ -964,7 +966,7 @@ pub fn share_folder_recursively(
                     receiver_email.to_owned(),
                     receiver_public_key_bytes,
                     master_keys,
-                    filen_settings,
+                    &settings.filen,
                 )
                 .map(|_| ())
             })
@@ -975,7 +977,7 @@ pub fn share_folder_recursively(
         .files
         .iter()
         .map(|file| {
-            retry_settings.retry(|| {
+            settings.retry.call(|| {
                 share_file(
                     api_key.clone(),
                     file,
@@ -983,7 +985,7 @@ pub fn share_folder_recursively(
                     receiver_email.to_owned(),
                     receiver_public_key_bytes,
                     master_keys,
-                    filen_settings,
+                    &settings.filen,
                 )
                 .map(|_| ())
             })
@@ -1001,15 +1003,15 @@ pub async fn share_folder_recursively_async(
     receiver_email: &str,
     receiver_public_key_bytes: &[u8],
     master_keys: &[SecUtf8],
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
+    settings: &SettingsBundle,
 ) -> Result<()> {
     let content_payload = DownloadDirRequestPayload {
         api_key: api_key.clone(),
         uuid: folder_uuid,
     };
-    let contents_response = retry_settings
-        .retry_async(|| download_dir_request_async(&content_payload, filen_settings))
+    let contents_response = settings
+        .retry
+        .call_async(|| download_dir_request_async(&content_payload, &settings.filen))
         .await
         .context(DownloadDirRequestFailed {})?;
     let contents = contents_response
@@ -1017,7 +1019,7 @@ pub async fn share_folder_recursively_async(
         .context(CannotGetUserFolderContents {})?;
     // Share this folder and all sub-folders:
     let folder_futures = contents.folders.iter().map(|folder| {
-        retry_settings.retry_async(move || async move {
+        settings.retry.call_async(move || async move {
             share_folder_async(
                 api_key.clone(),
                 folder,
@@ -1025,7 +1027,7 @@ pub async fn share_folder_recursively_async(
                 receiver_email.to_owned(),
                 receiver_public_key_bytes,
                 master_keys,
-                filen_settings,
+                &settings.filen,
             )
             .await
             .map(|_| ())
@@ -1035,7 +1037,7 @@ pub async fn share_folder_recursively_async(
 
     // Share all files:
     let file_futures = contents.files.iter().map(|file| {
-        retry_settings.retry_async(move || async move {
+        settings.retry.call_async(move || async move {
             share_file_async(
                 api_key.clone(),
                 file,
@@ -1043,7 +1045,7 @@ pub async fn share_folder_recursively_async(
                 receiver_email.to_owned(),
                 receiver_public_key_bytes,
                 master_keys,
-                filen_settings,
+                &settings.filen,
             )
             .await
             .map(|_| ())

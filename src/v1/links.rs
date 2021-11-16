@@ -7,7 +7,7 @@ use crate::{
         FilenResponse, HasFileMetadata, HasLinkKey, HasLocationName, HasUuid, LinkEditRequestPayload,
         LocationNameMetadata, ParentOrBase, PlainResponsePayload, METADATA_VERSION,
     },
-    FilenSettings, RetrySettings,
+    FilenSettings, SettingsBundle,
 };
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
@@ -503,8 +503,7 @@ pub fn link_folder_recursively(
     api_key: &SecUtf8,
     folder_uuid: Uuid,
     master_keys: &[SecUtf8],
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
+    settings: &SettingsBundle,
 ) -> Result<LinkIdWithKey> {
     let last_master_key = match master_keys.last() {
         Some(key) => key,
@@ -518,8 +517,9 @@ pub fn link_folder_recursively(
         api_key: api_key.clone(),
         uuid: folder_uuid,
     };
-    let contents_response = retry_settings
-        .retry(|| download_dir_request(&content_payload, filen_settings))
+    let contents_response = settings
+        .retry
+        .call(|| download_dir_request(&content_payload, &settings.filen))
         .context(DownloadDirRequestFailed {})?;
     let contents = contents_response
         .data_or_err()
@@ -534,7 +534,7 @@ pub fn link_folder_recursively(
         .folders
         .iter()
         .map(|folder| {
-            retry_settings.retry(|| {
+            settings.retry.call(|| {
                 let parent = if folder.uuid == folder_uuid {
                     ParentOrBase::Base
                 } else {
@@ -547,7 +547,7 @@ pub fn link_folder_recursively(
                     link_id_with_key.link_uuid,
                     link_id_with_key.link_key_metadata.clone(),
                     master_keys,
-                    filen_settings,
+                    &settings.filen,
                 )
                 .map(|_| ())
             })
@@ -558,7 +558,7 @@ pub fn link_folder_recursively(
         .files
         .iter()
         .map(|file| {
-            retry_settings.retry(|| {
+            settings.retry.call(|| {
                 add_file_to_link(
                     api_key.clone(),
                     file,
@@ -566,7 +566,7 @@ pub fn link_folder_recursively(
                     link_id_with_key.link_uuid,
                     link_id_with_key.link_key_metadata.clone(),
                     master_keys,
-                    filen_settings,
+                    &settings.filen,
                 )
                 .map(|_| ())
             })
@@ -585,8 +585,7 @@ pub async fn link_folder_recursively_async(
     api_key: &SecUtf8,
     folder_uuid: Uuid,
     master_keys: &[SecUtf8],
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
+    settings: &SettingsBundle,
 ) -> Result<LinkIdWithKey> {
     let last_master_key = match master_keys.last() {
         Some(key) => key,
@@ -600,8 +599,9 @@ pub async fn link_folder_recursively_async(
         api_key: api_key.clone(),
         uuid: folder_uuid,
     };
-    let contents_response = retry_settings
-        .retry_async(|| download_dir_request_async(&content_payload, filen_settings))
+    let contents_response = settings
+        .retry
+        .call_async(|| download_dir_request_async(&content_payload, &settings.filen))
         .await
         .context(DownloadDirRequestFailed {})?;
     let contents = contents_response
@@ -612,7 +612,7 @@ pub async fn link_folder_recursively_async(
     let link_id_with_key_clone = || link_id_with_key.clone();
     // Share this folder and all sub-folders:
     let folder_futures = contents.folders.iter().map(|folder| {
-        retry_settings.retry_async(move || async move {
+        settings.retry.call_async(move || async move {
             let link_id_with_key_clone = link_id_with_key_clone();
             let parent = if folder.uuid == folder_uuid {
                 ParentOrBase::Base
@@ -626,7 +626,7 @@ pub async fn link_folder_recursively_async(
                 link_id_with_key_clone.link_uuid,
                 link_id_with_key_clone.link_key_metadata,
                 master_keys,
-                filen_settings,
+                &settings.filen,
             )
             .await
             .map(|_| ())
@@ -636,7 +636,7 @@ pub async fn link_folder_recursively_async(
 
     // Link all files.
     let file_futures = contents.files.iter().map(|file| {
-        retry_settings.retry_async(move || async move {
+        settings.retry.call_async(move || async move {
             let link_id_with_key_clone = link_id_with_key_clone();
             add_file_to_link_async(
                 api_key.clone(),
@@ -645,7 +645,7 @@ pub async fn link_folder_recursively_async(
                 link_id_with_key_clone.link_uuid,
                 link_id_with_key_clone.link_key_metadata,
                 master_keys,
-                filen_settings,
+                &settings.filen,
             )
             .await
             .map(|_| ())

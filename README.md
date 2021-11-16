@@ -1,23 +1,21 @@
 # Library to call Filen.io API from Rust
 
 [Filen.io](https://filen.io) is a cloud storage provider with an open-source [desktop client](https://github.com/FilenCloudDienste/filen-desktop). My goal was to write a library which calls Filen's API in a meaningful way, and to learn Rust in process.
-Filen's API is currently undocumented and I try to get it right by studying the client's sources, so take it all with a grain of salt.
+Filen's API was undocumented at time of writing and I tried to get it right by studying the client's sources, so take it all with a grain of salt.
 
 This library is in a usable yet unpolished state. It is possible to make almost every imaginable Filen query:
-you can login, receive users RSA keys,
+you can login, receive users RSA keys, view user's options and events,
 perform CRUD on files and folders, list Filen Sync folder/trash folder/recent files contents,
 download and decrypt files, encrypt and upload files, and share/link files/folders with helpers for recursion.
 
-Some obscure user-specific API queries are unimplemented and documentation is lacking, sorry about that.
+Some obscure user-specific API queries are unimplemented and documentation is almost non-existent, sorry about that.
 If you need to call missing API query, you can do so with `rust_filen::queries::query_filen_api("/v1/some/uimplemented/api/path", any_serde_serializable_payload, filen_settings)`.
-
-I have not published `rust_filen` yet, but chances are you would want to depend on its sources anyway.
 
 ## Optional async
 
 By default, all queries are synchronous and performed with [ureq](https://github.com/algesten/ureq).
 
-If you want, you can enable async versions of every API query and a way to retry them, `RetrySettings::retry_async`.
+If you want, you can enable async versions of every API query and a way to retry them, `RetrySettings::call_async`.
 To do so, set `features = ["async"]` for this library in your `Cargo.toml`.
 As a result, [reqwest](https://github.com/seanmonstar/reqwest) will be used instead of [ureq](https://github.com/algesten/ureq).
 
@@ -29,7 +27,8 @@ If you're interested, that's how it all looks. Start by importing all we need fo
 ```rust
 use rust_filen::{*, v1::*};
 // All Filen API queries and related structs are in v1::*,
-// while rust_filen::* provides FilenSettings and RetrySettings.
+// while rust_filen::* provides FilenSettings, RetrySettings and their bundle
+// for convenience, aptly called SettingsBundle.
 // Also, for advanced usage, there are rust_filen::crypto
 // with crypto-functions to encrypt/decrypt various Filen metadata and
 // rust_filen::queries as a way to define your own Filen API queries.
@@ -54,7 +53,8 @@ let user_email = SecUtf8::from("registered.user@email.com");
 let user_password = SecUtf8::from("user.password.in.plaintext");
  // Filen actually uses XXXXXX when 2FA is absent.
 let user_two_factor_key = SecUtf8::from("XXXXXX");
-let filen_settings = FilenSettings::default();  // Provides Filen server URLs.
+let settings = STANDARD_SETTINGS_BUNDLE.clone();
+let filen_settings = settings.filen;  // Provides Filen server URLs.
 
 let auth_info_request_payload = auth::AuthInfoRequestPayload {
     email: user_email.clone(),
@@ -163,28 +163,32 @@ let (some_file_data, some_file_properties) = default_folder_files_and_properties
 let file_key = some_file_properties.key.clone();
 
 // Let's store file in-memory via writer over vec:
-let mut file_buffer = std::io::BufWriter::new(Vec::new());
+let mut file_writer = std::io::BufWriter::new(Vec::new());
 
-// STANDARD_RETRIES retry 5 times with 1, 2, 4, 8 and 15 seconds pause
+// STANDARD_SETTINGS_BUNDLE earlier contained `retry` field with STANDARD_RETRIES,
+// which retry 5 times with 1, 2, 4, 8 and 15 seconds pause
 // between retries and some random jitter.
-// Usually RetrySettings is opt-in, you call RetrySettings::retry yourself
+// Usually RetrySettings is opt-in, you call `RetrySettings::call` yourself
 // when needed for every API query you want retried.
 //
-// But file download/upload are helper methods where providing RetrySettings is mandatory.
-// File is downloaded or uploaded as a sequence of chunks, and any one of them can fail.
+// File is downloaded or uploaded as a sequence of chunks,
+// and a query to download or upload any one of them can fail.
 // With external retries, if the last chunk fails, you'll have to redo the entire file.
 // Internal retry logic avoid possible needless work.
-let retry_settings = RetrySettings::STANDARD_RETRIES;
+//
+// For this reason, file download/upload and other complex helper methods 
+// with chains of Filen API queries inside, require reference to RetrySettings
+// in addition to usual FilenSettings.
+// So file download below uses settings bundle we defined earlier, which contains them: 
 let sync_file_download_result = download_and_decrypt_file_from_data_and_key(
     some_file_data,
     &file_key,
-    &retry_settings,
-    &filen_settings,
-    &mut file_buffer,
+    &mut file_writer,
+    &settings,
 );
 
 // And now we have downloaded and decrypted bytes in memory.
-let file_bytes = sync_file_download_result.map(|_| file_buffer.into_inner().unwrap())?;
+let file_bytes = sync_file_download_result.map(|_| file_writer.into_inner().unwrap())?;
 ```
 
 
@@ -221,9 +225,8 @@ let upload_result = encrypt_and_upload_file(
     &file_properties,
     file_version,
     &last_master_key,
-    &retry_settings,
-    &filen_settings,
     &mut file_reader,
+    &settings,
 );
 ```
 
@@ -419,8 +422,7 @@ let share_folder_recursively_result = share_folder_recursively(
     receiver_email,
     &receiver_public_key,
     &master_keys,
-    &retry_settings,
-    &filen_settings,
+    &settings,
 )
 ```
 
@@ -489,8 +491,7 @@ link_folder_recursively(
     &api_key,
     linked_folder_uuid,
     master_keys,
-    &retry_settings,
-    &filen_settings,
+    &settings,
 )?
 ```
 

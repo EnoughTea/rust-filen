@@ -149,17 +149,15 @@ macro_rules! gen_download_and_decrypt_file {
         pub fn download_and_decrypt_file<W: std::io::Write>(
             &self,
             file_key: &secstr::SecUtf8,
-            retry_settings: &crate::RetrySettings,
-            filen_settings: &crate::FilenSettings,
             writer: &mut std::io::BufWriter<W>,
+            settings: &crate::SettingsBundle,
         ) -> Result<u64, crate::v1::download_file::Error> {
             download_and_decrypt_file(
                 &self.get_file_location(),
                 self.version,
                 file_key,
                 writer,
-                retry_settings,
-                filen_settings,
+                settings,
             )
         }
 
@@ -168,17 +166,15 @@ macro_rules! gen_download_and_decrypt_file {
         pub async fn download_and_decrypt_file_async<W: std::io::Write + Send>(
             &self,
             file_key: &secstr::SecUtf8,
-            retry_settings: &crate::RetrySettings,
-            filen_settings: &crate::FilenSettings,
             writer: &mut std::io::BufWriter<W>,
+            settings: &crate::SettingsBundle,
         ) -> Result<u64, crate::v1::download_file::Error> {
             download_and_decrypt_file_async(
                 &self.get_file_location(),
                 self.version,
                 file_key,
                 writer,
-                retry_settings,
-                filen_settings,
+                settings,
             )
             .await
         }

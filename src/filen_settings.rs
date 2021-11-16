@@ -50,7 +50,7 @@ const UPLOAD_TIMEOUT_SECS: u64 = 3600;
 
 /// Filen-specific information for API calls, such as Filen server URLs.
 #[serde_as]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[non_exhaustive]
 pub struct FilenSettings {
     /// List of API servers which will be randomly queried.

@@ -1,10 +1,7 @@
 use crate::{
-    crypto,
-    filen_settings::FilenSettings,
-    queries,
-    retry_settings::RetrySettings,
-    utils,
+    crypto, queries, utils,
     v1::{FileData, HasFileLocation},
+    FilenSettings, SettingsBundle,
 };
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
@@ -152,16 +149,14 @@ pub fn download_and_decrypt_file_from_data_and_key<W: Write>(
     file_data: &FileData,
     file_key: &SecUtf8,
     writer: &mut std::io::BufWriter<W>,
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
+    settings: &SettingsBundle,
 ) -> Result<u64> {
     download_and_decrypt_file(
         &file_data.get_file_location(),
         file_data.version,
         file_key,
         writer,
-        retry_settings,
-        filen_settings,
+        settings,
     )
 }
 
@@ -177,16 +172,14 @@ pub async fn download_and_decrypt_file_from_data_and_key_async<W: Write + Send>(
     file_data: &FileData,
     file_key: &SecUtf8,
     writer: &mut std::io::BufWriter<W>,
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
+    settings: &SettingsBundle,
 ) -> Result<u64> {
     download_and_decrypt_file_async(
         &file_data.get_file_location(),
         file_data.version,
         file_key,
         writer,
-        retry_settings,
-        filen_settings,
+        settings,
     )
     .await
 }
@@ -200,13 +193,14 @@ pub fn download_and_decrypt_file<W: Write>(
     version: u32,
     file_key: &SecUtf8,
     writer: &mut std::io::BufWriter<W>,
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
+    settings: &SettingsBundle,
 ) -> Result<u64> {
     let written_chunk_lengths = (0..file_location.chunks)
         .map(|chunk_index| {
             let file_chunk_location = file_location.get_file_chunk_location(chunk_index);
-            let encrypted_bytes = retry_settings.retry(|| download_file_chunk(&file_chunk_location, filen_settings))?;
+            let encrypted_bytes = settings
+                .retry
+                .call(|| download_file_chunk(&file_chunk_location, &settings.filen))?;
             let file_key_bytes: &[u8; 32] = file_key
                 .unsecure()
                 .as_bytes()
@@ -241,11 +235,10 @@ pub async fn download_and_decrypt_file_async<W: Write + Send>(
     version: u32,
     file_key: &SecUtf8,
     writer: &mut std::io::BufWriter<W>,
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
+    settings: &SettingsBundle,
 ) -> Result<u64> {
     let download_and_decrypt_action = |batch_index: u32, batch_indices: Vec<u32>| async move {
-        let batch_or_err = download_batch_async(file_location, &batch_indices, retry_settings, filen_settings).await;
+        let batch_or_err = download_batch_async(file_location, &batch_indices, settings).await;
         match batch_or_err {
             Ok(batch) => decrypt_batch(batch_index, &batch, file_location, version, file_key),
             Err(err) => Err(err),
@@ -340,15 +333,17 @@ fn decrypt_batch(
 async fn download_batch_async(
     file_location: &FileLocation,
     batch_indices: &[u32],
-    retry_settings: &RetrySettings,
-    filen_settings: &FilenSettings,
+    settings: &SettingsBundle,
 ) -> Result<Vec<Vec<u8>>> {
     let download_chunk_eventually = |chunk_index: u32| async move {
         let file_chunk_location = file_location.get_file_chunk_location(chunk_index);
-        download_file_chunk_async(&file_chunk_location, filen_settings).await
+        download_file_chunk_async(&file_chunk_location, &settings.filen).await
     };
-    let download_chunk_with_retries_eventually =
-        |chunk_index: u32| retry_settings.retry_async(move || download_chunk_eventually(chunk_index));
+    let download_chunk_with_retries_eventually = |chunk_index: u32| {
+        settings
+            .retry
+            .call_async(move || download_chunk_eventually(chunk_index))
+    };
 
     let chunk_download_tasks = batch_indices
         .iter()

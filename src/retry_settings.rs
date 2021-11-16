@@ -18,8 +18,8 @@ pub static STANDARD_RETRIES: Lazy<RetrySettings> = Lazy::new(|| RetrySettings {
 
 /// Parameters for exponential backoff retry strategy with random jitter. Default instance performs no retries.
 ///
-/// Turn any API query into retriable if needed: call `RetrySettings::retry` for sync operations and
-/// `RetrySettings::retry_async` for futures.
+/// Turn any API query into retriable if needed: call `RetrySettings::call` for sync operations and
+/// `RetrySettings::call_async` for futures.
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub struct RetrySettings {
     /// Initial delay for exponential backoff.
@@ -54,7 +54,7 @@ impl RetrySettings {
 
     /// Retry the given asynchronous operation until it succeeds, or until retry count run out.
     #[cfg(feature = "async")]
-    pub async fn retry_async<T, CF, OpErr>(&self, operation: CF) -> Result<T, OpErr>
+    pub async fn call_async<T, CF, OpErr>(&self, operation: CF) -> Result<T, OpErr>
     where
         CF: fure::CreateFuture<T, OpErr> + Send,
         CF::Output: Send,
@@ -70,7 +70,7 @@ impl RetrySettings {
     /// # Panics
     ///
     /// Will panic on `retry::Error::Internal` emitting by `operation`.
-    pub fn retry<O, R, OR, OpErr>(&self, operation: O) -> Result<R, OpErr>
+    pub fn call<O, R, OR, OpErr>(&self, operation: O) -> Result<R, OpErr>
     where
         O: Send + FnMut() -> OR,
         OR: Into<retry::OperationResult<R, OpErr>>,
