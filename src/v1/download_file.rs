@@ -244,7 +244,7 @@ pub async fn download_and_decrypt_file_async<W: Write + Send>(
     retry_settings: &RetrySettings,
     filen_settings: &FilenSettings,
 ) -> Result<u64> {
-    let download_and_decrypt_action = |batch_index: usize, batch_indices: Vec<u32>| async move {
+    let download_and_decrypt_action = |batch_index: u32, batch_indices: Vec<u32>| async move {
         let batch_or_err = download_batch_async(file_location, &batch_indices, retry_settings, filen_settings).await;
         match batch_or_err {
             Ok(batch) => decrypt_batch(batch_index, &batch, file_location, version, file_key),
@@ -255,7 +255,7 @@ pub async fn download_and_decrypt_file_async<W: Write + Send>(
     let download_and_decrypt_batches = batches
         .into_iter()
         .enumerate()
-        .map(|(batch_index, batch)| download_and_decrypt_action(batch_index, batch));
+        .map(|(batch_index, batch)| download_and_decrypt_action(batch_index as u32, batch));
     let decrypted_batches = futures::future::try_join_all(download_and_decrypt_batches).await?;
     // Batches need to be written sequentially, I guess
     let written_batch_lengths = decrypted_batches
@@ -302,7 +302,7 @@ fn write_batch<W: Write>(
 
 #[cfg(feature = "async")]
 fn decrypt_batch(
-    batch_index: usize,
+    batch_index: u32,
     batch: &[Vec<u8>],
     file_location: &FileLocation,
     version: u32,
@@ -318,7 +318,7 @@ fn decrypt_batch(
                 .as_bytes()
                 .try_into()
                 .context(InvalidFileKeySize {})?;
-            let chunk_index = batch_index + index;
+            let chunk_index = batch_index + index as u32;
             crypto::decrypt_file_chunk(encrypted_bytes, file_key_bytes, version)
                 .map(|decrypted_bytes| {
                     encrypted_total += encrypted_bytes.len() as u64;
@@ -326,7 +326,7 @@ fn decrypt_batch(
                 })
                 .context(CannotDecryptFileChunk {
                     length: encrypted_bytes.len(),
-                    location: file_location.get_file_chunk_location(chunk_index as u32),
+                    location: file_location.get_file_chunk_location(chunk_index),
                 })
         })
         .collect::<Result<Vec<Vec<u8>>>>()?;
