@@ -531,6 +531,8 @@ pub fn link_folder_recursively(
     // and it is possible to generate unencrypted metadata here with LinkIdWithKey::generate_unencrypted()
     // So implement overloads for add_(file|folder)_to_link for an unencrypted link key?
     let link_id_with_key = LinkIdWithKey::generate(last_master_key);
+    let link_metadata = &link_id_with_key.link_key_metadata;
+
     // Share this folder and all sub-folders:
     contents
         .folders
@@ -547,7 +549,7 @@ pub fn link_folder_recursively(
                     folder,
                     parent,
                     link_id_with_key.link_uuid,
-                    link_id_with_key.link_key_metadata.clone(),
+                    link_metadata,
                     master_keys,
                     &settings.filen,
                 )
@@ -566,7 +568,7 @@ pub fn link_folder_recursively(
                     file,
                     ParentOrBase::Folder(file.parent),
                     link_id_with_key.link_uuid,
-                    link_id_with_key.link_key_metadata.clone(),
+                    link_metadata,
                     master_keys,
                     &settings.filen,
                 )
@@ -611,11 +613,12 @@ pub async fn link_folder_recursively_async(
         .context(CannotGetUserFolderContents {})?;
 
     let link_id_with_key = LinkIdWithKey::generate(last_master_key);
-    let link_id_with_key_clone = || link_id_with_key.clone();
+    let link_uuid = link_id_with_key.link_uuid;
+    let link_metadata = &link_id_with_key.link_key_metadata;
+
     // Share this folder and all sub-folders:
     let folder_futures = contents.folders.iter().map(|folder| {
-        settings.retry.call_async(move || async move {
-            let link_id_with_key_clone = link_id_with_key_clone();
+        settings.retry.call_async(|| async {
             let parent = if folder.uuid == folder_uuid {
                 ParentOrBase::Base
             } else {
@@ -625,8 +628,8 @@ pub async fn link_folder_recursively_async(
                 api_key.clone(),
                 folder,
                 parent,
-                link_id_with_key_clone.link_uuid,
-                link_id_with_key_clone.link_key_metadata,
+                link_uuid,
+                link_metadata,
                 master_keys,
                 &settings.filen,
             )
@@ -638,14 +641,13 @@ pub async fn link_folder_recursively_async(
 
     // Link all files.
     let file_futures = contents.files.iter().map(|file| {
-        settings.retry.call_async(move || async move {
-            let link_id_with_key_clone = link_id_with_key_clone();
+        settings.retry.call_async(|| async {
             add_file_to_link_async(
                 api_key.clone(),
                 file,
                 ParentOrBase::Folder(file.parent),
-                link_id_with_key_clone.link_uuid,
-                link_id_with_key_clone.link_key_metadata,
+                link_uuid,
+                link_metadata,
                 master_keys,
                 &settings.filen,
             )
