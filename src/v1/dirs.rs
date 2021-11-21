@@ -1,5 +1,4 @@
 use crate::{
-    filen_settings::FilenSettings,
     queries, utils,
     v1::{
         bool_from_int, bool_from_string, bool_to_int, bool_to_string, optional_bool_from_int, optional_bool_to_int,
@@ -7,6 +6,7 @@ use crate::{
         HasUuid, LocationColor, LocationExistsRequestPayload, LocationExistsResponsePayload, LocationKind,
         LocationNameMetadata, LocationTrashRequestPayload, PlainResponsePayload, Serializer,
     },
+    FilenSettings,
 };
 use secstr::SecUtf8;
 use serde::{de, Deserialize, Serialize};

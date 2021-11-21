@@ -1,8 +1,7 @@
 use crate::{
-    crypto,
-    filen_settings::FilenSettings,
-    queries, utils,
+    crypto, queries, utils,
     v1::{response_payload, HasMasterKeys, HasPrivateKey},
+    FilenSettings,
 };
 use easy_hasher::easy_hasher::sha512;
 use secstr::SecUtf8;

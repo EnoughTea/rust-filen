@@ -2,14 +2,13 @@
 #[cfg(feature = "async")]
 use crate::v1::download_and_decrypt_file_async;
 use crate::{
-    crypto,
-    filen_settings::FilenSettings,
-    queries, utils,
+    crypto, queries, utils,
     v1::{
         download_and_decrypt_file, download_file, response_payload, FileStorageInfo, FolderData, HasFileLocation,
         HasFileMetadata, HasFiles, HasFolders, HasLinkedFileMetadata, HasLinkedLocationName, HasSharedFileMetadata,
         HasSharedLocationName, HasUuid, ParentOrBase,
     },
+    FilenSettings,
 };
 use secstr::SecUtf8;
 use serde::{Deserialize, Serialize};
