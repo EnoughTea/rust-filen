@@ -60,11 +60,11 @@ pub trait FilenResponse<T> {
     /// Filen reason for success or failure.
     fn message_ref(&self) -> Option<&str>;
 
-    /// Data associated with response.
+    /// Reference to the data associated with response.
     fn data_ref(&self) -> Option<&T>;
 
     /// Returns extracted Filen response data or failure if response status is false or data is empty.
-    fn data_or_err(&self) -> Result<&T> {
+    fn data_ref_or_err(&self) -> Result<&T> {
         if self.status_ref() {
             match self.data_ref() {
                 Some(data) => Ok(data),
@@ -106,7 +106,7 @@ impl FilenResponse<()> for PlainResponsePayload {
 }
 
 /// Serves as a flag for password-protection.
-#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 #[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum PasswordState {
@@ -114,24 +114,6 @@ pub enum PasswordState {
     Empty,
     /// "notempty" means password is present.
     NotEmpty,
-}
-
-pub(crate) fn bool_from_string<'de, D>(deserializer: D) -> Result<bool, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let deserialized_string = String::deserialize(deserializer)?;
-    let trimmed_value = deserialized_string.trim();
-    if trimmed_value.eq_ignore_ascii_case("true") {
-        Ok(true)
-    } else if trimmed_value.eq_ignore_ascii_case("false") {
-        Ok(false)
-    } else {
-        Err(de::Error::invalid_value(
-            de::Unexpected::Str(&deserialized_string),
-            &"\"true\" or \"false\"",
-        ))
-    }
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)]

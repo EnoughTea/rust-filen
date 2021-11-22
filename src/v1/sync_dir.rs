@@ -1,8 +1,6 @@
 use crate::{
     queries, utils,
-    v1::{
-        bool_from_string, bool_to_string, response_payload, FolderData, HasFileMetadata, HasFiles, HasFolders, HasUuid,
-    },
+    v1::{bool_to_string, response_payload, FolderData, HasFileMetadata, HasFiles, HasFolders, HasUuid},
     FilenSettings,
 };
 use secstr::SecUtf8;
@@ -21,11 +19,11 @@ pub enum Error {
 }
 
 /// Used for requests to `GET_DIR_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct GetDirRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct GetDirRequestPayload<'get_dir> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'get_dir SecUtf8,
 
     /// Sync folder ID, UUID V4 in hyphenated lowercase format.
     #[serde(rename = "uuid")]
@@ -34,14 +32,10 @@ pub struct GetDirRequestPayload {
     /// If set to true, will fetch entire sync folder contents, which can be quite a heavy operation.
     /// If set to false, server will check if sync folder contents changed. If synced content has not been changed,
     /// empty folder and file data will be returned; otherwise, full retrieve will be performed.
-    #[serde(
-        rename = "firstRequest",
-        deserialize_with = "bool_from_string",
-        serialize_with = "bool_to_string"
-    )]
+    #[serde(rename = "firstRequest", serialize_with = "bool_to_string")]
     pub first_request: bool,
 }
-utils::display_from_json!(GetDirRequestPayload);
+utils::display_from_json_with_lifetime!('get_dir, GetDirRequestPayload);
 
 /// Response data for `GET_DIR_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -119,7 +113,7 @@ pub fn get_dir_request(
 /// to return empty data if nothing has been changed since the last call.
 #[cfg(feature = "async")]
 pub async fn get_dir_request_async(
-    payload: &GetDirRequestPayload,
+    payload: &GetDirRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<GetDirResponsePayload> {
     queries::query_filen_api_async(GET_DIR_PATH, payload, filen_settings)
@@ -142,7 +136,7 @@ mod tests {
     #[test]
     fn get_dir_request_should_be_correctly_typed_for_changed_data() {
         let request_payload = GetDirRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             sync_folder_uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             first_request: true,
         };
@@ -158,7 +152,7 @@ mod tests {
     #[tokio::test]
     async fn get_dir_request_and_async_should_be_correctly_typed_for_changed_data() {
         let request_payload = GetDirRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             sync_folder_uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             first_request: true,
         };
@@ -176,7 +170,7 @@ mod tests {
     #[test]
     fn get_dir_request_should_be_correctly_typed_for_unchanged_data() {
         let request_payload = GetDirRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             sync_folder_uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             first_request: false,
         };
@@ -192,7 +186,7 @@ mod tests {
     #[tokio::test]
     async fn get_dir_request_and_async_should_be_correctly_typed_for_unchanged_data() {
         let request_payload = GetDirRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             sync_folder_uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             first_request: false,
         };

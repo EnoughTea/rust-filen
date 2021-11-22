@@ -142,11 +142,11 @@ response_payload!(
 );
 
 /// Used for requests to `USER_KEY_PAIR_UPDATE_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UserKeyPairUpdateRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct UserKeyPairUpdateRequestPayload<'user_key_pair_update> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'user_key_pair_update SecUtf8,
 
     /// User's RSA private key bytes in PKCS#8 ASN.1 DER format,
     /// base64-encoded and stored as Filen metadata encrypted by user's last master key.
@@ -158,13 +158,13 @@ pub struct UserKeyPairUpdateRequestPayload {
     #[serde(rename = "publicKey")]
     pub public_key: String,
 }
-utils::display_from_json!(UserKeyPairUpdateRequestPayload);
+utils::display_from_json_with_lifetime!('user_key_pair_update, UserKeyPairUpdateRequestPayload);
 
-impl UserKeyPairUpdateRequestPayload {
+impl<'user_key_pair_update> UserKeyPairUpdateRequestPayload<'user_key_pair_update> {
     /// Creates `UserKeyPairUpdateRequestPayload` with Filen-compatible private and public key strings,
     /// given original keys bytes in PKCS#8 ASN.1 DER format.
     pub fn new(
-        api_key: SecUtf8,
+        api_key: &'user_key_pair_update SecUtf8,
         private_key_bytes: &SecVec<u8>,
         public_key_bytes: &[u8],
         last_master_key: &SecUtf8,
@@ -187,23 +187,23 @@ impl UserKeyPairUpdateRequestPayload {
 }
 
 /// Used for requests to `USER_MASTER_KEYS_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct MasterKeysFetchRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct MasterKeysFetchRequestPayload<'master_keys_fetch> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'master_keys_fetch SecUtf8,
 
     /// This string is a Filen metadata encrypted by the last master key and base64-encoded.
     /// It contains either a single master key string or multiple master keys strings delimited by '|'.
     #[serde(rename = "masterKeys")]
     pub master_keys_metadata: String,
 }
-utils::display_from_json!(MasterKeysFetchRequestPayload);
+utils::display_from_json_with_lifetime!('master_keys_fetch, MasterKeysFetchRequestPayload);
 
-impl MasterKeysFetchRequestPayload {
+impl<'master_keys_fetch> MasterKeysFetchRequestPayload<'master_keys_fetch> {
     /// Creates `MasterKeysFetchRequestPayload` from user's API key and user's master keys.
     /// Assumes user's last master key is the last element of given master keys slice.
-    pub fn new(api_key: SecUtf8, raw_master_keys: &[SecUtf8]) -> Result<Self> {
+    pub fn new(api_key: &'master_keys_fetch SecUtf8, raw_master_keys: &[SecUtf8]) -> Result<Self> {
         let empty_key = SecUtf8::from("");
         let last_master_key = raw_master_keys.last().unwrap_or(&empty_key);
 
@@ -249,11 +249,11 @@ response_payload!(
 
 /// Used for requests to `USER_PUBLIC_KEY_GET_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UserPublicKeyGetRequestPayload {
+pub struct UserPublicKeyGetRequestPayload<'user_public_key_get> {
     /// Email of the user whose public key Filen should fetch.
-    pub email: String,
+    pub email: &'user_public_key_get str,
 }
-utils::display_from_json!(UserPublicKeyGetRequestPayload);
+utils::display_from_json_with_lifetime!('user_public_key_get, UserPublicKeyGetRequestPayload);
 
 /// Response data for `USER_PUBLIC_KEY_GET_PATH` endpoint.
 #[skip_serializing_none]
@@ -311,7 +311,7 @@ pub fn user_key_pair_update_request(
 /// Calls `USER_KEY_PAIR_UPDATE_PATH` endpoint asynchronously. Used to set user's RSA public/private key pair.
 #[cfg(feature = "async")]
 pub async fn user_key_pair_update_request_async(
-    payload: &UserKeyPairUpdateRequestPayload,
+    payload: &UserKeyPairUpdateRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(USER_KEY_PAIR_UPDATE_PATH, payload, filen_settings)
@@ -334,7 +334,7 @@ pub fn user_master_keys_request(
 /// Filen-known user master keys, and resulting master keys chain is returned in response payload.
 #[cfg(feature = "async")]
 pub async fn user_master_keys_request_async(
-    payload: &MasterKeysFetchRequestPayload,
+    payload: &MasterKeysFetchRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<MasterKeysFetchResponsePayload> {
     queries::query_filen_api_async(USER_MASTER_KEYS_PATH, payload, filen_settings)
@@ -353,7 +353,7 @@ pub fn user_public_key_get_request(
 /// Calls `USER_PUBLIC_KEY_GET_PATH` endpoint asynchronously. Used to get any user's RSA public key.
 #[cfg(feature = "async")]
 pub async fn user_public_key_get_request_async(
-    payload: &UserPublicKeyGetRequestPayload,
+    payload: &UserPublicKeyGetRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<UserPublicKeyGetResponsePayload> {
     queries::query_filen_api_async(USER_PUBLIC_KEY_GET_PATH, payload, filen_settings)
@@ -432,7 +432,7 @@ mod tests {
     #[test]
     fn master_keys_request_should_be_correctly_typed() {
         let request_payload = MasterKeysFetchRequestPayload {
-            api_key: SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"),
+            api_key: &SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"),
             master_keys_metadata:
                 "U2FsdGVkX1/P4QDMaiaanx8kpL7fY+v/f3dSzC9Ajl58gQg5bffqGUbOIzROwGQn8m5NAZa0tRnVya84aJnf1w==".to_owned(),
         };
@@ -448,7 +448,7 @@ mod tests {
     #[tokio::test]
     async fn master_keys_request_async_should_be_correctly_typed() {
         let request_payload = MasterKeysFetchRequestPayload {
-            api_key: SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"),
+            api_key: &SecUtf8::from("bYZmrwdVEbHJSqeA1RfnPtKiBcXzUpRdKGRkjw9m1o1eqSGP1s6DM11CDnklpFq6"),
             master_keys_metadata:
                 "U2FsdGVkX1/P4QDMaiaanx8kpL7fY+v/f3dSzC9Ajl58gQg5bffqGUbOIzROwGQn8m5NAZa0tRnVya84aJnf1w==".to_owned(),
         };
@@ -465,9 +465,7 @@ mod tests {
 
     #[test]
     fn user_public_key_get_request_should_be_correctly_typed() {
-        let request_payload = UserPublicKeyGetRequestPayload {
-            email: "test@test.com".to_owned(),
-        };
+        let request_payload = UserPublicKeyGetRequestPayload { email: "test@test.com" };
         validate_contract(
             USER_PUBLIC_KEY_GET_PATH,
             request_payload,
@@ -479,9 +477,7 @@ mod tests {
     #[cfg(feature = "async")]
     #[tokio::test]
     async fn user_public_key_get_request_async_should_be_correctly_typed() {
-        let request_payload = UserPublicKeyGetRequestPayload {
-            email: "test@test.com".to_owned(),
-        };
+        let request_payload = UserPublicKeyGetRequestPayload { email: "test@test.com" };
         validate_contract_async(
             USER_PUBLIC_KEY_GET_PATH,
             request_payload,

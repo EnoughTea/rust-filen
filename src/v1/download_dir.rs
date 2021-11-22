@@ -61,8 +61,8 @@ pub enum Error {
 }
 
 /// Used for requests to `DOWNLOAD_DIR_LINK_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DownloadDirLinkRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct DownloadDirLinkRequestPayload<'download_dir_link> {
     /// Folder link ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 
@@ -72,8 +72,9 @@ pub struct DownloadDirLinkRequestPayload {
     /// Folder link password.
     ///
     /// Link's password can be read from link status queries.
-    pub password: String,
+    pub password: &'download_dir_link str,
 }
+utils::display_from_json_with_lifetime!('download_dir_link, DownloadDirLinkRequestPayload);
 
 /// Represents one of the linked folders.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -198,15 +199,16 @@ response_payload!(
 );
 
 /// Used for requests to `DOWNLOAD_DIR_SHARED_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DownloadDirSharedRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct DownloadDirSharedRequestPayload<'download_dir_shared> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'download_dir_shared SecUtf8,
 
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
+utils::display_from_json_with_lifetime!('download_dir_shared, DownloadDirSharedRequestPayload);
 
 /// Represents one of the shared folders.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -291,15 +293,16 @@ response_payload!(
 );
 
 /// Used for requests to `DOWNLOAD_DIR_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DownloadDirRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct DownloadDirRequestPayload<'download_dir> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'download_dir SecUtf8,
 
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
+utils::display_from_json_with_lifetime!('download_dir, DownloadDirRequestPayload);
 
 /// Response data for `DOWNLOAD_DIR_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -427,7 +430,7 @@ pub fn download_dir_link_request(
 /// Link UUID and password can be found out with `dir_link_status_request` using folder UUID.
 #[cfg(feature = "async")]
 pub async fn download_dir_link_request_async(
-    payload: &DownloadDirLinkRequestPayload,
+    payload: &DownloadDirLinkRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<DownloadDirLinkResponsePayload> {
     queries::query_filen_api_async(DOWNLOAD_DIR_LINK_PATH, payload, filen_settings)
@@ -448,7 +451,7 @@ pub fn download_dir_shared_request(
 /// folder someone shared with a user.
 #[cfg(feature = "async")]
 pub async fn download_dir_shared_request_async(
-    payload: &DownloadDirSharedRequestPayload,
+    payload: &DownloadDirSharedRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<DownloadDirSharedResponsePayload> {
     queries::query_filen_api_async(DOWNLOAD_DIR_SHARED_PATH, payload, filen_settings)
@@ -473,7 +476,7 @@ pub fn download_dir_request(
 /// and for linked folders use `download_dir_link_request_async`.
 #[cfg(feature = "async")]
 pub async fn download_dir_request_async(
-    payload: &DownloadDirRequestPayload,
+    payload: &DownloadDirRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<DownloadDirResponsePayload> {
     queries::query_filen_api_async(DOWNLOAD_DIR_PATH, payload, filen_settings)
@@ -519,7 +522,7 @@ mod tests {
     #[test]
     fn download_dir_request_should_be_correctly_typed() {
         let request_payload = DownloadDirRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::parse_str("cf2af9a0-6f4e-485d-862c-0459f4662cf1").unwrap(),
         };
         validate_contract(
@@ -534,7 +537,7 @@ mod tests {
     #[tokio::test]
     async fn download_dir_request_async_should_be_correctly_typed() {
         let request_payload = DownloadDirRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::parse_str("cf2af9a0-6f4e-485d-862c-0459f4662cf1").unwrap(),
         };
         validate_contract_async(
@@ -554,8 +557,7 @@ mod tests {
             uuid: Uuid::parse_str("5c86494b-36ec-4d39-a839-9f391474ad00").unwrap(),
             parent: Uuid::parse_str("b013e93f-4c9b-4df3-a6de-093d95f13c57").unwrap(),
             password: "4366faac2229d73a206dcc4384e4a560be054f69d8e9ecc307d7d1701c90b3d59/
-            dd56676f7593a464d72755501462287393cc91a6c575eade9fa50ecafd4142d"
-                .to_owned(),
+            dd56676f7593a464d72755501462287393cc91a6c575eade9fa50ecafd4142d",
         };
         validate_contract(
             DOWNLOAD_DIR_LINK_PATH,
@@ -572,8 +574,7 @@ mod tests {
             uuid: Uuid::parse_str("5c86494b-36ec-4d39-a839-9f391474ad00").unwrap(),
             parent: Uuid::parse_str("b013e93f-4c9b-4df3-a6de-093d95f13c57").unwrap(),
             password: "4366faac2229d73a206dcc4384e4a560be054f69d8e9ecc307d7d1701c90b3d59/
-            dd56676f7593a464d72755501462287393cc91a6c575eade9fa50ecafd4142d"
-                .to_owned(),
+            dd56676f7593a464d72755501462287393cc91a6c575eade9fa50ecafd4142d",
         };
         validate_contract_async(
             DOWNLOAD_DIR_LINK_PATH,
@@ -589,7 +590,7 @@ mod tests {
     #[test]
     fn download_dir_shared_request_should_be_correctly_typed() {
         let request_payload = DownloadDirSharedRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::parse_str("5c86494b-36ec-4d39-a839-9f391474ad00").unwrap(),
         };
         validate_contract(
@@ -604,7 +605,7 @@ mod tests {
     #[tokio::test]
     async fn download_dir_shared_request_async_should_be_correctly_typed() {
         let request_payload = DownloadDirSharedRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::parse_str("5c86494b-36ec-4d39-a839-9f391474ad00").unwrap(),
         };
         validate_contract_async(

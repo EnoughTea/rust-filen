@@ -24,11 +24,11 @@ pub enum Error {
 }
 
 /// Used for requests to `FILE_ARCHIVE_RESTORE_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct FileArchiveRestoreRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct FileArchiveRestoreRequestPayload<'file_archive_restore> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'file_archive_restore SecUtf8,
 
     /// Archived file ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -37,7 +37,7 @@ pub struct FileArchiveRestoreRequestPayload {
     #[serde(rename = "currentUUID")]
     pub current_uuid: Uuid,
 }
-utils::display_from_json!(FileArchiveRestoreRequestPayload);
+utils::display_from_json_with_lifetime!('file_archive_restore, FileArchiveRestoreRequestPayload);
 
 /// Response data for `FILE_ARCHIVE_RESTORE_PATH` endpoint.
 #[skip_serializing_none]
@@ -108,16 +108,16 @@ pub struct FileVersion {
 }
 
 /// Used for requests to `FILE_VERSIONS_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct FileVersionsRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct FileVersionsRequestPayload<'file_versions> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'file_versions SecUtf8,
 
     /// File ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(FileVersionsRequestPayload);
+utils::display_from_json_with_lifetime!('file_versions, FileVersionsRequestPayload);
 
 /// Response data for `FILE_VERSIONS_PATH` endpoint.
 #[skip_serializing_none]
@@ -146,7 +146,7 @@ pub fn file_archive_restore_request(
 /// Calls `FILE_ARCHIVE_RESTORE_PATH` endpoint asynchronously. Used to get versions of the given file.
 #[cfg(feature = "async")]
 pub async fn file_archive_restore_request_async(
-    payload: &FileArchiveRestoreRequestPayload,
+    payload: &FileArchiveRestoreRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<FileArchiveRestoreResponsePayload> {
     queries::query_filen_api_async(FILE_ARCHIVE_RESTORE_PATH, payload, filen_settings)
@@ -165,7 +165,7 @@ pub fn file_versions_request(
 /// Calls `FILE_VERSIONS_PATH` endpoint asynchronously. Used to get versions of the given file.
 #[cfg(feature = "async")]
 pub async fn file_versions_request_async(
-    payload: &FileVersionsRequestPayload,
+    payload: &FileVersionsRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<FileVersionsResponsePayload> {
     queries::query_filen_api_async(FILE_VERSIONS_PATH, payload, filen_settings)
@@ -187,7 +187,7 @@ mod tests {
     #[test]
     fn file_archive_restore_request_should_be_correctly_typed() {
         let request_payload = FileArchiveRestoreRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::parse_str("b5ec90d2-957c-4481-b211-08a68accd1b2").unwrap(),
             current_uuid: Uuid::parse_str("0d9e14cd-69be-4f44-8390-b493eaba3468").unwrap(),
         };
@@ -203,7 +203,7 @@ mod tests {
     #[tokio::test]
     async fn file_archive_restore_request_async_should_be_correctly_typed() {
         let request_payload = FileArchiveRestoreRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::parse_str("b5ec90d2-957c-4481-b211-08a68accd1b2").unwrap(),
             current_uuid: Uuid::parse_str("0d9e14cd-69be-4f44-8390-b493eaba3468").unwrap(),
         };
@@ -221,7 +221,7 @@ mod tests {
     #[test]
     fn file_versions_request_should_be_correctly_typed() {
         let request_payload = FileVersionsRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::parse_str("b5ec90d2-957c-4481-b211-08a68accd1b2").unwrap(),
         };
         validate_contract(
@@ -236,7 +236,7 @@ mod tests {
     #[tokio::test]
     async fn file_versions_request_async_should_be_correctly_typed() {
         let request_payload = FileVersionsRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::parse_str("b5ec90d2-957c-4481-b211-08a68accd1b2").unwrap(),
         };
         validate_contract_async(

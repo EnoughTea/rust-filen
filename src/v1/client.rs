@@ -1,8 +1,8 @@
 use crate::{
     crypto, queries, utils,
     v1::{
-        bool_from_int, bool_to_int, response_payload, skip_serializing_none, ItemKind, LocationColor,
-        PlainResponsePayload, Uuid, METADATA_VERSION,
+        bool_to_int, response_payload, skip_serializing_none, ItemKind, LocationColor, PlainResponsePayload, Uuid,
+        METADATA_VERSION,
     },
     FilenSettings,
 };
@@ -58,11 +58,11 @@ response_payload!(
 );
 
 /// Used for requests to `DIR_COLOR_CHANGE_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DirColorChangeRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct DirColorChangeRequestPayload<'dir_color_change> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'dir_color_change SecUtf8,
 
     /// Folder color name.
     pub color: LocationColor,
@@ -70,14 +70,14 @@ pub struct DirColorChangeRequestPayload {
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(DirColorChangeRequestPayload);
+utils::display_from_json_with_lifetime!('dir_color_change, DirColorChangeRequestPayload);
 
 /// Used for requests to `ITEM_FAVORITE_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct ItemFavoriteRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct ItemFavoriteRequestPayload<'item_favorite> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'item_favorite SecUtf8,
 
     /// ID of item to set favorite for; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -90,24 +90,28 @@ pub struct ItemFavoriteRequestPayload {
     #[serde(deserialize_with = "bool_from_int", serialize_with = "bool_to_int")]
     pub value: bool,
 }
-utils::display_from_json!(ItemFavoriteRequestPayload);
+utils::display_from_json_with_lifetime!('item_favorite, ItemFavoriteRequestPayload);
 
 /// Used for requests to `SYNC_CLIENT_MESSAGE_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct SyncClientMessageRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct SyncClientMessageRequestPayload<'sync_client_message> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'sync_client_message SecUtf8,
 
     /// Metadata with something to pass to Filen client.
     pub args: String,
 }
-utils::display_from_json!(SyncClientMessageRequestPayload);
+utils::display_from_json_with_lifetime!('sync_client_message, SyncClientMessageRequestPayload);
 
-impl SyncClientMessageRequestPayload {
+impl<'sync_client_message> SyncClientMessageRequestPayload<'sync_client_message> {
     #[allow(clippy::missing_panics_doc)]
     #[must_use]
-    pub fn from_json(api_key: SecUtf8, json_value: &serde_json::Value, last_master_key: &SecUtf8) -> Self {
+    pub fn from_json(
+        api_key: &'sync_client_message SecUtf8,
+        json_value: &serde_json::Value,
+        last_master_key: &SecUtf8,
+    ) -> Self {
         // Cannot panic, since METADATA_VERSION is supported by definition and json_value.to_string() is valid UTF-8
         let metadata =
             crypto::encrypt_metadata_str(&json_value.to_string(), last_master_key, METADATA_VERSION).unwrap();
@@ -117,7 +121,11 @@ impl SyncClientMessageRequestPayload {
         }
     }
 
-    pub fn from_data<T: Serialize>(api_key: SecUtf8, data: T, last_master_key: &SecUtf8) -> Result<Self> {
+    pub fn from_data<T: Serialize>(
+        api_key: &'sync_client_message SecUtf8,
+        data: T,
+        last_master_key: &SecUtf8,
+    ) -> Result<Self> {
         let json_value = serde_json::to_value(&data).context(CannotSerializeDataToJson {})?;
         Ok(Self::from_json(api_key, &json_value, last_master_key))
     }
@@ -147,7 +155,7 @@ pub fn dir_color_change_request(
 /// Calls `DIR_COLOR_CHANGE_PATH` endpoint asynchronously.
 #[cfg(feature = "async")]
 pub async fn dir_color_change_request_async(
-    payload: &DirColorChangeRequestPayload,
+    payload: &DirColorChangeRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_COLOR_CHANGE_PATH, payload, filen_settings)
@@ -166,7 +174,7 @@ pub fn item_favorite_request(
 /// Calls `ITEM_FAVORITE_PATH` endpoint asynchronously.
 #[cfg(feature = "async")]
 pub async fn item_favorite_request_async(
-    payload: &ItemFavoriteRequestPayload,
+    payload: &ItemFavoriteRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(ITEM_FAVORITE_PATH, payload, filen_settings)
@@ -185,7 +193,7 @@ pub fn sync_client_message_request(
 /// Calls `SYNC_CLIENT_MESSAGE_PATH` endpoint asynchronously. Used to pass data to Filen client.
 #[cfg(feature = "async")]
 pub async fn sync_client_message_request_async(
-    payload: &SyncClientMessageRequestPayload,
+    payload: &SyncClientMessageRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(SYNC_CLIENT_MESSAGE_PATH, payload, filen_settings)

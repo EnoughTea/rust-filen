@@ -91,6 +91,23 @@ macro_rules! display_from_json {
 }
 pub(crate) use display_from_json;
 
+/// This macro generates a simple `std::fmt::Display` implementation using Serde's json! on self.
+macro_rules! display_from_json_with_lifetime {
+    (
+        $lt:lifetime, $target_data_type:ident
+    ) => {
+        impl<$lt> std::fmt::Display for $target_data_type<$lt> {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                match serde_json::to_string(self) {
+                    Ok(repr) => write!(f, "{}", repr.trim_matches('"')),
+                    Err(serde_err) => write!(f, "{}", serde_err),
+                }
+            }
+        }
+    };
+}
+pub(crate) use display_from_json_with_lifetime;
+
 #[cfg(test)]
 mod tests {
     use super::*;

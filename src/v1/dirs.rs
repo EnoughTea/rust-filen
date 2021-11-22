@@ -1,10 +1,10 @@
 use crate::{
     queries, utils,
     v1::{
-        bool_from_int, bool_from_string, bool_to_int, bool_to_string, optional_bool_from_int, optional_bool_to_int,
-        response_payload, Deserializer, FileStorageInfo, HasFileMetadata, HasFiles, HasFolders, HasLocationName,
-        HasUuid, LocationColor, LocationExistsRequestPayload, LocationExistsResponsePayload, LocationKind,
-        LocationNameMetadata, LocationTrashRequestPayload, PlainResponsePayload, Serializer,
+        bool_from_int, bool_to_int, bool_to_string, optional_bool_from_int, optional_bool_to_int, response_payload,
+        Deserializer, FileStorageInfo, HasFileMetadata, HasFiles, HasFolders, HasLocationName, HasUuid, LocationColor,
+        LocationExistsRequestPayload, LocationExistsResponsePayload, LocationKind, LocationNameMetadata,
+        LocationTrashRequestPayload, PlainResponsePayload, Serializer,
     },
     FilenSettings,
 };
@@ -73,7 +73,7 @@ pub enum Error {
 }
 
 /// Identifies listed content target eitner by ID or by special reference.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ContentKind {
     /// Listed content is a trash folder.
     Trash,
@@ -142,21 +142,17 @@ impl Serialize for ContentKind {
 }
 
 /// Used for requests to `USER_BASE_FOLDERS_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UserBaseFoldersRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct UserBaseFoldersRequestPayload<'user_base_folders> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'user_base_folders SecUtf8,
 
     /// This field seems not to do anything, but Filen web manager sets it to "true".
-    #[serde(
-        rename = "includeDefault",
-        deserialize_with = "bool_from_string",
-        serialize_with = "bool_to_string"
-    )]
+    #[serde(rename = "includeDefault", serialize_with = "bool_to_string")]
     pub include_default: bool,
 }
-utils::display_from_json!(UserBaseFoldersRequestPayload);
+utils::display_from_json_with_lifetime!('user_base_folders, UserBaseFoldersRequestPayload);
 
 /// One of the folders in response data for `USER_BASE_FOLDERS_PATH` endpoint.
 #[skip_serializing_none]
@@ -288,11 +284,11 @@ impl UserDirsResponsePayload {
 }
 
 /// Used for requests to `DIR_CONTENT_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DirContentRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct DirContentRequestPayload<'dir_content> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'dir_content SecUtf8,
 
     /// 'trash' or folder ID; hyphenated lowercased UUID V4.
     pub uuid: ContentKind,
@@ -307,14 +303,14 @@ pub struct DirContentRequestPayload {
 
     // TODO: There is no way to tell its purpose from sources, need to ask Dwynr later.
     /// This flag is always set to true.
-    #[serde(deserialize_with = "bool_from_string", serialize_with = "bool_to_string")]
+    #[serde(serialize_with = "bool_to_string")]
     pub app: bool,
 }
-utils::display_from_json!(DirContentRequestPayload);
+utils::display_from_json_with_lifetime!('dir_content, DirContentRequestPayload);
 
-impl DirContentRequestPayload {
+impl<'dir_content> DirContentRequestPayload<'dir_content> {
     #[must_use]
-    pub fn new(api_key: SecUtf8, folder_uuid: ContentKind) -> Self {
+    pub fn new(api_key: &'dir_content SecUtf8, folder_uuid: ContentKind) -> Self {
         let folders = format!("[\"{}\"]", folder_uuid);
         Self {
             api_key,
@@ -518,11 +514,11 @@ response_payload!(
 );
 
 /// Used for requests to `DIR_CREATE_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DirCreateRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct DirCreateRequestPayload<'dir_create> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'dir_create SecUtf8,
 
     /// Metadata containing JSON with format: { "name": <name value> }
     #[serde(rename = "name")]
@@ -539,14 +535,14 @@ pub struct DirCreateRequestPayload {
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(DirCreateRequestPayload);
+utils::display_from_json_with_lifetime!('dir_create, DirCreateRequestPayload);
 
-impl DirCreateRequestPayload {
+impl<'dir_create> DirCreateRequestPayload<'dir_create> {
     /// Payload used for creation of the special Filen sync folder that is created by Filen client
     /// to store all synced files.
     /// You should only use this if you are writing your own replacement client.
     #[must_use]
-    pub fn payload_for_sync_folder_creation(api_key: SecUtf8, last_master_key: &SecUtf8) -> Self {
+    pub fn payload_for_sync_folder_creation(api_key: &'dir_create SecUtf8, last_master_key: &SecUtf8) -> Self {
         let mut payload = Self::new(api_key, FILEN_SYNC_FOLDER_NAME, last_master_key);
         payload.dir_type = LocationKind::Sync;
         payload
@@ -554,7 +550,7 @@ impl DirCreateRequestPayload {
 
     /// Payload to create a new folder with the specified name.
     #[must_use]
-    pub fn new(api_key: SecUtf8, name: &str, last_master_key: &SecUtf8) -> Self {
+    pub fn new(api_key: &'dir_create SecUtf8, name: &str, last_master_key: &SecUtf8) -> Self {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(name, last_master_key);
         let name_hashed = LocationNameMetadata::name_hashed(name);
         Self {
@@ -568,11 +564,11 @@ impl DirCreateRequestPayload {
 }
 
 /// Used for requests to `DIR_SUB_CREATE_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DirSubCreateRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct DirSubCreateRequestPayload<'dir_sub_create> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'dir_sub_create SecUtf8,
 
     /// Metadata containing JSON with format: { "name": <name value> }
     #[serde(rename = "name")]
@@ -588,12 +584,12 @@ pub struct DirSubCreateRequestPayload {
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(DirSubCreateRequestPayload);
+utils::display_from_json_with_lifetime!('dir_sub_create, DirSubCreateRequestPayload);
 
-impl DirSubCreateRequestPayload {
+impl<'dir_sub_create> DirSubCreateRequestPayload<'dir_sub_create> {
     /// Payload to create a new sub-folder with the specified name.
     #[must_use]
-    pub fn new(api_key: SecUtf8, name: &str, parent: Uuid, last_master_key: &SecUtf8) -> Self {
+    pub fn new(api_key: &'dir_sub_create SecUtf8, name: &str, parent: Uuid, last_master_key: &SecUtf8) -> Self {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(name, last_master_key);
         let name_hashed = LocationNameMetadata::name_hashed(name);
         Self {
@@ -607,11 +603,11 @@ impl DirSubCreateRequestPayload {
 }
 
 /// Used for requests to `DIR_MOVE_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DirMoveRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct DirMoveRequestPayload<'dir_move> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'dir_move SecUtf8,
 
     /// ID of the parent folder where target folder will be moved; hyphenated lowercased UUID V4.
     #[serde(rename = "folderUUID")]
@@ -620,14 +616,14 @@ pub struct DirMoveRequestPayload {
     /// ID of the folder to move, hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(DirMoveRequestPayload);
+utils::display_from_json_with_lifetime!('dir_move, DirMoveRequestPayload);
 
 /// Used for requests to `DIR_RENAME_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DirRenameRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct DirRenameRequestPayload<'dir_rename> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'dir_rename SecUtf8,
 
     /// ID of the folder to rename, hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -640,11 +636,16 @@ pub struct DirRenameRequestPayload {
     #[serde(rename = "nameHashed")]
     pub name_hashed: String,
 }
-utils::display_from_json!(DirRenameRequestPayload);
+utils::display_from_json_with_lifetime!('dir_rename, DirRenameRequestPayload);
 
-impl DirRenameRequestPayload {
+impl<'dir_rename> DirRenameRequestPayload<'dir_rename> {
     #[must_use]
-    pub fn new(api_key: SecUtf8, folder_uuid: Uuid, new_folder_name: &str, last_master_key: &SecUtf8) -> Self {
+    pub fn new(
+        api_key: &'dir_rename SecUtf8,
+        folder_uuid: Uuid,
+        new_folder_name: &str,
+        last_master_key: &SecUtf8,
+    ) -> Self {
         let name_metadata = LocationNameMetadata::encrypt_name_to_metadata(new_folder_name, last_master_key);
         let name_hashed = LocationNameMetadata::name_hashed(new_folder_name);
         Self {
@@ -657,16 +658,16 @@ impl DirRenameRequestPayload {
 }
 
 /// Used for requests to `DIR_RESTORE_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DirRestoreRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct DirRestoreRequestPayload<'dir_restore> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'dir_restore SecUtf8,
 
     /// ID of the folder to restore, hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(DirRestoreRequestPayload);
+utils::display_from_json_with_lifetime!('dir_restore, DirRestoreRequestPayload);
 
 /// Calls `USER_BASE_FOLDERS_PATH` endpoint. Used to get a list of user's *base* folders, also known as 'cloud drives'.
 /// Note the difference from `user_dirs_request`, which returns a set of all user folders, cloud drives or not.
@@ -684,7 +685,7 @@ pub fn user_base_folders_request(
 /// Includes Filen "Default" folder.
 #[cfg(feature = "async")]
 pub async fn user_base_folders_request_async(
-    payload: &UserBaseFoldersRequestPayload,
+    payload: &UserBaseFoldersRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<UserBaseFoldersResponsePayload> {
     queries::query_filen_api_async(USER_BASE_FOLDERS_PATH, payload, filen_settings)
@@ -726,7 +727,7 @@ pub fn dir_content_request(
 /// suited for presentation.
 #[cfg(feature = "async")]
 pub async fn dir_content_request_async(
-    payload: &DirContentRequestPayload,
+    payload: &DirContentRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<DirContentResponsePayload> {
     queries::query_filen_api_async(DIR_CONTENT_PATH, payload, filen_settings)
@@ -745,7 +746,7 @@ pub fn dir_create_request(
 /// Calls `DIR_CREATE_PATH` endpoint asynchronously. Creates parentless 'base' folder.
 #[cfg(feature = "async")]
 pub async fn dir_create_request_async(
-    payload: &DirCreateRequestPayload,
+    payload: &DirCreateRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_CREATE_PATH, payload, filen_settings)
@@ -764,7 +765,7 @@ pub fn dir_sub_create_request(
 /// Calls `DIR_SUB_CREATE_PATH` endpoint asynchronously. Creates a new folder within the given parent folder.
 #[cfg(feature = "async")]
 pub async fn dir_sub_create_request_async(
-    payload: &DirSubCreateRequestPayload,
+    payload: &DirSubCreateRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_SUB_CREATE_PATH, payload, filen_settings)
@@ -785,7 +786,7 @@ pub fn dir_exists_request(
 /// Checks if folder with the given name exists within the specified parent folder.
 #[cfg(feature = "async")]
 pub async fn dir_exists_request_async(
-    payload: &LocationExistsRequestPayload,
+    payload: &LocationExistsRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<LocationExistsResponsePayload> {
     queries::query_filen_api_async(DIR_EXISTS_PATH, payload, filen_settings)
@@ -814,7 +815,7 @@ pub fn dir_move_request(
 /// and/or `share_request` after a successfull move.
 #[cfg(feature = "async")]
 pub async fn dir_move_request_async(
-    payload: &DirMoveRequestPayload,
+    payload: &DirMoveRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_MOVE_PATH, payload, filen_settings)
@@ -837,7 +838,7 @@ pub fn dir_rename_request(
 /// with the new name already exists within the parent folder.
 #[cfg(feature = "async")]
 pub async fn dir_rename_request_async(
-    payload: &DirRenameRequestPayload,
+    payload: &DirRenameRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_RENAME_PATH, payload, filen_settings)
@@ -856,7 +857,7 @@ pub fn dir_restore_request(
 /// Calls `DIR_RESTORE_PATH` endpoint asynchronously. Used to restore folder from the 'trash' folder.
 #[cfg(feature = "async")]
 pub async fn dir_restore_request_async(
-    payload: &DirRestoreRequestPayload,
+    payload: &DirRestoreRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_RESTORE_PATH, payload, filen_settings)
@@ -879,7 +880,7 @@ pub fn dir_trash_request(
 /// so you cannot create a new folder with it.
 #[cfg(feature = "async")]
 pub async fn dir_trash_request_async(
-    payload: &LocationTrashRequestPayload,
+    payload: &LocationTrashRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_TRASH_PATH, payload, filen_settings)
@@ -926,12 +927,12 @@ mod tests {
     #[test]
     fn dir_create_request_payload_should_be_created_correctly_from_name() {
         let m_key = SecUtf8::from("b49cadfb92e1d7d54e9dd9d33ba9feb2af1f10ae");
-        let payload = DirCreateRequestPayload::new(API_KEY.clone(), NAME, &m_key);
+        let payload = DirCreateRequestPayload::new(&API_KEY, NAME, &m_key);
 
         let decrypted_name =
             LocationNameMetadata::decrypt_name_from_metadata(&payload.name_metadata, &[m_key]).unwrap();
 
-        assert_eq!(payload.api_key, *API_KEY);
+        assert_eq!(payload.api_key, &*API_KEY);
         assert_eq!(decrypted_name, NAME);
         assert_eq!(payload.name_hashed, NAME_HASHED);
         assert_eq!(payload.dir_type, LocationKind::Folder);
@@ -964,7 +965,7 @@ mod tests {
     #[test]
     fn dir_content_request_should_have_proper_contract() {
         let request_payload = DirContentRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: ContentKind::Folder(Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap()),
             folders: "[\"51845ac9-47ce-4820-aedb-876f591aef84\"]".to_owned(),
             page: 1,
@@ -982,7 +983,7 @@ mod tests {
     #[tokio::test]
     async fn dir_content_request_async_should_have_proper_contract() {
         let request_payload = DirContentRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: ContentKind::Folder(Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap()),
             folders: "[\"51845ac9-47ce-4820-aedb-876f591aef84\"]".to_owned(),
             page: 1,
@@ -1002,7 +1003,7 @@ mod tests {
     #[test]
     fn dir_content_request_should_have_proper_contract_for_trash() {
         let request_payload = DirContentRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: ContentKind::Trash,
             folders: "[\"51845ac9-47ce-4820-aedb-876f591aef84\"]".to_owned(),
             page: 1,
@@ -1020,7 +1021,7 @@ mod tests {
     #[tokio::test]
     async fn dir_content_request_async_should_have_proper_contract_for_trash() {
         let request_payload = DirContentRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: ContentKind::Trash,
             folders: "[\"51845ac9-47ce-4820-aedb-876f591aef84\"]".to_owned(),
             page: 1,
@@ -1040,7 +1041,7 @@ mod tests {
     #[test]
     fn dir_create_request_should_have_proper_contract() {
         let request_payload = DirCreateRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_metadata: NAME_METADATA.to_owned(),
             name_hashed: NAME_HASHED.to_owned(),
@@ -1058,7 +1059,7 @@ mod tests {
     #[tokio::test]
     async fn dir_create_request_async_should_have_proper_contract() {
         let request_payload = DirCreateRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_metadata: NAME_METADATA.to_owned(),
             name_hashed: NAME_HASHED.to_owned(),
@@ -1078,7 +1079,7 @@ mod tests {
     #[test]
     fn dir_sub_create_request_should_have_proper_contract() {
         let request_payload = DirSubCreateRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_metadata: NAME_METADATA.to_owned(),
             name_hashed: NAME_HASHED.to_owned(),
@@ -1096,7 +1097,7 @@ mod tests {
     #[tokio::test]
     async fn dir_sub_create_request_async_should_have_proper_contract() {
         let request_payload = DirSubCreateRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_metadata: NAME_METADATA.to_owned(),
             name_hashed: NAME_HASHED.to_owned(),
@@ -1116,7 +1117,7 @@ mod tests {
     #[test]
     fn dir_exists_request_should_have_proper_contract() {
         let request_payload = LocationExistsRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             parent: ParentOrBase::from_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_hashed: NAME_HASHED.to_owned(),
         };
@@ -1132,7 +1133,7 @@ mod tests {
     #[tokio::test]
     async fn dir_exists_request_async_should_have_proper_contract() {
         let request_payload = LocationExistsRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             parent: ParentOrBase::from_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_hashed: NAME_HASHED.to_owned(),
         };
@@ -1150,7 +1151,7 @@ mod tests {
     #[test]
     fn dir_move_request_should_have_proper_contract() {
         let request_payload = DirMoveRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             folder_uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
         };
@@ -1166,7 +1167,7 @@ mod tests {
     #[tokio::test]
     async fn dir_move_request_async_should_have_proper_contract() {
         let request_payload = DirMoveRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             folder_uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
         };
@@ -1181,7 +1182,7 @@ mod tests {
     #[test]
     fn dir_rename_request_should_have_proper_contract() {
         let request_payload = DirRenameRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_metadata: NAME_METADATA.to_owned(),
             name_hashed: NAME_HASHED.to_owned(),
@@ -1198,7 +1199,7 @@ mod tests {
     #[tokio::test]
     async fn dir_rename_request_async_should_have_proper_contract() {
         let request_payload = DirRenameRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::parse_str("80f678c0-56ce-4b81-b4ef-f2a9c0c737c4").unwrap(),
             name_metadata: NAME_METADATA.to_owned(),
             name_hashed: NAME_HASHED.to_owned(),

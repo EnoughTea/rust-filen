@@ -77,16 +77,16 @@ impl FilenPasswordWithMasterKey {
 }
 
 /// Used for requests to `AUTH_INFO_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct AuthInfoRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct AuthInfoRequestPayload<'auth_info> {
     /// Registered user email.
-    pub email: SecUtf8,
+    pub email: &'auth_info SecUtf8,
 
     /// Registered user 2FA key, if present. XXXXXX means no 2FA key.
     #[serde(rename = "twoFactorKey")]
-    pub two_factor_key: SecUtf8,
+    pub two_factor_key: &'auth_info SecUtf8,
 }
-utils::display_from_json!(AuthInfoRequestPayload);
+utils::display_from_json_with_lifetime!('auth_info, AuthInfoRequestPayload);
 
 /// Response data for [AUTH_INFO_PATH] endpoint.
 #[skip_serializing_none]
@@ -132,24 +132,24 @@ response_payload!(
 );
 
 /// Used for requests to `LOGIN_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct LoginRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct LoginRequestPayload<'login> {
     /// Registered user email.
-    pub email: SecUtf8,
+    pub email: &'login SecUtf8,
 
     /// Filen-processed password. Note that this is not a registered user password, but its hash.
     /// Use one of `FilenPasswordWithMasterKey`::from... methods to calculate it.
-    pub password: SecUtf8,
+    pub password: &'login SecUtf8,
 
     /// Registered user 2FA key, if present. XXXXXX means no 2FA key.
     #[serde(rename = "twoFactorKey")]
-    pub two_factor_key: SecUtf8,
+    pub two_factor_key: &'login SecUtf8,
 
     /// Set this to a value you received from auth/info call and used to generate Filen password.
     #[serde(rename = "authVersion")]
     pub auth_version: u32,
 }
-utils::display_from_json!(LoginRequestPayload);
+utils::display_from_json_with_lifetime!('login, LoginRequestPayload);
 
 /// Response data for [LOGIN_PATH] endpoint.
 #[skip_serializing_none]
@@ -205,7 +205,7 @@ pub fn auth_info_request(
 /// Calls `AUTH_INFO_PATH` endpoint asynchronously. Used to get used auth version and Filen salt.
 #[cfg(feature = "async")]
 pub async fn auth_info_request_async(
-    payload: &AuthInfoRequestPayload,
+    payload: &AuthInfoRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<AuthInfoResponsePayload> {
     queries::query_filen_api_async(AUTH_INFO_PATH, payload, filen_settings)
@@ -223,7 +223,7 @@ pub fn login_request(payload: &LoginRequestPayload, filen_settings: &FilenSettin
 /// Calls `LOGIN_PATH` endpoint asynchronously. Used to get API key, master keys and private key.
 #[cfg(feature = "async")]
 pub async fn login_request_async(
-    payload: &LoginRequestPayload,
+    payload: &LoginRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<LoginResponsePayload> {
     queries::query_filen_api_async(LOGIN_PATH, payload, filen_settings)
@@ -295,8 +295,8 @@ mod tests {
     #[test]
     fn auth_info_request_should_be_correctly_typed_for_v1() {
         let request_payload = AuthInfoRequestPayload {
-            email: SecUtf8::from("test@email.com"),
-            two_factor_key: SecUtf8::from("XXXXXX"),
+            email: &SecUtf8::from("test@email.com"),
+            two_factor_key: &SecUtf8::from("XXXXXX"),
         };
         validate_contract(
             AUTH_INFO_PATH,
@@ -310,8 +310,8 @@ mod tests {
     #[tokio::test]
     async fn auth_info_request_async_should_be_correctly_typed_for_v1() {
         let request_payload = AuthInfoRequestPayload {
-            email: SecUtf8::from("test@email.com"),
-            two_factor_key: SecUtf8::from("XXXXXX"),
+            email: &SecUtf8::from("test@email.com"),
+            two_factor_key: &SecUtf8::from("XXXXXX"),
         };
         validate_contract_async(
             AUTH_INFO_PATH,
@@ -327,8 +327,8 @@ mod tests {
     #[test]
     fn auth_info_request_should_be_correctly_typed_for_v2() {
         let request_payload = AuthInfoRequestPayload {
-            email: SecUtf8::from("test@email.com"),
-            two_factor_key: SecUtf8::from("XXXXXX"),
+            email: &SecUtf8::from("test@email.com"),
+            two_factor_key: &SecUtf8::from("XXXXXX"),
         };
         validate_contract(
             AUTH_INFO_PATH,
@@ -342,8 +342,8 @@ mod tests {
     #[tokio::test]
     async fn auth_info_request_async_should_be_correctly_typed_for_v2() {
         let request_payload = AuthInfoRequestPayload {
-            email: SecUtf8::from("test@email.com"),
-            two_factor_key: SecUtf8::from("XXXXXX"),
+            email: &SecUtf8::from("test@email.com"),
+            two_factor_key: &SecUtf8::from("XXXXXX"),
         };
         validate_contract_async(
             AUTH_INFO_PATH,
@@ -359,9 +359,9 @@ mod tests {
     #[test]
     fn login_request_should_be_correctly_typed_for_v1() {
         let request_payload = LoginRequestPayload {
-            email: SecUtf8::from("test@email.com"),
-            password: SecUtf8::from("test"),
-            two_factor_key: SecUtf8::from("XXXXXX"),
+            email: &SecUtf8::from("test@email.com"),
+            password: &SecUtf8::from("test"),
+            two_factor_key: &SecUtf8::from("XXXXXX"),
             auth_version: 1,
         };
         validate_contract(
@@ -376,9 +376,9 @@ mod tests {
     #[tokio::test]
     async fn login_request_async_should_be_correctly_typed_for_v1() {
         let request_payload = LoginRequestPayload {
-            email: SecUtf8::from("test@email.com"),
-            password: SecUtf8::from("test"),
-            two_factor_key: SecUtf8::from("XXXXXX"),
+            email: &SecUtf8::from("test@email.com"),
+            password: &SecUtf8::from("test"),
+            two_factor_key: &SecUtf8::from("XXXXXX"),
             auth_version: 1,
         };
         validate_contract_async(

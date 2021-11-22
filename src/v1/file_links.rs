@@ -28,7 +28,7 @@ pub enum Error {
 }
 
 /// Determines public link state.
-#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 #[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum LinkState {
@@ -39,11 +39,11 @@ pub enum LinkState {
 }
 
 /// Used for requests to `LINK_EDIT_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct LinkEditRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct LinkEditRequestPayload<'link_edit> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'link_edit SecUtf8,
 
     /// Filen sets this to "enable" by default.
     #[serde(rename = "downloadBtn")]
@@ -74,12 +74,12 @@ pub struct LinkEditRequestPayload {
     /// Enabled link ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(LinkEditRequestPayload);
+utils::display_from_json_with_lifetime!('link_edit, LinkEditRequestPayload);
 
-impl LinkEditRequestPayload {
+impl<'link_edit> LinkEditRequestPayload<'link_edit> {
     #[must_use]
     pub fn new(
-        api_key: SecUtf8,
+        api_key: &'link_edit SecUtf8,
         file_uuid: Uuid,
         download_btn: DownloadBtnState,
         expiration: Expire,
@@ -106,7 +106,7 @@ impl LinkEditRequestPayload {
 
     #[must_use]
     pub fn enabled(
-        api_key: SecUtf8,
+        api_key: &'link_edit SecUtf8,
         file_uuid: Uuid,
         download_btn: DownloadBtnState,
         expiration: Expire,
@@ -125,7 +125,7 @@ impl LinkEditRequestPayload {
     }
 
     #[must_use]
-    pub fn disabled(api_key: SecUtf8, file_uuid: Uuid, link_uuid: Uuid) -> Self {
+    pub fn disabled(api_key: &'link_edit SecUtf8, file_uuid: Uuid, link_uuid: Uuid) -> Self {
         Self::new(
             api_key,
             file_uuid,
@@ -139,17 +139,17 @@ impl LinkEditRequestPayload {
 }
 
 /// Used for requests to `LINK_STATUS_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct LinkStatusRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct LinkStatusRequestPayload<'link_status> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'link_status SecUtf8,
 
     /// ID of the file whose link should be checked; hyphenated lowercased UUID V4.
     #[serde(rename = "fileUUID")]
     pub file_uuid: Uuid,
 }
-utils::display_from_json!(LinkStatusRequestPayload);
+utils::display_from_json_with_lifetime!('link_status, LinkStatusRequestPayload);
 
 /// Response data for `LINK_STATUS_PATH` endpoint.
 #[skip_serializing_none]
@@ -194,7 +194,7 @@ pub fn link_edit_request(
 /// Calls `LINK_EDIT_PATH` endpoint asynchronously. Used to edit given file link.
 #[cfg(feature = "async")]
 pub async fn link_edit_request_async(
-    payload: &LinkEditRequestPayload,
+    payload: &LinkEditRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(LINK_EDIT_PATH, payload, filen_settings)
@@ -213,7 +213,7 @@ pub fn link_status_request(
 /// Calls `LINK_STATUS_PATH` endpoint asynchronously. Used to check file link status.
 #[cfg(feature = "async")]
 pub async fn link_status_request_async(
-    payload: &LinkStatusRequestPayload,
+    payload: &LinkStatusRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<LinkStatusResponsePayload> {
     queries::query_filen_api_async(LINK_STATUS_PATH, payload, filen_settings)
@@ -236,7 +236,7 @@ mod tests {
     #[test]
     fn link_status_request_should_have_proper_contract_for_disabled_link() {
         let request_payload = LinkStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             file_uuid: Uuid::nil(),
         };
         validate_contract(
@@ -251,7 +251,7 @@ mod tests {
     #[tokio::test]
     async fn link_status_request_async_should_have_proper_contract_for_disabled_link() {
         let request_payload = LinkStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             file_uuid: Uuid::nil(),
         };
         validate_contract_async(
@@ -268,7 +268,7 @@ mod tests {
     #[test]
     fn link_status_request_should_have_proper_contract_for_link_without_password() {
         let request_payload = LinkStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             file_uuid: Uuid::nil(),
         };
         validate_contract(
@@ -283,7 +283,7 @@ mod tests {
     #[tokio::test]
     async fn link_status_request_async_should_have_proper_contract_for_link_without_password() {
         let request_payload = LinkStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             file_uuid: Uuid::nil(),
         };
         validate_contract_async(
@@ -300,7 +300,7 @@ mod tests {
     #[test]
     fn link_status_request_should_have_proper_contract_for_link_with_password() {
         let request_payload = LinkStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             file_uuid: Uuid::nil(),
         };
         validate_contract(
@@ -315,7 +315,7 @@ mod tests {
     #[tokio::test]
     async fn link_status_request_async_should_have_proper_contract_for_link_with_password() {
         let request_payload = LinkStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             file_uuid: Uuid::nil(),
         };
         validate_contract_async(

@@ -3,10 +3,10 @@ use crate::v1::download_dir_request_async;
 use crate::{
     queries, utils, v1,
     v1::{
-        bool_from_int, bool_from_string, bool_to_int, bool_to_string, crypto, download_dir, download_dir_request,
-        files, fs, response_payload, Backtrace, CryptoError, DownloadDirRequestPayload, FileProperties,
-        FileStorageInfo, HasFileMetadata, HasLocationName, HasPublicKey, HasUuid, ItemKind, LocationColor,
-        LocationNameMetadata, ParentOrNone, PlainResponsePayload,
+        bool_from_int, bool_to_int, bool_to_string, crypto, download_dir, download_dir_request, files, fs,
+        response_payload, Backtrace, CryptoError, DownloadDirRequestPayload, FileProperties, FileStorageInfo,
+        HasFileMetadata, HasLocationName, HasPublicKey, HasUuid, ItemKind, LocationColor, LocationNameMetadata,
+        ParentOrNone, PlainResponsePayload,
     },
     FilenSettings, SettingsBundle,
 };
@@ -91,7 +91,7 @@ pub enum Error {
 }
 
 /// Identifies shared item.
-#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "lowercase")]
 #[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum ShareTarget {
@@ -102,14 +102,14 @@ pub enum ShareTarget {
 }
 
 /// Used for requests to `SHARE_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct ShareRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct ShareRequestPayload<'share> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'share SecUtf8,
 
     /// Email to share item with.
-    pub email: String,
+    pub email: &'share str,
 
     /// Base64-encoded RSA-encrypted file or folder properties.
     pub metadata: String,
@@ -124,14 +124,14 @@ pub struct ShareRequestPayload {
     /// ID of the file or folder to share; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(ShareRequestPayload);
+utils::display_from_json_with_lifetime!('share, ShareRequestPayload);
 
-impl ShareRequestPayload {
+impl<'share> ShareRequestPayload<'share> {
     pub fn from_file_data<T: HasFileMetadata + HasUuid>(
-        api_key: SecUtf8,
+        api_key: &'share SecUtf8,
         file_data: &T,
         parent: ParentOrNone,
-        receiver_email: String,
+        receiver_email: &'share str,
         receiver_public_key_bytes: &[u8],
         master_keys: &[SecUtf8],
     ) -> Result<Self> {
@@ -154,11 +154,11 @@ impl ShareRequestPayload {
     }
 
     pub fn from_file_properties(
-        api_key: SecUtf8,
+        api_key: &'share SecUtf8,
         file_uuid: Uuid,
         file_properties: &FileProperties,
         parent: ParentOrNone,
-        email: String,
+        email: &'share str,
         rsa_public_key_bytes: &[u8],
     ) -> Result<Self, files::Error> {
         let metadata = file_properties.to_metadata_rsa_string(rsa_public_key_bytes)?;
@@ -173,10 +173,10 @@ impl ShareRequestPayload {
     }
 
     pub fn from_folder_data<T: HasLocationName + HasUuid>(
-        api_key: SecUtf8,
+        api_key: &'share SecUtf8,
         folder_data: &T,
         parent: ParentOrNone,
-        receiver_email: String,
+        receiver_email: &'share str,
         receiver_public_key_bytes: &[u8],
         master_keys: &[SecUtf8],
     ) -> Result<Self> {
@@ -199,11 +199,11 @@ impl ShareRequestPayload {
     }
 
     pub fn from_folder_name(
-        api_key: SecUtf8,
+        api_key: &'share SecUtf8,
         folder_uuid: Uuid,
         folder_name: &str,
         parent: ParentOrNone,
-        email: String,
+        email: &'share str,
         rsa_public_key_bytes: &[u8],
     ) -> Result<Self, CryptoError> {
         let metadata = LocationNameMetadata::encrypt_name_to_metadata_rsa(folder_name, rsa_public_key_bytes)?;
@@ -219,16 +219,16 @@ impl ShareRequestPayload {
 }
 
 /// Used for requests to `SHARE_DIR_STATUS_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct ShareDirStatusRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct ShareDirStatusRequestPayload<'share_dir_status> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'share_dir_status SecUtf8,
 
     /// ID of the folder to check; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(ShareDirStatusRequestPayload);
+utils::display_from_json_with_lifetime!('share_dir_status, ShareDirStatusRequestPayload);
 
 /// User's email and RSA public key.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -266,7 +266,7 @@ response_payload!(
     ShareDirStatusResponsePayload<ShareDirStatusResponseData>
 );
 
-#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 #[strum(ascii_case_insensitive, serialize_all = "kebab-case")]
 pub enum SharedContentKind {
@@ -275,11 +275,11 @@ pub enum SharedContentKind {
 }
 
 /// Used for requests to `USER_SHARED_IN_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UserSharedInRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct UserSharedInRequestPayload<'user_shared_in> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'user_shared_in SecUtf8,
 
     /// Set to "shared-in" for requests to `USER_SHARED_IN_PATH`, and to "shared-out" for requests to
     /// `USER_SHARED_OUT_PATH`.
@@ -295,17 +295,17 @@ pub struct UserSharedInRequestPayload {
 
     // TODO: There is no way to tell its purpose from sources, need to ask Dwynr later.
     /// This flag is always set to true.
-    #[serde(deserialize_with = "bool_from_string", serialize_with = "bool_to_string")]
+    #[serde(serialize_with = "bool_to_string")]
     pub app: bool,
 }
-utils::display_from_json!(UserSharedInRequestPayload);
+utils::display_from_json_with_lifetime!('user_shared_in, UserSharedInRequestPayload);
 
 /// Used for requests to `USER_SHARED_OUT_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UserSharedOutRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct UserSharedOutRequestPayload<'user_shared_out> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'user_shared_out SecUtf8,
 
     /// Set to "shared-in" for requests to `USER_SHARED_IN_PATH`, and to "shared-out" for requests to
     /// `USER_SHARED_OUT_PATH`.
@@ -325,10 +325,10 @@ pub struct UserSharedOutRequestPayload {
 
     // TODO: There is no way to tell its purpose from sources, need to ask Dwynr later.
     /// This flag is always set to true.
-    #[serde(deserialize_with = "bool_from_string", serialize_with = "bool_to_string")]
+    #[serde(serialize_with = "bool_to_string")]
     pub app: bool,
 }
-utils::display_from_json!(UserSharedOutRequestPayload);
+utils::display_from_json_with_lifetime!('user_shared_out, UserSharedOutRequestPayload);
 
 /// One of the files in response data for `USER_SHARED_IN` or `USER_SHARED_OUT_PATH` endpoint.
 #[skip_serializing_none]
@@ -509,11 +509,11 @@ response_payload!(
 );
 
 /// Used for requests to `USER_SHARED_ITEM_RENAME_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UserSharedItemRenameRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct UserSharedItemRenameRequestPayload<'user_shared_item_rename> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'user_shared_item_rename SecUtf8,
 
     /// Folder or file ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -527,11 +527,11 @@ pub struct UserSharedItemRenameRequestPayload {
     /// base64-encoded.
     pub metadata: String,
 }
-utils::display_from_json!(UserSharedItemRenameRequestPayload);
+utils::display_from_json_with_lifetime!('user_shared_item_rename, UserSharedItemRenameRequestPayload);
 
-impl UserSharedItemRenameRequestPayload {
+impl<'user_shared_item_rename> UserSharedItemRenameRequestPayload<'user_shared_item_rename> {
     pub fn from_file_properties(
-        api_key: SecUtf8,
+        api_key: &'user_shared_item_rename SecUtf8,
         receiver_id: u64,
         file_uuid: Uuid,
         file_properties: &FileProperties,
@@ -547,7 +547,7 @@ impl UserSharedItemRenameRequestPayload {
     }
 
     pub fn from_folder_name(
-        api_key: SecUtf8,
+        api_key: &'user_shared_item_rename SecUtf8,
         receiver_id: u64,
         folder_uuid: Uuid,
         folder_name: &str,
@@ -564,11 +564,11 @@ impl UserSharedItemRenameRequestPayload {
 }
 
 /// Used for requests to `USER_SHARED_ITEM_IN_REMOVE_PATH` and `USER_SHARED_ITEM_OUT_REMOVE_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UserSharedItemRemoveRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct UserSharedItemRemoveRequestPayload<'user_shared_item_remove> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'user_shared_item_remove SecUtf8,
 
     /// ID of the user this item is being shared with.
     /// Set to 0 when removing is done from the perspective of the user with whom item is shared aka receiver.
@@ -578,19 +578,19 @@ pub struct UserSharedItemRemoveRequestPayload {
     /// ID of the shared item; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(UserSharedItemRemoveRequestPayload);
+utils::display_from_json_with_lifetime!('user_shared_item_remove, UserSharedItemRemoveRequestPayload);
 
 /// Used for requests to `USER_SHARED_ITEM_STATUS_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UserSharedItemStatusRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct UserSharedItemStatusRequestPayload<'user_shared_item_status> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'user_shared_item_status SecUtf8,
 
     /// ID of the item to check; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(UserSharedItemStatusRequestPayload);
+utils::display_from_json_with_lifetime!('user_shared_item_status, UserSharedItemStatusRequestPayload);
 
 /// User's id and RSA public key.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -655,7 +655,7 @@ pub fn share_dir_status_request(
 /// the users the folder is shared with, if any.
 #[cfg(feature = "async")]
 pub async fn share_dir_status_request_async(
-    payload: &ShareDirStatusRequestPayload,
+    payload: &ShareDirStatusRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<ShareDirStatusResponsePayload> {
     queries::query_filen_api_async(SHARE_DIR_STATUS_PATH, payload, filen_settings)
@@ -671,7 +671,7 @@ pub fn share_request(payload: &ShareRequestPayload, filen_settings: &FilenSettin
 /// Calls `SHARE_PATH` endpoint asynchronously. Used to share a file or folder.
 #[cfg(feature = "async")]
 pub async fn share_request_async(
-    payload: &ShareRequestPayload,
+    payload: &ShareRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(SHARE_PATH, payload, filen_settings)
@@ -692,7 +692,7 @@ pub fn user_shared_in_request(
 /// Used to list shared content from the perspective of the user with whom item is shared aka receiver.
 #[cfg(feature = "async")]
 pub async fn user_shared_in_request_async(
-    payload: &UserSharedInRequestPayload,
+    payload: &UserSharedInRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<UserSharedInOrOutResponsePayload> {
     queries::query_filen_api_async(USER_SHARED_IN_PATH, payload, filen_settings)
@@ -713,7 +713,7 @@ pub fn user_shared_out_request(
 /// Used to list shared content from the perspective of the user who shares files, aka sharer.
 #[cfg(feature = "async")]
 pub async fn user_shared_out_request_async(
-    payload: &UserSharedOutRequestPayload,
+    payload: &UserSharedOutRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<UserSharedInOrOutResponsePayload> {
     queries::query_filen_api_async(USER_SHARED_OUT_PATH, payload, filen_settings)
@@ -735,7 +735,7 @@ pub fn user_shared_item_in_remove_request(
 /// Used to remove shared item from the perspective of the user with whom item is shared aka receiver.
 #[cfg(feature = "async")]
 pub async fn user_shared_item_in_rename_request_async(
-    payload: &UserSharedItemRemoveRequestPayload,
+    payload: &UserSharedItemRemoveRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(USER_SHARED_ITEM_IN_REMOVE_PATH, payload, filen_settings)
@@ -757,7 +757,7 @@ pub fn user_shared_item_out_remove_request(
 /// Used to remove shared item from the perspective of an item's owner aka sharer: to stop sharing the item.
 #[cfg(feature = "async")]
 pub async fn user_shared_item_out_remove_request_async(
-    payload: &UserSharedItemRemoveRequestPayload,
+    payload: &UserSharedItemRemoveRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(USER_SHARED_ITEM_OUT_REMOVE_PATH, payload, filen_settings)
@@ -777,7 +777,7 @@ pub fn user_shared_item_rename_request(
 /// Calls `USER_SHARED_ITEM_RENAME_PATH` endpoint asynchronously.
 #[cfg(feature = "async")]
 pub async fn user_shared_item_rename_request_async(
-    payload: &UserSharedItemRenameRequestPayload,
+    payload: &UserSharedItemRenameRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(USER_SHARED_ITEM_RENAME_PATH, payload, filen_settings)
@@ -797,7 +797,7 @@ pub fn user_shared_item_status_request(
 /// Calls `USER_SHARED_ITEM_STATUS_PATH` endpoint asynchronously.
 #[cfg(feature = "async")]
 pub async fn user_shared_item_status_request_async(
-    payload: &UserSharedItemStatusRequestPayload,
+    payload: &UserSharedItemStatusRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<UserSharedItemStatusResponsePayload> {
     queries::query_filen_api_async(USER_SHARED_ITEM_STATUS_PATH, payload, filen_settings)
@@ -807,10 +807,10 @@ pub async fn user_shared_item_status_request_async(
 
 /// Helper which shares given file with the specified user.
 pub fn share_file<T: HasFileMetadata + HasUuid>(
-    api_key: SecUtf8,
+    api_key: &SecUtf8,
     file_data: &T,
     parent: ParentOrNone,
-    receiver_email: String,
+    receiver_email: &str,
     receiver_public_key_bytes: &[u8],
     master_keys: &[SecUtf8],
     filen_settings: &FilenSettings,
@@ -846,10 +846,10 @@ pub fn share_file<T: HasFileMetadata + HasUuid>(
 /// Helper which shares given file with the specified user; asynchronous.
 #[cfg(feature = "async")]
 pub async fn share_file_async<T: HasFileMetadata + HasUuid + Sync>(
-    api_key: SecUtf8,
+    api_key: &SecUtf8,
     file_data: &T,
     parent: ParentOrNone,
-    receiver_email: String,
+    receiver_email: &str,
     receiver_public_key_bytes: &[u8],
     master_keys: &[SecUtf8],
     filen_settings: &FilenSettings,
@@ -876,10 +876,10 @@ pub async fn share_file_async<T: HasFileMetadata + HasUuid + Sync>(
 
 /// Helper which shares just the given folder without its files and sub-folders.
 pub fn share_folder<T: HasLocationName + HasUuid>(
-    api_key: SecUtf8,
+    api_key: &SecUtf8,
     folder_data: &T,
     parent: ParentOrNone,
-    receiver_email: String,
+    receiver_email: &str,
     receiver_public_key_bytes: &[u8],
     master_keys: &[SecUtf8],
     filen_settings: &FilenSettings,
@@ -907,10 +907,10 @@ pub fn share_folder<T: HasLocationName + HasUuid>(
 /// Helper which shares just the given folder without its files and sub-folders; asynchronous.
 #[cfg(feature = "async")]
 pub async fn share_folder_async<T: HasLocationName + HasUuid + Sync>(
-    api_key: SecUtf8,
+    api_key: &SecUtf8,
     folder_data: &T,
     parent: ParentOrNone,
-    receiver_email: String,
+    receiver_email: &str,
     receiver_public_key_bytes: &[u8],
     master_keys: &[SecUtf8],
     filen_settings: &FilenSettings,
@@ -945,7 +945,7 @@ pub fn share_folder_recursively(
     settings: &SettingsBundle,
 ) -> Result<()> {
     let content_payload = DownloadDirRequestPayload {
-        api_key: api_key.clone(),
+        api_key,
         uuid: folder_uuid,
     };
     let contents_response = settings
@@ -953,7 +953,7 @@ pub fn share_folder_recursively(
         .call(|| download_dir_request(&content_payload, &settings.filen))
         .context(DownloadDirRequestFailed {})?;
     let contents = contents_response
-        .data_or_err()
+        .data_ref_or_err()
         .context(CannotGetUserFolderContents {})?;
     // Share this folder and all sub-folders:
     contents
@@ -962,10 +962,10 @@ pub fn share_folder_recursively(
         .map(|folder| {
             settings.retry.call(|| {
                 share_folder(
-                    api_key.clone(),
+                    api_key,
                     folder,
                     folder.parent.as_parent_or_none(),
-                    receiver_email.to_owned(),
+                    receiver_email,
                     receiver_public_key_bytes,
                     master_keys,
                     &settings.filen,
@@ -981,10 +981,10 @@ pub fn share_folder_recursively(
         .map(|file| {
             settings.retry.call(|| {
                 share_file(
-                    api_key.clone(),
+                    api_key,
                     file,
                     ParentOrNone::Folder(file.parent),
-                    receiver_email.to_owned(),
+                    receiver_email,
                     receiver_public_key_bytes,
                     master_keys,
                     &settings.filen,
@@ -1008,7 +1008,7 @@ pub async fn share_folder_recursively_async(
     settings: &SettingsBundle,
 ) -> Result<()> {
     let content_payload = DownloadDirRequestPayload {
-        api_key: api_key.clone(),
+        api_key,
         uuid: folder_uuid,
     };
     let contents_response = settings
@@ -1017,16 +1017,16 @@ pub async fn share_folder_recursively_async(
         .await
         .context(DownloadDirRequestFailed {})?;
     let contents = contents_response
-        .data_or_err()
+        .data_ref_or_err()
         .context(CannotGetUserFolderContents {})?;
     // Share this folder and all sub-folders:
     let folder_futures = contents.folders.iter().map(|folder| {
         settings.retry.call_async(move || async move {
             share_folder_async(
-                api_key.clone(),
+                api_key,
                 folder,
                 folder.parent.as_parent_or_none(),
-                receiver_email.to_owned(),
+                receiver_email,
                 receiver_public_key_bytes,
                 master_keys,
                 &settings.filen,
@@ -1041,10 +1041,10 @@ pub async fn share_folder_recursively_async(
     let file_futures = contents.files.iter().map(|file| {
         settings.retry.call_async(move || async move {
             share_file_async(
-                api_key.clone(),
+                api_key,
                 file,
                 ParentOrNone::Folder(file.parent),
-                receiver_email.to_owned(),
+                receiver_email,
                 receiver_public_key_bytes,
                 master_keys,
                 &settings.filen,
@@ -1072,7 +1072,7 @@ mod tests {
     #[test]
     fn share_dir_status_request_should_have_proper_contract_for_shared_folder() {
         let request_payload = ShareDirStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::nil(),
         };
         validate_contract(
@@ -1087,7 +1087,7 @@ mod tests {
     #[tokio::test]
     async fn share_dir_status_request_async_should_have_proper_contract_for_shared_folder() {
         let request_payload = ShareDirStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::nil(),
         };
         validate_contract_async(
@@ -1104,7 +1104,7 @@ mod tests {
     #[test]
     fn share_dir_status_request_should_have_proper_contract_for_non_shared_folder() {
         let request_payload = ShareDirStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::nil(),
         };
         validate_contract(
@@ -1119,7 +1119,7 @@ mod tests {
     #[tokio::test]
     async fn share_dir_status_request_async_should_have_proper_contract_for_non_shared_folder() {
         let request_payload = ShareDirStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::nil(),
         };
         validate_contract_async(
@@ -1136,7 +1136,7 @@ mod tests {
     #[test]
     fn user_shared_in_request_should_have_proper_contract() {
         let request_payload = UserSharedInRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: SharedContentKind::SharedIn,
             folders: "[\"5c86494b-36ec-4d39-a839-9f391474ad00\"]".to_owned(),
             page: 1,
@@ -1154,7 +1154,7 @@ mod tests {
     #[tokio::test]
     async fn user_shared_in_request_async_should_have_proper_contract() {
         let request_payload = UserSharedInRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: SharedContentKind::SharedIn,
             folders: "[\"5c86494b-36ec-4d39-a839-9f391474ad00\"]".to_owned(),
             page: 1,
@@ -1174,7 +1174,7 @@ mod tests {
     #[test]
     fn user_shared_out_request_should_have_proper_contract() {
         let request_payload = UserSharedOutRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: SharedContentKind::SharedOut,
             folders: "[\"5c86494b-36ec-4d39-a839-9f391474ad00\"]".to_owned(),
             page: 1,
@@ -1193,7 +1193,7 @@ mod tests {
     #[tokio::test]
     async fn user_shared_out_request_async_should_have_proper_contract() {
         let request_payload = UserSharedOutRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: SharedContentKind::SharedOut,
             folders: "[\"5c86494b-36ec-4d39-a839-9f391474ad00\"]".to_owned(),
             page: 1,
@@ -1214,7 +1214,7 @@ mod tests {
     #[test]
     fn user_shared_item_status_request_should_have_proper_contract_for_shared_folder() {
         let request_payload = UserSharedItemStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::nil(),
         };
         validate_contract(
@@ -1229,7 +1229,7 @@ mod tests {
     #[tokio::test]
     async fn user_shared_item_status_request_async_should_have_proper_contract_for_shared_folder() {
         let request_payload = UserSharedItemStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::nil(),
         };
         validate_contract_async(

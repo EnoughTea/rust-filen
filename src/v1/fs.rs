@@ -59,7 +59,7 @@ pub enum Error {
 ///
 /// For defined expiration period, Filen currently uses values "1h", "6h", "1d", "3d", "7d", "14d" and "30d".
 /// Otherwise, it's "never".
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Expire {
     Never,
 
@@ -125,7 +125,7 @@ impl Serialize for Expire {
 }
 
 /// Identifies whether an item is a file or folder.
-#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
 #[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum ItemKind {
@@ -185,7 +185,7 @@ impl HasUuid for FolderData {
 
 /// Identifies location color set by user. Default yellow color is often represented by the absence of specifically set
 /// `LocationColor`.
-#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
 #[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum LocationColor {
@@ -199,7 +199,7 @@ pub enum LocationColor {
 }
 
 /// Identifies location type.
-#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize, Ord, PartialOrd)]
+#[derive(Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize, Ord, PartialOrd)]
 #[serde(rename_all = "lowercase")]
 #[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum LocationKind {
@@ -434,23 +434,23 @@ pub trait HasUuid {
 }
 
 /// Used for requests to `DIR_TRASH_PATH` or `FILE_TRASH_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct LocationTrashRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct LocationTrashRequestPayload<'location_trash> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'location_trash SecUtf8,
 
     /// ID of the folder or file to move to trash, hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(LocationTrashRequestPayload);
+utils::display_from_json_with_lifetime!('location_trash, LocationTrashRequestPayload);
 
 /// Used for requests to `DIR_EXISTS_PATH` or `FILE_TRASH_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct LocationExistsRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct LocationExistsRequestPayload<'location_exists> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'location_exists SecUtf8,
 
     /// Either parent folder ID (hyphenated lowercased UUID V4) or "base" when folder is located in the base folder,
     /// also known as 'cloud drive'.
@@ -460,11 +460,11 @@ pub struct LocationExistsRequestPayload {
     #[serde(rename = "nameHashed")]
     pub name_hashed: String,
 }
-utils::display_from_json!(LocationExistsRequestPayload);
+utils::display_from_json_with_lifetime!('location_exists, LocationExistsRequestPayload);
 
-impl LocationExistsRequestPayload {
+impl<'location_exists> LocationExistsRequestPayload<'location_exists> {
     #[must_use]
-    pub fn new(api_key: SecUtf8, target_parent: ParentOrBase, target_name: &str) -> Self {
+    pub fn new(api_key: &'location_exists SecUtf8, target_parent: ParentOrBase, target_name: &str) -> Self {
         let name_hashed = LocationNameMetadata::name_hashed(target_name);
         Self {
             api_key,
@@ -493,7 +493,7 @@ response_payload!(
 );
 
 /// Identifies parent eitner by ID or by indirect reference.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ParentOrBase {
     /// Parent is a base folder.
     Base,
@@ -504,6 +504,7 @@ utils::display_from_json!(ParentOrBase);
 
 impl ParentOrBase {
     /// Creates `ParentOrNone` corresponding to this value.
+    #[inline]
     #[must_use]
     pub const fn as_parent_or_none(&self) -> ParentOrNone {
         match *self {
@@ -566,7 +567,7 @@ impl Serialize for ParentOrBase {
 }
 
 /// Eitner a parent ID or none.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ParentOrNone {
     /// No parent, which means parent is a base folder.
     None,
@@ -577,6 +578,7 @@ utils::display_from_json!(ParentOrNone);
 
 impl ParentOrNone {
     /// Creates `ParentOrBase` corresponding to this value.
+    #[inline]
     #[must_use]
     pub const fn as_parent_or_base(&self) -> ParentOrBase {
         match *self {

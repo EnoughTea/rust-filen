@@ -294,17 +294,18 @@ impl HasUuid for FolderEventInfo {
 }
 
 /// Used for requests to `USER_EVENTS_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UserEventsRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct UserEventsRequestPayload<'user_events> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'user_events SecUtf8,
 
     pub id: u64,
 
     /// Determines which events to return.
     pub filter: UserEventFilter,
 }
+utils::display_from_json_with_lifetime!('user_events, UserEventsRequestPayload);
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct BaseFolderCreatedEventInfo {
@@ -974,15 +975,16 @@ response_payload!(
 );
 
 /// Used for requests to `USER_EVENTS_GET_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UserEventsGetRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct UserEventsGetRequestPayload<'user_events_get> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'user_events_get SecUtf8,
 
     /// Event UUID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
+utils::display_from_json_with_lifetime!('user_events_get, UserEventsGetRequestPayload);
 
 response_payload!(
     /// Response for `USER_EVENTS_GET_PATH` endpoint.
@@ -1000,7 +1002,7 @@ pub fn user_events_request(
 /// Calls `USER_EVENTS_PATH` endpoint asynchronously.
 #[cfg(feature = "async")]
 pub async fn user_events_request_async(
-    payload: &UserEventsRequestPayload,
+    payload: &UserEventsRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<UserEventsResponsePayload> {
     queries::query_filen_api_async(USER_EVENTS_PATH, payload, filen_settings)
@@ -1019,7 +1021,7 @@ pub fn user_events_get_request(
 /// Calls `USER_EVENTS_GET_PATH` endpoint asynchronously.
 #[cfg(feature = "async")]
 pub async fn user_events_get_request_async(
-    payload: &UserEventsGetRequestPayload,
+    payload: &UserEventsGetRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<UserEventsGetResponsePayload> {
     queries::query_filen_api_async(USER_EVENTS_GET_PATH, payload, filen_settings)
@@ -1125,7 +1127,7 @@ mod tests {
     #[test]
     fn user_events_request_should_have_proper_contract() {
         let request_payload = UserEventsRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             id: 0,
             filter: UserEventFilter::All,
         };
@@ -1141,7 +1143,7 @@ mod tests {
     #[tokio::test]
     async fn user_events_request_async_should_have_proper_contract() {
         let request_payload = UserEventsRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             id: 0,
             filter: UserEventFilter::All,
         };
@@ -1159,7 +1161,7 @@ mod tests {
     #[test]
     fn user_events_get_request_should_have_proper_contract() {
         let request_payload = UserEventsGetRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::nil(),
         };
         validate_contract(
@@ -1174,7 +1176,7 @@ mod tests {
     #[tokio::test]
     async fn user_events_get_request_async_should_have_proper_contract() {
         let request_payload = UserEventsGetRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::nil(),
         };
         validate_contract_async(

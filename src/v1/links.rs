@@ -63,11 +63,11 @@ pub enum Error {
 }
 
 /// Used for requests to `LINK_DIR_ITEM_RENAME_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct LinkDirItemRenameRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct LinkDirItemRenameRequestPayload<'link_dir_item_rename> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'link_dir_item_rename SecUtf8,
 
     /// Folder or file ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -79,12 +79,12 @@ pub struct LinkDirItemRenameRequestPayload {
     /// Folder or file properties, encrypted with link key.
     pub metadata: String,
 }
-utils::display_from_json!(LinkDirItemRenameRequestPayload);
+utils::display_from_json_with_lifetime!('link_dir_item_rename, LinkDirItemRenameRequestPayload);
 
-impl LinkDirItemRenameRequestPayload {
+impl<'link_dir_item_rename> LinkDirItemRenameRequestPayload<'link_dir_item_rename> {
     #[must_use]
     pub fn from_file_properties(
-        api_key: SecUtf8,
+        api_key: &'link_dir_item_rename SecUtf8,
         link_uuid: Uuid,
         file_uuid: Uuid,
         file_properties: &FileProperties,
@@ -101,7 +101,7 @@ impl LinkDirItemRenameRequestPayload {
 
     #[must_use]
     pub fn from_folder_name(
-        api_key: SecUtf8,
+        api_key: &'link_dir_item_rename SecUtf8,
         link_uuid: Uuid,
         folder_uuid: Uuid,
         folder_name: &str,
@@ -118,16 +118,16 @@ impl LinkDirItemRenameRequestPayload {
 }
 
 /// Used for requests to `LINK_DIR_ITEM_STATUS_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct LinkDirItemStatusRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct LinkDirItemStatusRequestPayload<'link_dir_item_status> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'link_dir_item_status SecUtf8,
 
     /// Item ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(LinkDirItemStatusRequestPayload);
+utils::display_from_json_with_lifetime!('link_dir_item_status, LinkDirItemStatusRequestPayload);
 
 /// Response data for `LINK_DIR_ITEM_STATUS_PATH` endpoint.
 #[skip_serializing_none]
@@ -148,16 +148,16 @@ response_payload!(
 );
 
 /// Used for requests to `LINK_DIR_STATUS_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct LinkDirStatusRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct LinkDirStatusRequestPayload<'link_dir_status> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'link_dir_status SecUtf8,
 
     /// Folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(LinkDirStatusRequestPayload);
+utils::display_from_json_with_lifetime!('link_dir_status, LinkDirStatusRequestPayload);
 
 /// Link UUID with link key.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -231,7 +231,7 @@ pub fn link_dir_item_rename_request(
 /// Calls `LINK_DIR_ITEM_RENAME_PATH` endpoint asynchronously.
 #[cfg(feature = "async")]
 pub async fn link_dir_item_rename_request_async(
-    payload: &LinkDirItemRenameRequestPayload,
+    payload: &LinkDirItemRenameRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(LINK_DIR_ITEM_RENAME_PATH, payload, filen_settings)
@@ -251,7 +251,7 @@ pub fn link_dir_item_status_request(
 /// Calls `LINK_DIR_ITEM_STATUS_PATH` endpoint asynchronously.
 #[cfg(feature = "async")]
 pub async fn link_dir_item_status_request_async(
-    payload: &LinkDirItemStatusRequestPayload,
+    payload: &LinkDirItemStatusRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<LinkDirStatusResponsePayload> {
     queries::query_filen_api_async(LINK_DIR_ITEM_STATUS_PATH, payload, filen_settings)
@@ -271,7 +271,7 @@ pub fn link_dir_status_request(
 /// Used to check if given folder has links and return them, if any.
 #[cfg(feature = "async")]
 pub async fn link_dir_status_request_async(
-    payload: &LinkDirStatusRequestPayload,
+    payload: &LinkDirStatusRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<LinkDirStatusResponsePayload> {
     queries::query_filen_api_async(LINK_DIR_STATUS_PATH, payload, filen_settings)
@@ -285,7 +285,7 @@ pub async fn link_dir_status_request_async(
 /// but can be disabled or enabled. At any given time only one file link can be enabled, so it is not possible
 /// to link the same file two times with different expiration, for example.
 pub fn disable_file_link(
-    api_key: SecUtf8,
+    api_key: &SecUtf8,
     file_uuid: Uuid,
     link_uuid: Uuid,
     filen_settings: &FilenSettings,
@@ -308,7 +308,7 @@ pub fn disable_file_link(
 /// to link the same file two times with different expiration, for example.
 #[cfg(feature = "async")]
 pub async fn disable_file_link_async(
-    api_key: SecUtf8,
+    api_key: &SecUtf8,
     file_uuid: Uuid,
     link_uuid: Uuid,
     filen_settings: &FilenSettings,
@@ -331,7 +331,7 @@ pub async fn disable_file_link_async(
 /// but can be disabled or enabled. At any given time only one file link can be enabled, so it is not possible
 /// to link the same file two times with different expiration, for example.
 pub fn enable_file_link(
-    api_key: SecUtf8,
+    api_key: &SecUtf8,
     file_uuid: Uuid,
     download_button_state: DownloadBtnState,
     expiration: Expire,
@@ -363,7 +363,7 @@ pub fn enable_file_link(
 /// to link the same file two times with different expiration, for example.
 #[cfg(feature = "async")]
 pub async fn enable_file_link_async(
-    api_key: SecUtf8,
+    api_key: &SecUtf8,
     file_uuid: Uuid,
     download_button_state: DownloadBtnState,
     expiration: Expire,
@@ -390,12 +390,12 @@ pub async fn enable_file_link_async(
 }
 
 /// Helper which adds given file to existing folder link.
-pub fn add_file_to_link<T: HasFileMetadata + HasUuid, S: Into<String>>(
-    api_key: SecUtf8,
+pub fn add_file_to_link<'add_file_to_link, T: HasFileMetadata + HasUuid>(
+    api_key: &'add_file_to_link SecUtf8,
     file_data: &T,
     parent: ParentOrBase,
     link_uuid: Uuid,
-    link_key_metadata: S,
+    link_key_metadata: &'add_file_to_link str,
     master_keys: &[SecUtf8],
     filen_settings: &FilenSettings,
 ) -> Result<String> {
@@ -414,12 +414,12 @@ pub fn add_file_to_link<T: HasFileMetadata + HasUuid, S: Into<String>>(
 
 /// Helper which adds given file to existing folder link; asynchronous.
 #[cfg(feature = "async")]
-pub async fn add_file_to_link_async<T: HasFileMetadata + HasUuid + Sync, S: Into<String> + Send>(
-    api_key: SecUtf8,
+pub async fn add_file_to_link_async<'add_file_to_link, T: HasFileMetadata + HasUuid + Sync>(
+    api_key: &'add_file_to_link SecUtf8,
     file_data: &T,
     parent: ParentOrBase,
     link_uuid: Uuid,
-    link_key_metadata: S,
+    link_key_metadata: &'add_file_to_link str,
     master_keys: &[SecUtf8],
     filen_settings: &FilenSettings,
 ) -> Result<String> {
@@ -438,12 +438,12 @@ pub async fn add_file_to_link_async<T: HasFileMetadata + HasUuid + Sync, S: Into
 }
 
 /// Helper which adds given folder to existing folder link.
-pub fn add_folder_to_link<T: HasLocationName + HasUuid, S: Into<String>>(
-    api_key: SecUtf8,
+pub fn add_folder_to_link<'add_folder_to_link, T: HasLocationName + HasUuid>(
+    api_key: &'add_folder_to_link SecUtf8,
     folder_data: &T,
     parent: ParentOrBase,
     link_uuid: Uuid,
-    link_key_metadata: S,
+    link_key_metadata: &'add_folder_to_link str,
     master_keys: &[SecUtf8],
     filen_settings: &FilenSettings,
 ) -> Result<String> {
@@ -468,12 +468,12 @@ pub fn add_folder_to_link<T: HasLocationName + HasUuid, S: Into<String>>(
 
 /// Helper which adds given folder to existing folder link; asynchronous.
 #[cfg(feature = "async")]
-pub async fn add_folder_to_link_async<T: HasLocationName + HasUuid + Sync, S: Into<String> + Send>(
-    api_key: SecUtf8,
+pub async fn add_folder_to_link_async<'add_folder_to_link, T: HasLocationName + HasUuid + Sync>(
+    api_key: &'add_folder_to_link SecUtf8,
     folder_data: &T,
     parent: ParentOrBase,
     link_uuid: Uuid,
-    link_key_metadata: S,
+    link_key_metadata: &'add_folder_to_link str,
     master_keys: &[SecUtf8],
     filen_settings: &FilenSettings,
 ) -> Result<String> {
@@ -516,7 +516,7 @@ pub fn link_folder_recursively(
     };
 
     let content_payload = DownloadDirRequestPayload {
-        api_key: api_key.clone(),
+        api_key,
         uuid: folder_uuid,
     };
     let contents_response = settings
@@ -524,7 +524,7 @@ pub fn link_folder_recursively(
         .call(|| download_dir_request(&content_payload, &settings.filen))
         .context(DownloadDirRequestFailed {})?;
     let contents = contents_response
-        .data_or_err()
+        .data_ref_or_err()
         .context(CannotGetUserFolderContents {})?;
 
     // TODO: add_(file|folder)_to_link will decrypt link_key_metadata inside,
@@ -542,10 +542,10 @@ pub fn link_folder_recursively(
                 let parent = if folder.uuid == folder_uuid {
                     ParentOrBase::Base
                 } else {
-                    folder.parent.clone()
+                    folder.parent
                 };
                 add_folder_to_link(
-                    api_key.clone(),
+                    api_key,
                     folder,
                     parent,
                     link_id_with_key.link_uuid,
@@ -564,7 +564,7 @@ pub fn link_folder_recursively(
         .map(|file| {
             settings.retry.call(|| {
                 add_file_to_link(
-                    api_key.clone(),
+                    api_key,
                     file,
                     ParentOrBase::Folder(file.parent),
                     link_id_with_key.link_uuid,
@@ -600,7 +600,7 @@ pub async fn link_folder_recursively_async(
     };
 
     let content_payload = DownloadDirRequestPayload {
-        api_key: api_key.clone(),
+        api_key,
         uuid: folder_uuid,
     };
     let contents_response = settings
@@ -609,7 +609,7 @@ pub async fn link_folder_recursively_async(
         .await
         .context(DownloadDirRequestFailed {})?;
     let contents = contents_response
-        .data_or_err()
+        .data_ref_or_err()
         .context(CannotGetUserFolderContents {})?;
 
     let link_id_with_key = LinkIdWithKey::generate(last_master_key);
@@ -622,10 +622,10 @@ pub async fn link_folder_recursively_async(
             let parent = if folder.uuid == folder_uuid {
                 ParentOrBase::Base
             } else {
-                folder.parent.clone()
+                folder.parent
             };
             add_folder_to_link_async(
-                api_key.clone(),
+                api_key,
                 folder,
                 parent,
                 link_uuid,
@@ -643,7 +643,7 @@ pub async fn link_folder_recursively_async(
     let file_futures = contents.files.iter().map(|file| {
         settings.retry.call_async(|| async {
             add_file_to_link_async(
-                api_key.clone(),
+                api_key,
                 file,
                 ParentOrBase::Folder(file.parent),
                 link_uuid,
@@ -675,7 +675,7 @@ mod tests {
     #[test]
     fn link_dir_status_request_should_have_proper_contract_for_no_link() {
         let request_payload = LinkDirStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::nil(),
         };
         validate_contract(
@@ -690,7 +690,7 @@ mod tests {
     #[tokio::test]
     async fn link_dir_status_request_async_should_have_proper_contract_for_no_link() {
         let request_payload = LinkDirStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::nil(),
         };
         validate_contract_async(
@@ -707,7 +707,7 @@ mod tests {
     #[test]
     fn link_dir_status_request_should_have_proper_contract_for_a_link() {
         let request_payload = LinkDirStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::nil(),
         };
         validate_contract(
@@ -722,7 +722,7 @@ mod tests {
     #[tokio::test]
     async fn link_dir_status_request_async_should_have_proper_contract_for_a_link() {
         let request_payload = LinkDirStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::nil(),
         };
         validate_contract_async(

@@ -114,28 +114,28 @@ response_payload!(
 );
 
 /// Used for requests to `UPLOAD_DONE_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UploadDoneRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct UploadDoneRequestPayload<'upload_done> {
     /// Uploaded file ID, UUID V4 in hyphenated lowercase format.
     pub uuid: Uuid,
 
     /// File upload key: random alphanumeric string associated with entire file upload.
     #[serde(rename = "uploadKey")]
-    pub upload_key: String,
+    pub upload_key: &'upload_done str,
 }
-utils::display_from_json!(UploadDoneRequestPayload);
+utils::display_from_json_with_lifetime!('upload_done, UploadDoneRequestPayload);
 
 /// Used for requests to `UPLOAD_STOP_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct UploadStopRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct UploadStopRequestPayload<'upload_stop> {
     /// Uploaded file ID, UUID V4 in hyphenated lowercase format.
     pub uuid: Uuid,
 
     /// File upload key: random alphanumeric string associated with entire file upload.
     #[serde(rename = "uploadKey")]
-    pub upload_key: String,
+    pub upload_key: &'upload_stop str,
 }
-utils::display_from_json!(UploadStopRequestPayload);
+utils::display_from_json_with_lifetime!('upload_stop, UploadStopRequestPayload);
 
 /// File properties needed to upload file to Filen.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -312,7 +312,7 @@ pub fn upload_done_request(
 /// (+1 dummy chunk) were uploaded.
 #[cfg(feature = "async")]
 pub async fn upload_done_request_async(
-    payload: &UploadDoneRequestPayload,
+    payload: &UploadDoneRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(UPLOAD_DONE_PATH, payload, filen_settings)
@@ -333,7 +333,7 @@ pub fn upload_stop_request(
 /// Theoretically, can be used to stop upload in progress, but Filen never uses it.
 #[cfg(feature = "async")]
 pub async fn upload_stop_request_async(
-    payload: &UploadStopRequestPayload,
+    payload: &UploadStopRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(UPLOAD_STOP_PATH, payload, filen_settings)
@@ -479,7 +479,7 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
             if dummy_chunk_response.status {
                 let upload_done_payload = UploadDoneRequestPayload {
                     uuid: upload_properties.uuid,
-                    upload_key: upload_properties.upload_key.clone(),
+                    upload_key: &upload_properties.upload_key,
                 };
                 let mark_done_response = settings
                     .retry
@@ -548,7 +548,7 @@ pub async fn encrypt_and_upload_file_async<R: Read + Seek + Send>(
         if dummy_chunk_response.status {
             let upload_done_payload = UploadDoneRequestPayload {
                 uuid: upload_properties.uuid,
-                upload_key: upload_properties.upload_key.clone(),
+                upload_key: &upload_properties.upload_key,
             };
             let mark_done_response = settings
                 .retry

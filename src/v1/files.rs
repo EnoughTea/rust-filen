@@ -256,11 +256,11 @@ impl FileProperties {
 }
 
 /// Used for requests to `FILE_ARCHIVE_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct FileArchiveRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct FileArchiveRequestPayload<'file_archive> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'file_archive SecUtf8,
 
     /// ID of the existing file to archive.
     pub uuid: Uuid,
@@ -269,31 +269,31 @@ pub struct FileArchiveRequestPayload {
     #[serde(rename = "updateUuid")]
     pub update_uuid: Uuid,
 }
-utils::display_from_json!(FileArchiveRequestPayload);
+utils::display_from_json_with_lifetime!('file_archive, FileArchiveRequestPayload);
 
 /// Used for requests to `FILE_MOVE_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct FileMoveRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct FileMoveRequestPayload<'file_move> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'file_move SecUtf8,
 
     /// ID of the parent folder where target file will be moved; hyphenated lowercased UUID V4.
     #[serde(rename = "folderUUID")]
-    pub folder_uuid: String,
+    pub folder_uuid: Uuid,
 
     /// ID of the file to move, hyphenated lowercased UUID V4.
     #[serde(rename = "fileUUID")]
     pub file_uuid: Uuid,
 }
-utils::display_from_json!(FileMoveRequestPayload);
+utils::display_from_json_with_lifetime!('file_move, FileMoveRequestPayload);
 
 /// Used for requests to `FILE_RENAME_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct FileRenameRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct FileRenameRequestPayload<'file_rename> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'file_rename SecUtf8,
 
     /// ID of the file to rename, hyphenated lowercased UUID V4.
     pub uuid: Uuid,
@@ -310,12 +310,12 @@ pub struct FileRenameRequestPayload {
     #[serde(rename = "metaData")]
     pub metadata: String,
 }
-utils::display_from_json!(FileRenameRequestPayload);
+utils::display_from_json_with_lifetime!('file_rename, FileRenameRequestPayload);
 
-impl FileRenameRequestPayload {
+impl<'file_rename> FileRenameRequestPayload<'file_rename> {
     #[must_use]
     pub fn new(
-        api_key: SecUtf8,
+        api_key: &'file_rename SecUtf8,
         uuid: Uuid,
         new_file_name: &str,
         file_metadata: &FileProperties,
@@ -335,28 +335,28 @@ impl FileRenameRequestPayload {
 }
 
 /// Used for requests to `FILE_RESTORE_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct FileRestoreRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct FileRestoreRequestPayload<'file_restore> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'file_restore SecUtf8,
 
     /// Trashed file ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(FileRestoreRequestPayload);
+utils::display_from_json_with_lifetime!('file_restore, FileRestoreRequestPayload);
 
 /// Used for requests to `RM_PATH` endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct RmRequestPayload {
+pub struct RmRequestPayload<'rm> {
     /// ID of the file to delete; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 
     /// Random alphanumeric string associated with the file. After file uploading, 'rm' can be viewed with
     /// queries like `file_versions_request` or `dir_content_request`.
-    pub rm: String,
+    pub rm: &'rm str,
 }
-utils::display_from_json!(RmRequestPayload);
+utils::display_from_json_with_lifetime!('rm, RmRequestPayload);
 
 response_payload!(
     /// Response for `USER_RECENT_PATH` endpoint.
@@ -378,7 +378,7 @@ pub fn file_archive_request(
 /// Used when the file you want to upload already exists, so existing file needs to be archived first.
 #[cfg(feature = "async")]
 pub async fn file_archive_request_async(
-    payload: &FileArchiveRequestPayload,
+    payload: &FileArchiveRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(FILE_ARCHIVE_PATH, payload, filen_settings)
@@ -399,7 +399,7 @@ pub fn file_exists_request(
 /// Checks if file with the given name exists within the specified parent folder.
 #[cfg(feature = "async")]
 pub async fn file_exists_request_async(
-    payload: &LocationExistsRequestPayload,
+    payload: &LocationExistsRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<LocationExistsResponsePayload> {
     queries::query_filen_api_async(FILE_EXISTS_PATH, payload, filen_settings)
@@ -428,7 +428,7 @@ pub fn file_move_request(
 /// and/or `share_request` after a successfull move.
 #[cfg(feature = "async")]
 pub async fn file_move_request_async(
-    payload: &FileMoveRequestPayload,
+    payload: &FileMoveRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(FILE_MOVE_PATH, payload, filen_settings)
@@ -451,7 +451,7 @@ pub fn file_rename_request(
 /// with the new name already exists within the parent folder.
 #[cfg(feature = "async")]
 pub async fn file_rename_request_async(
-    payload: &FileRenameRequestPayload,
+    payload: &FileRenameRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(FILE_RENAME_PATH, payload, filen_settings)
@@ -470,7 +470,7 @@ pub fn file_restore_request(
 /// Calls `FILE_RESTORE_PATH` endpoint asynchronously. Used to restore file from the 'trash' folder.
 #[cfg(feature = "async")]
 pub async fn file_restore_request_async(
-    payload: &FileRestoreRequestPayload,
+    payload: &FileRestoreRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(FILE_RESTORE_PATH, payload, filen_settings)
@@ -493,7 +493,7 @@ pub fn file_trash_request(
 /// so you cannot create a new file with it.
 #[cfg(feature = "async")]
 pub async fn file_trash_request_async(
-    payload: &LocationTrashRequestPayload,
+    payload: &LocationTrashRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(FILE_TRASH_PATH, payload, filen_settings)
@@ -509,7 +509,7 @@ pub fn rm_request(payload: &RmRequestPayload, filen_settings: &FilenSettings) ->
 /// Calls `RM_PATH` endpoint asynchronously. Used to delete file.
 #[cfg(feature = "async")]
 pub async fn rm_request_async(
-    payload: &RmRequestPayload,
+    payload: &RmRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(RM_PATH, payload, filen_settings)
@@ -570,7 +570,7 @@ mod tests {
     #[test]
     fn file_exists_request_should_be_correctly_typed() {
         let request_payload = LocationExistsRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             parent: ParentOrBase::from_str("b640414e-367e-4df6-b31a-030fd639bcff").unwrap(),
             name_hashed: NAME_HASHED.to_owned(),
         };
@@ -586,7 +586,7 @@ mod tests {
     #[tokio::test]
     async fn file_exists_request_async_should_be_correctly_typed() {
         let request_payload = LocationExistsRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             parent: ParentOrBase::from_str("b640414e-367e-4df6-b31a-030fd639bcff").unwrap(),
             name_hashed: NAME_HASHED.to_owned(),
         };

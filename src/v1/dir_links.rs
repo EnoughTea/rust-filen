@@ -53,7 +53,7 @@ pub enum Error {
 
 /// State of the 'Enable download button' GUI toggle represented as a string.
 /// It is the toggle you can see at the bottom of modal popup when creating or sharing an item.
-#[derive(Clone, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 #[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum DownloadBtnState {
@@ -65,7 +65,7 @@ pub enum DownloadBtnState {
 
 /// State of the 'Enable download button' GUI toggle represented as a 0|1 flag.
 /// It is the toggle you can see at the bottom of modal popup when creating or sharing an item.
-#[derive(Clone, Debug, Deserialize_repr, Display, EnumString, Eq, Hash, PartialEq, Serialize_repr)]
+#[derive(Clone, Copy, Debug, Deserialize_repr, Display, EnumString, Eq, Hash, PartialEq, Serialize_repr)]
 #[repr(u8)]
 #[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum DownloadBtnStateByte {
@@ -74,11 +74,11 @@ pub enum DownloadBtnStateByte {
 }
 
 /// Used for requests to `DIR_LINK_ADD_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DirLinkAddRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct DirLinkAddRequestPayload<'dir_link_add> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'dir_link_add SecUtf8,
 
     /// Filen sets this to "enable" by default.
     #[serde(rename = "downloadBtn")]
@@ -89,7 +89,7 @@ pub struct DirLinkAddRequestPayload {
 
     /// Link key, encrypted.
     #[serde(rename = "key")]
-    pub key_metadata: String,
+    pub key_metadata: &'dir_link_add str,
 
     /// Link ID; hyphenated lowercased UUID V4.
     #[serde(rename = "linkUUID")]
@@ -107,7 +107,7 @@ pub struct DirLinkAddRequestPayload {
 
     /// Output of hash_fn for the link's password.
     #[serde(rename = "passwordHashed")]
-    pub password_hashed: String,
+    pub password_hashed: &'dir_link_add str,
 
     /// Determines whether a file or a folder is being linked.
     #[serde(rename = "type")]
@@ -116,15 +116,15 @@ pub struct DirLinkAddRequestPayload {
     /// Linked item ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(DirLinkAddRequestPayload);
+utils::display_from_json_with_lifetime!('dir_link_add, DirLinkAddRequestPayload);
 
-impl DirLinkAddRequestPayload {
-    pub fn from_file_data<T: HasFileMetadata + HasUuid, S: Into<String>>(
-        api_key: SecUtf8,
+impl<'dir_link_add> DirLinkAddRequestPayload<'dir_link_add> {
+    pub fn from_file_data<T: HasFileMetadata + HasUuid>(
+        api_key: &'dir_link_add SecUtf8,
         file_data: &T,
         parent: ParentOrBase,
         link_uuid: Uuid,
-        link_key_metadata: S,
+        link_key_metadata: &'dir_link_add str,
         master_keys: &[SecUtf8],
     ) -> Result<Self> {
         let file_properties = file_data
@@ -141,43 +141,44 @@ impl DirLinkAddRequestPayload {
         )
     }
 
-    pub fn from_file_properties<S: Into<String>>(
-        api_key: SecUtf8,
+    pub fn from_file_properties(
+        api_key: &'dir_link_add SecUtf8,
         file_uuid: Uuid,
         file_properties: &FileProperties,
         parent: ParentOrBase,
         link_uuid: Uuid,
-        link_key_metadata: S,
+        link_key_metadata: &'dir_link_add str,
         master_keys: &[SecUtf8],
     ) -> Result<Self> {
-        let key_metadata: String = link_key_metadata.into();
         let link_key = SecUtf8::from(
-            crypto::decrypt_metadata_str_any_key(&key_metadata, master_keys).context(DecryptLinkKeyMetadataFailed {
-                metadata: key_metadata.clone(),
-            })?,
+            crypto::decrypt_metadata_str_any_key(link_key_metadata, master_keys).context(
+                DecryptLinkKeyMetadataFailed {
+                    metadata: link_key_metadata.to_owned(),
+                },
+            )?,
         );
         let metadata = file_properties.to_metadata_string(&link_key);
         Ok(Self {
             api_key,
             download_btn: DownloadBtnState::Enable,
             expiration: Expire::Never,
-            key_metadata,
+            key_metadata: link_key_metadata,
             link_uuid,
             metadata,
             parent,
             password: PasswordState::Empty,
-            password_hashed: LINK_EMPTY_PASSWORD_HASH.clone(),
+            password_hashed: &LINK_EMPTY_PASSWORD_HASH,
             link_type: ItemKind::File,
             uuid: file_uuid,
         })
     }
 
-    pub fn from_folder_data<T: HasLocationName + HasUuid, S: Into<String>>(
-        api_key: SecUtf8,
+    pub fn from_folder_data<T: HasLocationName + HasUuid>(
+        api_key: &'dir_link_add SecUtf8,
         folder_data: &T,
         parent: ParentOrBase,
         link_uuid: Uuid,
-        link_key_metadata: S,
+        link_key_metadata: &'dir_link_add str,
         master_keys: &[SecUtf8],
     ) -> Result<Self> {
         let folder_name = folder_data
@@ -194,32 +195,33 @@ impl DirLinkAddRequestPayload {
         )
     }
 
-    pub fn from_folder_name<S: Into<String>>(
-        api_key: SecUtf8,
+    pub fn from_folder_name(
+        api_key: &'dir_link_add SecUtf8,
         folder_uuid: Uuid,
         folder_name: &str,
         parent: ParentOrBase,
         link_uuid: Uuid,
-        link_key_metadata: S,
+        link_key_metadata: &'dir_link_add str,
         master_keys: &[SecUtf8],
     ) -> Result<Self> {
-        let key_metadata: String = link_key_metadata.into();
         let link_key = SecUtf8::from(
-            crypto::decrypt_metadata_str_any_key(&key_metadata, master_keys).context(DecryptLinkKeyMetadataFailed {
-                metadata: key_metadata.clone(),
-            })?,
+            crypto::decrypt_metadata_str_any_key(link_key_metadata, master_keys).context(
+                DecryptLinkKeyMetadataFailed {
+                    metadata: link_key_metadata.to_owned(),
+                },
+            )?,
         );
         let metadata = LocationNameMetadata::encrypt_name_to_metadata(folder_name, &link_key);
         Ok(Self {
             api_key,
             download_btn: DownloadBtnState::Enable,
             expiration: Expire::Never,
-            key_metadata,
+            key_metadata: link_key_metadata,
             link_uuid,
             metadata,
             parent,
             password: PasswordState::Empty,
-            password_hashed: LINK_EMPTY_PASSWORD_HASH.clone(),
+            password_hashed: &LINK_EMPTY_PASSWORD_HASH,
             link_type: ItemKind::Folder,
             uuid: folder_uuid,
         })
@@ -227,11 +229,11 @@ impl DirLinkAddRequestPayload {
 }
 
 /// Used for requests to `DIR_LINK_EDIT_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DirLinkEditRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct DirLinkEditRequestPayload<'dir_link_edit> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'dir_link_edit SecUtf8,
 
     /// Filen sets this to "enable" by default. If user toggled off the 'Enable download button' checkbox,
     /// then this is set to "disable".
@@ -255,11 +257,12 @@ pub struct DirLinkEditRequestPayload {
     /// Linked item ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(DirLinkEditRequestPayload);
+utils::display_from_json_with_lifetime!('dir_link_edit, DirLinkEditRequestPayload);
 
-impl DirLinkEditRequestPayload {
-    pub fn new<S: Into<String>>(
-        api_key: SecUtf8,
+impl<'dir_link_edit> DirLinkEditRequestPayload<'dir_link_edit> {
+    #[must_use]
+    pub fn new(
+        api_key: &'dir_link_edit SecUtf8,
         download_btn: DownloadBtnState,
         item_uuid: Uuid,
         expiration: Expire,
@@ -282,28 +285,28 @@ impl DirLinkEditRequestPayload {
 }
 
 /// Used for requests to `DIR_LINK_REMOVE_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DirLinkRemoveRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct DirLinkRemoveRequestPayload<'dir_link_remove> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'dir_link_remove SecUtf8,
 
     /// Linked folder ID; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(DirLinkRemoveRequestPayload);
+utils::display_from_json_with_lifetime!('dir_link_remove, DirLinkRemoveRequestPayload);
 
 /// Used for requests to `DIR_LINK_STATUS_PATH` endpoint.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct DirLinkStatusRequestPayload {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct DirLinkStatusRequestPayload<'dir_link_status> {
     /// User-associated Filen API key.
     #[serde(rename = "apiKey")]
-    pub api_key: SecUtf8,
+    pub api_key: &'dir_link_status SecUtf8,
 
     /// ID of the item whose link should be checked; hyphenated lowercased UUID V4.
     pub uuid: Uuid,
 }
-utils::display_from_json!(DirLinkStatusRequestPayload);
+utils::display_from_json_with_lifetime!('dir_link_status, DirLinkStatusRequestPayload);
 
 /// Response data for `DIR_LINK_STATUS_PATH` endpoint.
 #[skip_serializing_none]
@@ -360,7 +363,7 @@ pub fn dir_link_add_request(
 /// Filen always creates a link without password first, and optionally sets password later using `dir_link_edit_request`.
 #[cfg(feature = "async")]
 pub async fn dir_link_add_request_async(
-    payload: &DirLinkAddRequestPayload,
+    payload: &DirLinkAddRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_LINK_ADD_PATH, payload, filen_settings)
@@ -383,7 +386,7 @@ pub fn dir_link_edit_request(
 /// Filen always creates a link without password first, and optionally sets password later using this query.
 #[cfg(feature = "async")]
 pub async fn dir_link_edit_request_async(
-    payload: &DirLinkEditRequestPayload,
+    payload: &DirLinkEditRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_LINK_EDIT_PATH, payload, filen_settings)
@@ -402,7 +405,7 @@ pub fn dir_link_remove_request(
 /// Calls `DIR_LINK_REMOVE_PATH` endpoint asynchronously. Used to remove given folder link.
 #[cfg(feature = "async")]
 pub async fn dir_link_remove_request_async(
-    payload: &DirLinkRemoveRequestPayload,
+    payload: &DirLinkRemoveRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(DIR_LINK_REMOVE_PATH, payload, filen_settings)
@@ -421,7 +424,7 @@ pub fn dir_link_status_request(
 /// Calls `DIR_LINK_STATUS_PATH` endpoint asynchronously. Used to check folder link status.
 #[cfg(feature = "async")]
 pub async fn dir_link_status_request_async(
-    payload: &DirLinkStatusRequestPayload,
+    payload: &DirLinkStatusRequestPayload<'_>,
     filen_settings: &FilenSettings,
 ) -> Result<DirLinkStatusResponsePayload> {
     queries::query_filen_api_async(DIR_LINK_STATUS_PATH, payload, filen_settings)
@@ -444,7 +447,7 @@ mod tests {
     #[test]
     fn dir_link_status_request_should_have_proper_contract_for_no_link() {
         let request_payload = DirLinkStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::nil(),
         };
         validate_contract(
@@ -459,7 +462,7 @@ mod tests {
     #[tokio::test]
     async fn dir_link_status_request_async_should_have_proper_contract_for_no_link() {
         let request_payload = DirLinkStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::nil(),
         };
         validate_contract_async(
@@ -476,7 +479,7 @@ mod tests {
     #[test]
     fn dir_link_status_request_should_have_proper_contract_for_link_without_password() {
         let request_payload = DirLinkStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::nil(),
         };
         validate_contract(
@@ -491,7 +494,7 @@ mod tests {
     #[tokio::test]
     async fn dir_link_status_request_async_should_have_proper_contract_for_link_without_password() {
         let request_payload = DirLinkStatusRequestPayload {
-            api_key: API_KEY.clone(),
+            api_key: &API_KEY,
             uuid: Uuid::nil(),
         };
         validate_contract_async(

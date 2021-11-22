@@ -156,7 +156,7 @@ pub fn encrypt_metadata(data: &[u8], key: &[u8], metadata_version: u32) -> Resul
 
 /// Decrypts Filen metadata prefiously encrypted with `encrypt_metadata`/`encrypt_metadata_str` and one of the
 /// given keys. Tries to decrypt using given keys until one of them succeeds.
-pub fn decrypt_metadata_any_key(data: &[u8], keys: &[Vec<u8>]) -> Result<Vec<u8>> {
+pub fn decrypt_metadata_any_key(data: &[u8], keys: &[&[u8]]) -> Result<Vec<u8>> {
     if data.is_empty() {
         return Ok(vec![0_u8; 0]);
     }
@@ -245,10 +245,7 @@ pub fn decrypt_metadata_str_any_key(data: &str, keys: &[SecUtf8]) -> Result<Stri
         return Ok(String::new());
     }
 
-    let keys = keys
-        .iter()
-        .map(|key| key.unsecure().as_bytes().to_vec())
-        .collect::<Vec<Vec<u8>>>();
+    let keys = keys.iter().map(|key| key.unsecure().as_bytes()).collect::<Vec<&[u8]>>();
     decrypt_metadata_any_key(data.as_bytes(), &keys)
         .and_then(|bytes| String::from_utf8(bytes).context(DecryptedMetadataIsNotUtf8 {}))
 }
@@ -622,9 +619,9 @@ mod tests {
 
     #[test]
     fn decrypt_metadata_v2_should_work_with_several_keys() {
-        let m_key_1 = hash_fn("invalid key").into_bytes();
-        let m_key_2 = hash_fn("test").into_bytes();
-        let m_keys = [m_key_1, m_key_2];
+        let m_key_1 = hash_fn("invalid key");
+        let m_key_2 = hash_fn("test");
+        let m_keys = [m_key_1.as_bytes(), m_key_2.as_bytes()];
         let encrypted_metadata = "002CWAZWUt8h5n0Il13bkeirz7uY05vmrO58ZXemzaIGnmy+iLe95hXtwiAWHF4s\
         9+g7gcj3LmwykWnZzUEZIAu8zIEyqe2J//iKaZOJMSIqGIg05GvVBl9INeqf2ACU7wRE9P7tCI5tKqgEWG/sMqRwPGwbNN\
         rn3yI8McEqCBdPWNfi6gl8OwzcqUVnMKZI/DPVSkUZQpaN83zCtA=";
