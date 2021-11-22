@@ -28,7 +28,7 @@ pub static STANDARD_SETTINGS_BUNDLE: Lazy<SettingsBundle> = Lazy::new(|| Setting
     retry: *STANDARD_RETRIES,
 });
 
-/// Groups together several settings which can be used for API queries, when just FilenSettings does not cut it.
+/// Groups together several settings which can be used for API queries, when just `FilenSettings` does not cut it.
 ///
 /// Default instance performs no retries.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -45,8 +45,8 @@ impl Default for SettingsBundle {
     /// Default Filen settings, and retry settings which perform no retries.
     fn default() -> Self {
         Self {
-            filen: Default::default(),
-            retry: Default::default(),
+            filen: FilenSettings::default(),
+            retry: RetrySettings::default(),
         }
     }
 }
