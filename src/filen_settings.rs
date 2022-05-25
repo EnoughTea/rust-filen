@@ -12,11 +12,13 @@ pub static DEFAULT_FILEN_SETTINGS: Lazy<FilenSettings> = Lazy::new(FilenSettings
 static DEFAULT_API_SERVERS: Lazy<Vec<Url>> = Lazy::new(|| {
     vec![
         Url::parse("https://api.filen.io/").unwrap(),
-        Url::parse("https://api.filen-1.xyz/").unwrap(),
-        Url::parse("https://api.filen-2.xyz/").unwrap(),
-        Url::parse("https://api.filen-3.xyz/").unwrap(),
-        Url::parse("https://api.filen-4.xyz/").unwrap(),
-        Url::parse("https://api.filen-5.xyz/").unwrap(),
+        Url::parse("https://api.filen.net/").unwrap(),
+        Url::parse("https://api.filen-1.net/").unwrap(),
+        Url::parse("https://api.filen-2.net/").unwrap(),
+        Url::parse("https://api.filen-3.net/").unwrap(),
+        Url::parse("https://api.filen-4.net/").unwrap(),
+        Url::parse("https://api.filen-5.net/").unwrap(),
+        Url::parse("https://api.filen-6.net/").unwrap(),
     ]
 });
 
@@ -24,11 +26,13 @@ static DEFAULT_API_SERVERS: Lazy<Vec<Url>> = Lazy::new(|| {
 static DEFAULT_DOWNLOAD_SERVERS: Lazy<Vec<Url>> = Lazy::new(|| {
     vec![
         Url::parse("https://down.filen.io/").unwrap(),
-        Url::parse("https://down.filen-1.xyz/").unwrap(),
-        Url::parse("https://down.filen-2.xyz/").unwrap(),
-        Url::parse("https://down.filen-3.xyz/").unwrap(),
-        Url::parse("https://down.filen-4.xyz/").unwrap(),
-        Url::parse("https://down.filen-5.xyz/").unwrap(),
+        Url::parse("https://down.filen.net/").unwrap(),
+        Url::parse("https://down.filen-1.net/").unwrap(),
+        Url::parse("https://down.filen-2.net/").unwrap(),
+        Url::parse("https://down.filen-3.net/").unwrap(),
+        Url::parse("https://down.filen-4.net/").unwrap(),
+        Url::parse("https://down.filen-5.net/").unwrap(),
+        Url::parse("https://down.filen-6.net/").unwrap(),
     ]
 });
 
@@ -36,11 +40,13 @@ static DEFAULT_DOWNLOAD_SERVERS: Lazy<Vec<Url>> = Lazy::new(|| {
 static DEFAULT_UPLOAD_SERVERS: Lazy<Vec<Url>> = Lazy::new(|| {
     vec![
         Url::parse("https://up.filen.io/").unwrap(),
-        Url::parse("https://up.filen-1.xyz/").unwrap(),
-        Url::parse("https://up.filen-2.xyz/").unwrap(),
-        Url::parse("https://up.filen-3.xyz/").unwrap(),
-        Url::parse("https://up.filen-4.xyz/").unwrap(),
-        Url::parse("https://up.filen-5.xyz/").unwrap(),
+        Url::parse("https://up.filen.net/").unwrap(),
+        Url::parse("https://up.filen-1.net/").unwrap(),
+        Url::parse("https://up.filen-2.net/").unwrap(),
+        Url::parse("https://up.filen-3.net/").unwrap(),
+        Url::parse("https://up.filen-4.net/").unwrap(),
+        Url::parse("https://up.filen-5.net/").unwrap(),
+        Url::parse("https://up.filen-6.net/").unwrap(),
     ]
 });
 
