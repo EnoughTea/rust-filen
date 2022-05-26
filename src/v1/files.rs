@@ -203,10 +203,11 @@ impl FileProperties {
         let decoded = base64::decode(metadata).context(CannotDecodeBase64MetadataSnafu {
             metadata: metadata.to_owned(),
         })?;
-        let decrypted =
-            crypto::decrypt_rsa(&decoded, rsa_private_key_bytes.unsecure()).context(DecryptFileMetadataRsaFailedSnafu {
+        let decrypted = crypto::decrypt_rsa(&decoded, rsa_private_key_bytes.unsecure()).context(
+            DecryptFileMetadataRsaFailedSnafu {
                 metadata: metadata.to_owned(),
-            })?;
+            },
+        )?;
         serde_json::from_slice::<Self>(&decrypted).context(DeserializeFileMetadataFailedSnafu {
             metadata: metadata.to_owned(),
         })

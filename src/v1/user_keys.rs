@@ -347,7 +347,8 @@ pub fn user_public_key_get_request(
     payload: &UserPublicKeyGetRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserPublicKeyGetResponsePayload> {
-    queries::query_filen_api(USER_PUBLIC_KEY_GET_PATH, payload, filen_settings).context(UserPublicKeyGetQueryFailedSnafu {})
+    queries::query_filen_api(USER_PUBLIC_KEY_GET_PATH, payload, filen_settings)
+        .context(UserPublicKeyGetQueryFailedSnafu {})
 }
 
 /// Calls `USER_PUBLIC_KEY_GET_PATH` endpoint asynchronously. Used to get any user's RSA public key.

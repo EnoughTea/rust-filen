@@ -341,7 +341,9 @@ pub fn decrypt_master_keys_metadata(master_keys_metadata: &str, last_master_key:
 /// using one of the specified master keys.
 pub fn decrypt_private_key_metadata(private_key_metadata: &str, master_keys: &[SecUtf8]) -> Result<SecVec<u8>> {
     fn decode_base64_to_secvec(string: &str) -> Result<SecVec<u8>> {
-        base64::decode(string).context(CannotDecodeBase64Snafu {}).map(SecVec::from)
+        base64::decode(string)
+            .context(CannotDecodeBase64Snafu {})
+            .map(SecVec::from)
     }
 
     ensure!(
@@ -366,8 +368,11 @@ pub fn encrypt_rsa(data: &[u8], public_key: &[u8]) -> Result<Vec<u8>> {
 /// Decrypts data prefiously encrypted with `encrypt_rsa` using PKCS#8 private key in ASN.1 DER-encoded format.
 pub fn decrypt_rsa(data: &[u8], private_key: &[u8]) -> Result<Vec<u8>> {
     let padding = rsa::PaddingScheme::new_oaep::<sha2::Sha512>();
-    let private_key = rsa::RsaPrivateKey::from_pkcs8_der(private_key).context(RsaCannotDeserializePrivateKeySnafu {})?;
-    private_key.decrypt(padding, data).context(RsaPkcs8CannotDecryptDataSnafu {})
+    let private_key =
+        rsa::RsaPrivateKey::from_pkcs8_der(private_key).context(RsaCannotDeserializePrivateKeySnafu {})?;
+    private_key
+        .decrypt(padding, data)
+        .context(RsaPkcs8CannotDecryptDataSnafu {})
 }
 
 /// Creates Filen's public link password from the given plain text password,
@@ -484,7 +489,9 @@ fn decrypt_aes_gcm_from_iv_and_bytes(key: &[u8], iv: &[u8], encrypted: &[u8]) ->
     let derived_key = derive_key_from_password_256(key, key, 1);
     let cipher = Aes256Gcm::new(Key::from_slice(&derived_key));
     let nonce = Nonce::from_slice(iv);
-    cipher.decrypt(nonce, encrypted).context(AesGcmCannotDecipherDataSnafu {})
+    cipher
+        .decrypt(nonce, encrypted)
+        .context(AesGcmCannotDecipherDataSnafu {})
 }
 
 fn extract_aes_gcm_iv_and_message(data: &[u8]) -> Result<(&[u8], &[u8])> {

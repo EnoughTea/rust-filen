@@ -133,7 +133,8 @@ impl<'sync_client_message> SyncClientMessageRequestPayload<'sync_client_message>
 
 /// Calls `CURRENT_VERSIONS_PATH` endpoint. Used to fetch latest Filen client versions.
 pub fn current_versions_request(filen_settings: &FilenSettings) -> Result<CurrentVersionsResponsePayload> {
-    queries::query_filen_api(CURRENT_VERSIONS_PATH, &json!(""), filen_settings).context(CurrentVersionsQueryFailedSnafu {})
+    queries::query_filen_api(CURRENT_VERSIONS_PATH, &json!(""), filen_settings)
+        .context(CurrentVersionsQueryFailedSnafu {})
 }
 
 /// Calls `CURRENT_VERSIONS_PATH` endpoint asynchronously. Used to fetch latest Filen client versions.
@@ -187,7 +188,8 @@ pub fn sync_client_message_request(
     payload: &SyncClientMessageRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(SYNC_CLIENT_MESSAGE_PATH, payload, filen_settings).context(SyncClientMessageQueryFailedSnafu {})
+    queries::query_filen_api(SYNC_CLIENT_MESSAGE_PATH, payload, filen_settings)
+        .context(SyncClientMessageQueryFailedSnafu {})
 }
 
 /// Calls `SYNC_CLIENT_MESSAGE_PATH` endpoint asynchronously. Used to pass data to Filen client.
