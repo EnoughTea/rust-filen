@@ -90,7 +90,7 @@ impl FromStr for ContentKind {
         } else {
             match Uuid::parse_str(trash_or_id) {
                 Ok(uuid) => Ok(Self::Folder(uuid)),
-                Err(_) => CannotParseContentKindFromString {
+                Err(_) => CannotParseContentKindFromStringSnafu {
                     string_length: trash_or_id.len(),
                 }
                 .fail(),
@@ -676,7 +676,7 @@ pub fn user_base_folders_request(
     payload: &UserBaseFoldersRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserBaseFoldersResponsePayload> {
-    queries::query_filen_api(USER_BASE_FOLDERS_PATH, payload, filen_settings).context(UserBaseFoldersQueryFailed {})
+    queries::query_filen_api(USER_BASE_FOLDERS_PATH, payload, filen_settings).context(UserBaseFoldersQueryFailedSnafu {})
 }
 
 /// Calls `USER_BASE_FOLDERS_PATH` endpoint asynchronously.
@@ -698,7 +698,7 @@ pub async fn user_base_folders_request_async(
 /// created by Filen's client.
 pub fn user_dirs_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<UserDirsResponsePayload> {
     queries::query_filen_api(USER_DIRS_PATH, &utils::api_key_json(api_key), filen_settings)
-        .context(UserDirsQueryFailed {})
+        .context(UserDirsQueryFailedSnafu {})
 }
 
 /// Calls `USER_DIRS_PATH` endpoint asynchronously. Used to get a list of user's folders.
@@ -720,7 +720,7 @@ pub fn dir_content_request(
     payload: &DirContentRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<DirContentResponsePayload> {
-    queries::query_filen_api(DIR_CONTENT_PATH, payload, filen_settings).context(DirContentQueryFailed {})
+    queries::query_filen_api(DIR_CONTENT_PATH, payload, filen_settings).context(DirContentQueryFailedSnafu {})
 }
 
 /// Calls `DIR_CONTENT_PATH` endpoint asynchronously. Used to get a paginated set of user's files and folders in a way
@@ -740,7 +740,7 @@ pub fn dir_create_request(
     payload: &DirCreateRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(DIR_CREATE_PATH, payload, filen_settings).context(DirCreateQueryFailed {})
+    queries::query_filen_api(DIR_CREATE_PATH, payload, filen_settings).context(DirCreateQueryFailedSnafu {})
 }
 
 /// Calls `DIR_CREATE_PATH` endpoint asynchronously. Creates parentless 'base' folder.
@@ -759,7 +759,7 @@ pub fn dir_sub_create_request(
     payload: &DirSubCreateRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(DIR_SUB_CREATE_PATH, payload, filen_settings).context(DirSubCreateQueryFailed {})
+    queries::query_filen_api(DIR_SUB_CREATE_PATH, payload, filen_settings).context(DirSubCreateQueryFailedSnafu {})
 }
 
 /// Calls `DIR_SUB_CREATE_PATH` endpoint asynchronously. Creates a new folder within the given parent folder.
@@ -779,7 +779,7 @@ pub fn dir_exists_request(
     payload: &LocationExistsRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<LocationExistsResponsePayload> {
-    queries::query_filen_api(DIR_EXISTS_PATH, payload, filen_settings).context(DirExistsQueryFailed {})
+    queries::query_filen_api(DIR_EXISTS_PATH, payload, filen_settings).context(DirExistsQueryFailedSnafu {})
 }
 
 /// Calls `DIR_EXISTS_PATH` endpoint asynchronously.
@@ -804,7 +804,7 @@ pub fn dir_move_request(
     payload: &DirMoveRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(DIR_MOVE_PATH, payload, filen_settings).context(DirMoveQueryFailed {})
+    queries::query_filen_api(DIR_MOVE_PATH, payload, filen_settings).context(DirMoveQueryFailedSnafu {})
 }
 
 /// Calls `DIR_MOVE_PATH` endpoint asynchronously.
@@ -830,7 +830,7 @@ pub fn dir_rename_request(
     payload: &DirRenameRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(DIR_RENAME_PATH, payload, filen_settings).context(DirRenameQueryFailed {})
+    queries::query_filen_api(DIR_RENAME_PATH, payload, filen_settings).context(DirRenameQueryFailedSnafu {})
 }
 
 /// Calls `DIR_RENAME_PATH` endpoint asynchronously.
@@ -851,7 +851,7 @@ pub fn dir_restore_request(
     payload: &DirRestoreRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(DIR_RESTORE_PATH, payload, filen_settings).context(DirRestoreQueryFailed {})
+    queries::query_filen_api(DIR_RESTORE_PATH, payload, filen_settings).context(DirRestoreQueryFailedSnafu {})
 }
 
 /// Calls `DIR_RESTORE_PATH` endpoint asynchronously. Used to restore folder from the 'trash' folder.
@@ -872,7 +872,7 @@ pub fn dir_trash_request(
     payload: &LocationTrashRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(DIR_TRASH_PATH, payload, filen_settings).context(DirTrashQueryFailed {})
+    queries::query_filen_api(DIR_TRASH_PATH, payload, filen_settings).context(DirTrashQueryFailedSnafu {})
 }
 
 /// Calls `DIR_TRASH_PATH` endpoint asynchronously.

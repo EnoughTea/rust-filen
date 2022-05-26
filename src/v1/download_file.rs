@@ -17,26 +17,31 @@ const ASYNC_CHUNK_BATCH_SIZE: usize = 16; // Is it a good idea to simply hardcod
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("Cannot download file chunk '{}': {}", location, source))]
+    #[snafu(display("Cannot download file chunk '{}': {}", chunk_location, source))]
     CannotDownloadFileChunk {
-        location: FileChunkLocation,
+        chunk_location: FileChunkLocation,
         source: queries::Error,
     },
 
-    #[snafu(display("Writer could not write file chunk '{}' ({} bytes): {}", location, length, source))]
+    #[snafu(display(
+        "Writer could not write file chunk '{}' ({} bytes): {}",
+        chunk_location,
+        length,
+        source
+    ))]
     CannotWriteFileChunk {
         length: usize,
-        location: FileChunkLocation,
+        chunk_location: FileChunkLocation,
         source: std::io::Error,
     },
 
     #[snafu(display("Writer could not be flushed: {}", source))]
     CannotFlushWriter { source: std::io::Error },
 
-    #[snafu(display("Cannot decrypt file chunk {} ({} bytes): {}", location, length, source))]
+    #[snafu(display("Cannot decrypt file chunk {} ({} bytes): {}", chunk_location, length, source))]
     CannotDecryptFileChunk {
         length: usize,
-        location: FileChunkLocation,
+        chunk_location: FileChunkLocation,
         source: crypto::Error,
     },
 
@@ -115,8 +120,8 @@ impl fmt::Display for FileChunkLocation {
 /// Download server endpoint is <filen download server>/<region>/<bucket>/<file uuid>/<chunk index>
 pub fn download_file_chunk(file_chunk_location: &FileChunkLocation, filen_settings: &FilenSettings) -> Result<Vec<u8>> {
     let api_endpoint = utils::filen_file_location_to_api_endpoint(file_chunk_location);
-    queries::download_from_filen(&api_endpoint, filen_settings).context(CannotDownloadFileChunk {
-        location: file_chunk_location.clone(),
+    queries::download_from_filen(&api_endpoint, filen_settings).context(CannotDownloadFileChunkSnafu {
+        chunk_location: file_chunk_location.clone(),
     })
 }
 
@@ -205,24 +210,24 @@ pub fn download_and_decrypt_file<W: Write>(
                 .unsecure()
                 .as_bytes()
                 .try_into()
-                .context(InvalidFileKeySize {})?;
+                .context(InvalidFileKeySizeSnafu {})?;
             let decrypted_bytes = crypto::decrypt_file_chunk(&encrypted_bytes, file_key_bytes, version).context(
-                CannotDecryptFileChunk {
+                CannotDecryptFileChunkSnafu {
                     length: encrypted_bytes.len(),
-                    location: file_chunk_location.clone(),
+                    chunk_location: file_chunk_location.clone(),
                 },
             )?;
             writer
                 .write_all(&decrypted_bytes)
                 .map(|_| encrypted_bytes.len() as u64)
-                .context(CannotWriteFileChunk {
+                .context(CannotWriteFileChunkSnafu {
                     length: decrypted_bytes.len(),
-                    location: file_chunk_location,
+                    chunk_location: file_chunk_location,
                 })
         })
         .collect::<Result<Vec<u64>>>()?;
 
-    writer.flush().context(CannotFlushWriter {})?;
+    writer.flush().context(CannotFlushWriterSnafu {})?;
     Ok(written_chunk_lengths.iter().sum::<u64>())
 }
 

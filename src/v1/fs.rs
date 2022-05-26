@@ -78,19 +78,19 @@ impl FromStr for Expire {
         if never_or_duration.eq_ignore_ascii_case("never") {
             Ok(Self::Never)
         } else if never_or_duration.len() < 2 {
-            DurationIsTooShort {
+            DurationIsTooShortSnafu {
                 value: never_or_duration.to_owned(),
             }
             .fail()
         } else {
             let (raw_value, unit) = never_or_duration.split_at(never_or_duration.len() - 1);
-            let value = str::parse::<u32>(raw_value).context(DurationValueIsNotNum {
+            let value = str::parse::<u32>(raw_value).context(DurationValueIsNotNumSnafu {
                 value: never_or_duration,
             })?;
             match unit {
                 "d" => Ok(Self::Days(value)),
                 "h" => Ok(Self::Hours(value)),
-                other => DurationUnitUnsupported { unit: other.to_owned() }.fail(),
+                other => DurationUnitUnsupportedSnafu { unit: other.to_owned() }.fail(),
             }
         }
     }
@@ -231,7 +231,7 @@ impl LocationNameMetadata {
         }
 
         let decrypted_name_result =
-            crypto::decrypt_metadata_str_any_key(name_metadata, keys).context(DecryptLocationNameFailed {
+            crypto::decrypt_metadata_str_any_key(name_metadata, keys).context(DecryptLocationNameFailedSnafu {
                 metadata: name_metadata.to_owned(),
             });
 
@@ -246,11 +246,11 @@ impl LocationNameMetadata {
             return Ok("Default".to_owned());
         }
 
-        let decoded = base64::decode(name_metadata).context(CannotDecodeBase64Metadata {
+        let decoded = base64::decode(name_metadata).context(CannotDecodeBase64MetadataSnafu {
             metadata: name_metadata.to_owned(),
         })?;
         let decrypted_folder_properties_json = crypto::decrypt_rsa(&decoded, rsa_private_key_bytes.unsecure())
-            .context(DecryptLocationNameFailed {
+            .context(DecryptLocationNameFailedSnafu {
                 metadata: name_metadata.to_owned(),
             })?;
 
@@ -275,7 +275,7 @@ impl LocationNameMetadata {
 
     pub(crate) fn extract_name_from_folder_properties_json(folder_properties_json_bytes: &[u8]) -> Result<String> {
         serde_json::from_slice::<Self>(folder_properties_json_bytes)
-            .context(DeserializeLocationNameFailed {})
+            .context(DeserializeLocationNameFailedSnafu {})
             .map(|typed| typed.name)
     }
 }
@@ -415,11 +415,11 @@ pub trait HasLinkKey {
     fn decrypt_link_key(&self, master_keys: &[SecUtf8]) -> Result<SecUtf8> {
         match self.link_key_metadata_ref() {
             Some(link_key_metadata) => crypto::decrypt_metadata_str_any_key(link_key_metadata, master_keys)
-                .context(DecryptLinkKeyFailed {
+                .context(DecryptLinkKeyFailedSnafu {
                     metadata: link_key_metadata.to_owned(),
                 })
                 .map(SecUtf8::from),
-            None => BadArgument {
+            None => BadArgumentSnafu {
                 message: "link key metadata is absent, cannot decrypt None",
             }
             .fail(),
@@ -524,7 +524,7 @@ impl FromStr for ParentOrBase {
         } else {
             match Uuid::parse_str(base_or_id) {
                 Ok(uuid) => Ok(Self::Folder(uuid)),
-                Err(_) => CannotParseParentOrBaseFromString {
+                Err(_) => CannotParseParentOrBaseFromStringSnafu {
                     string_length: base_or_id.len(),
                 }
                 .fail(),
@@ -598,7 +598,7 @@ impl FromStr for ParentOrNone {
         } else {
             match Uuid::parse_str(none_or_id) {
                 Ok(uuid) => Ok(Self::Folder(uuid)),
-                Err(_) => CannotParseParentOrNoneFromString {
+                Err(_) => CannotParseParentOrNoneFromStringSnafu {
                     string_length: none_or_id.len(),
                 }
                 .fail(),

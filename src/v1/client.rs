@@ -126,14 +126,14 @@ impl<'sync_client_message> SyncClientMessageRequestPayload<'sync_client_message>
         data: T,
         last_master_key: &SecUtf8,
     ) -> Result<Self> {
-        let json_value = serde_json::to_value(&data).context(CannotSerializeDataToJson {})?;
+        let json_value = serde_json::to_value(&data).context(CannotSerializeDataToJsonSnafu {})?;
         Ok(Self::from_json(api_key, &json_value, last_master_key))
     }
 }
 
 /// Calls `CURRENT_VERSIONS_PATH` endpoint. Used to fetch latest Filen client versions.
 pub fn current_versions_request(filen_settings: &FilenSettings) -> Result<CurrentVersionsResponsePayload> {
-    queries::query_filen_api(CURRENT_VERSIONS_PATH, &json!(""), filen_settings).context(CurrentVersionsQueryFailed {})
+    queries::query_filen_api(CURRENT_VERSIONS_PATH, &json!(""), filen_settings).context(CurrentVersionsQueryFailedSnafu {})
 }
 
 /// Calls `CURRENT_VERSIONS_PATH` endpoint asynchronously. Used to fetch latest Filen client versions.
@@ -149,7 +149,7 @@ pub fn dir_color_change_request(
     payload: &DirColorChangeRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(DIR_COLOR_CHANGE_PATH, payload, filen_settings).context(DirColorChangeQueryFailed {})
+    queries::query_filen_api(DIR_COLOR_CHANGE_PATH, payload, filen_settings).context(DirColorChangeQueryFailedSnafu {})
 }
 
 /// Calls `DIR_COLOR_CHANGE_PATH` endpoint asynchronously.
@@ -168,7 +168,7 @@ pub fn item_favorite_request(
     payload: &ItemFavoriteRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(ITEM_FAVORITE_PATH, payload, filen_settings).context(ItemFavoriteQueryFailed {})
+    queries::query_filen_api(ITEM_FAVORITE_PATH, payload, filen_settings).context(ItemFavoriteQueryFailedSnafu {})
 }
 
 /// Calls `ITEM_FAVORITE_PATH` endpoint asynchronously.
@@ -187,7 +187,7 @@ pub fn sync_client_message_request(
     payload: &SyncClientMessageRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(SYNC_CLIENT_MESSAGE_PATH, payload, filen_settings).context(SyncClientMessageQueryFailed {})
+    queries::query_filen_api(SYNC_CLIENT_MESSAGE_PATH, payload, filen_settings).context(SyncClientMessageQueryFailedSnafu {})
 }
 
 /// Calls `SYNC_CLIENT_MESSAGE_PATH` endpoint asynchronously. Used to pass data to Filen client.
@@ -204,7 +204,7 @@ pub async fn sync_client_message_request_async(
 /// Calls `TRASH_EMPTY_PATH` endpoint. Used to permanently delete all files in the 'Trash' folder.
 pub fn trash_empty_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<PlainResponsePayload> {
     queries::query_filen_api(TRASH_EMPTY_PATH, &utils::api_key_json(api_key), filen_settings)
-        .context(TrashEmptyQueryFailed {})
+        .context(TrashEmptyQueryFailedSnafu {})
 }
 
 /// Calls `TRASH_EMPTY_PATH` endpoint asynchronously. Used to permanently delete all files in the 'Trash' folder.

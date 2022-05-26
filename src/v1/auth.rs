@@ -118,7 +118,7 @@ impl AuthInfoResponseData {
                     &filen_salt,
                 ))
             }
-            _ => UnsupportedAuthVersion {
+            _ => UnsupportedAuthVersionSnafu {
                 version: self.auth_version,
             }
             .fail(),
@@ -199,7 +199,7 @@ pub fn auth_info_request(
     payload: &AuthInfoRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<AuthInfoResponsePayload> {
-    queries::query_filen_api(AUTH_INFO_PATH, payload, filen_settings).context(AuthInfoQueryFailed {})
+    queries::query_filen_api(AUTH_INFO_PATH, payload, filen_settings).context(AuthInfoQueryFailedSnafu {})
 }
 
 /// Calls `AUTH_INFO_PATH` endpoint asynchronously. Used to get used auth version and Filen salt.
@@ -215,7 +215,7 @@ pub async fn auth_info_request_async(
 
 /// Calls `LOGIN_PATH` endpoint. Used to get API key, master keys and private key.
 pub fn login_request(payload: &LoginRequestPayload, filen_settings: &FilenSettings) -> Result<LoginResponsePayload> {
-    queries::query_filen_api(LOGIN_PATH, payload, filen_settings).context(LoginQueryFailed {
+    queries::query_filen_api(LOGIN_PATH, payload, filen_settings).context(LoginQueryFailedSnafu {
         auth_version: payload.auth_version,
     })
 }

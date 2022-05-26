@@ -322,7 +322,7 @@ pub fn user_get_account_request(
     filen_settings: &FilenSettings,
 ) -> Result<UserGetAccountResponsePayload> {
     queries::query_filen_api(USER_GET_ACCOUNT_PATH, &utils::api_key_json(api_key), filen_settings)
-        .context(UserGetAccountQueryFailed {})
+        .context(UserGetAccountQueryFailedSnafu {})
 }
 
 /// Calls `USER_GET_ACCOUNT_PATH` endpoint asynchronously.
@@ -343,7 +343,7 @@ pub fn user_get_settings_request(
     filen_settings: &FilenSettings,
 ) -> Result<UserGetSettingsResponsePayload> {
     queries::query_filen_api(USER_GET_SETTINGS_PATH, &utils::api_key_json(api_key), filen_settings)
-        .context(UserGetSettingsQueryFailed {})
+        .context(UserGetSettingsQueryFailedSnafu {})
 }
 
 /// Calls `USER_GET_SETTINGS_PATH` endpoint asynchronously.
@@ -361,7 +361,7 @@ pub async fn user_get_settings_request_async(
 /// Calls `USER_INFO_PATH` endpoint.
 pub fn user_info_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<UserInfoResponsePayload> {
     queries::query_filen_api(USER_INFO_PATH, &utils::api_key_json(api_key), filen_settings)
-        .context(UserInfoQueryFailed {})
+        .context(UserInfoQueryFailedSnafu {})
 }
 
 /// Calls `USER_INFO_PATH` endpoint asynchronously.

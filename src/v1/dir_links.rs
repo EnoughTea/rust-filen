@@ -129,7 +129,7 @@ impl<'dir_link_add> DirLinkAddRequestPayload<'dir_link_add> {
     ) -> Result<Self> {
         let file_properties = file_data
             .decrypt_file_metadata(master_keys)
-            .context(DecryptFileMetadataFailed {})?;
+            .context(DecryptFileMetadataFailedSnafu {})?;
         Self::from_file_properties(
             api_key,
             *file_data.uuid_ref(),
@@ -152,7 +152,7 @@ impl<'dir_link_add> DirLinkAddRequestPayload<'dir_link_add> {
     ) -> Result<Self> {
         let link_key = SecUtf8::from(
             crypto::decrypt_metadata_str_any_key(link_key_metadata, master_keys).context(
-                DecryptLinkKeyMetadataFailed {
+                DecryptLinkKeyMetadataFailedSnafu {
                     metadata: link_key_metadata.to_owned(),
                 },
             )?,
@@ -183,7 +183,7 @@ impl<'dir_link_add> DirLinkAddRequestPayload<'dir_link_add> {
     ) -> Result<Self> {
         let folder_name = folder_data
             .decrypt_name_metadata(master_keys)
-            .context(DecryptLocationNameFailed {})?;
+            .context(DecryptLocationNameFailedSnafu {})?;
         Self::from_folder_name(
             api_key,
             *folder_data.uuid_ref(),
@@ -206,7 +206,7 @@ impl<'dir_link_add> DirLinkAddRequestPayload<'dir_link_add> {
     ) -> Result<Self> {
         let link_key = SecUtf8::from(
             crypto::decrypt_metadata_str_any_key(link_key_metadata, master_keys).context(
-                DecryptLinkKeyMetadataFailed {
+                DecryptLinkKeyMetadataFailedSnafu {
                     metadata: link_key_metadata.to_owned(),
                 },
             )?,
@@ -355,7 +355,7 @@ pub fn dir_link_add_request(
     payload: &DirLinkAddRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(DIR_LINK_ADD_PATH, payload, filen_settings).context(DirLinkAddQueryFailed {})
+    queries::query_filen_api(DIR_LINK_ADD_PATH, payload, filen_settings).context(DirLinkAddQueryFailedSnafu {})
 }
 
 /// Calls `DIR_LINK_ADD_PATH` endpoint asynchronously. Used to add a folder or a file to a folder link.
@@ -378,7 +378,7 @@ pub fn dir_link_edit_request(
     payload: &DirLinkEditRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(DIR_LINK_EDIT_PATH, payload, filen_settings).context(DirLinkEditQueryFailed {})
+    queries::query_filen_api(DIR_LINK_EDIT_PATH, payload, filen_settings).context(DirLinkEditQueryFailedSnafu {})
 }
 
 /// Calls `DIR_LINK_EDIT_PATH` endpoint asynchronously. Used to edit given folder link.
@@ -399,7 +399,7 @@ pub fn dir_link_remove_request(
     payload: &DirLinkRemoveRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(DIR_LINK_REMOVE_PATH, payload, filen_settings).context(DirLinkRemoveQueryFailed {})
+    queries::query_filen_api(DIR_LINK_REMOVE_PATH, payload, filen_settings).context(DirLinkRemoveQueryFailedSnafu {})
 }
 
 /// Calls `DIR_LINK_REMOVE_PATH` endpoint asynchronously. Used to remove given folder link.
@@ -418,7 +418,7 @@ pub fn dir_link_status_request(
     payload: &DirLinkStatusRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<DirLinkStatusResponsePayload> {
-    queries::query_filen_api(DIR_LINK_STATUS_PATH, payload, filen_settings).context(DirLinkStatusQueryFailed {})
+    queries::query_filen_api(DIR_LINK_STATUS_PATH, payload, filen_settings).context(DirLinkStatusQueryFailedSnafu {})
 }
 
 /// Calls `DIR_LINK_STATUS_PATH` endpoint asynchronously. Used to check folder link status.

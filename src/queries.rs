@@ -113,7 +113,7 @@ pub fn download_from_filen(api_endpoint: &str, filen_settings: &FilenSettings) -
     }
     #[cfg(not(feature = "async"))]
     {
-        response.context(UreqWebRequestFailed {
+        response.context(UreqWebRequestFailedSnafu {
             message: format!("Failed to download file chunk from '{}'", filen_endpoint),
         })
     }
@@ -292,7 +292,7 @@ async fn post_json_async<T: Serialize + ?Sized + Sync>(
 /// Randomly chooses one of the URLs in servers slice and joins it with the given API endpoint path.
 fn produce_filen_endpoint(api_endpoint: &str, servers: &[Url]) -> Result<Url> {
     let chosen_server = choose_filen_server(servers);
-    chosen_server.join(api_endpoint).context(CannotJoinApiEndpoint {
+    chosen_server.join(api_endpoint).context(CannotJoinApiEndpointSnafu {
         api_endpoint,
         chosen_server: chosen_server.to_string(),
     })
@@ -304,12 +304,12 @@ where
     U: DeserializeOwned,
     F: FnOnce() -> String,
 {
-    let response = request_result.context(UreqWebRequestFailed {
+    let response = request_result.context(UreqWebRequestFailedSnafu {
         message: error_message(),
     })?;
     response
         .into_json::<U>()
-        .context(UreqCannotDeserializeResponseBodyJson {})
+        .context(UreqCannotDeserializeResponseBodyJsonSnafu {})
 }
 
 #[cfg(feature = "async")]

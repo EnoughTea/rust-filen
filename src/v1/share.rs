@@ -137,7 +137,7 @@ impl<'share> ShareRequestPayload<'share> {
     ) -> Result<Self> {
         let file_properties = file_data
             .decrypt_file_metadata(master_keys)
-            .context(DecryptFileMetadataFailed {
+            .context(DecryptFileMetadataFailedSnafu {
                 metadata: file_data.file_metadata_ref().to_owned(),
             })?;
         Self::from_file_properties(
@@ -148,7 +148,7 @@ impl<'share> ShareRequestPayload<'share> {
             receiver_email,
             receiver_public_key_bytes,
         )
-        .context(EncryptFileMetadataRsaFailed {
+        .context(EncryptFileMetadataRsaFailedSnafu {
             metadata: file_data.file_metadata_ref().to_owned(),
         })
     }
@@ -182,7 +182,7 @@ impl<'share> ShareRequestPayload<'share> {
     ) -> Result<Self> {
         let folder_name = folder_data
             .decrypt_name_metadata(master_keys)
-            .context(DecryptLocationNameFailed {
+            .context(DecryptLocationNameFailedSnafu {
                 metadata: folder_data.name_metadata_ref().to_owned(),
             })?;
         Self::from_folder_name(
@@ -193,7 +193,7 @@ impl<'share> ShareRequestPayload<'share> {
             receiver_email,
             receiver_public_key_bytes,
         )
-        .context(EncryptFolderMetadataRsaFailed {
+        .context(EncryptFolderMetadataRsaFailedSnafu {
             metadata: folder_data.name_metadata_ref().to_owned(),
         })
     }
@@ -648,7 +648,7 @@ pub fn share_dir_status_request(
     payload: &ShareDirStatusRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<ShareDirStatusResponsePayload> {
-    queries::query_filen_api(SHARE_DIR_STATUS_PATH, payload, filen_settings).context(ShareDirStatusQueryFailed {})
+    queries::query_filen_api(SHARE_DIR_STATUS_PATH, payload, filen_settings).context(ShareDirStatusQueryFailedSnafu {})
 }
 
 /// Calls `SHARE_DIR_STATUS_PATH` endpoint asynchronously. Used to check if given folder is shared and return 'receivers',
@@ -665,7 +665,7 @@ pub async fn share_dir_status_request_async(
 
 /// Calls `SHARE_PATH` endpoint. Used to share a file or folder.
 pub fn share_request(payload: &ShareRequestPayload, filen_settings: &FilenSettings) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(SHARE_PATH, payload, filen_settings).context(ShareQueryFailed {})
+    queries::query_filen_api(SHARE_PATH, payload, filen_settings).context(ShareQueryFailedSnafu {})
 }
 
 /// Calls `SHARE_PATH` endpoint asynchronously. Used to share a file or folder.
@@ -685,7 +685,7 @@ pub fn user_shared_in_request(
     payload: &UserSharedInRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserSharedInOrOutResponsePayload> {
-    queries::query_filen_api(USER_SHARED_IN_PATH, payload, filen_settings).context(UserSharedInQueryFailed {})
+    queries::query_filen_api(USER_SHARED_IN_PATH, payload, filen_settings).context(UserSharedInQueryFailedSnafu {})
 }
 
 /// Calls `USER_SHARED_IN_PATH` endpoint asynchronously.
@@ -706,7 +706,7 @@ pub fn user_shared_out_request(
     payload: &UserSharedOutRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserSharedInOrOutResponsePayload> {
-    queries::query_filen_api(USER_SHARED_OUT_PATH, payload, filen_settings).context(UserSharedOutQueryFailed {})
+    queries::query_filen_api(USER_SHARED_OUT_PATH, payload, filen_settings).context(UserSharedOutQueryFailedSnafu {})
 }
 
 /// Calls `USER_SHARED_OUT_PATH` endpoint asynchronously.
@@ -728,7 +728,7 @@ pub fn user_shared_item_in_remove_request(
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api(USER_SHARED_ITEM_IN_REMOVE_PATH, payload, filen_settings)
-        .context(UserSharedItemInRemoveQueryFailed {})
+        .context(UserSharedItemInRemoveQueryFailedSnafu {})
 }
 
 /// Calls `USER_SHARED_ITEM_IN_REMOVE_PATH` endpoint asynchronously.
@@ -750,7 +750,7 @@ pub fn user_shared_item_out_remove_request(
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api(USER_SHARED_ITEM_OUT_REMOVE_PATH, payload, filen_settings)
-        .context(UserSharedItemOutRemoveQueryFailed {})
+        .context(UserSharedItemOutRemoveQueryFailedSnafu {})
 }
 
 /// Calls `USER_SHARED_ITEM_OUT_REMOVE_PATH` endpoint asynchronously.
@@ -771,7 +771,7 @@ pub fn user_shared_item_rename_request(
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api(USER_SHARED_ITEM_RENAME_PATH, payload, filen_settings)
-        .context(UserSharedItemRenameQueryFailed {})
+        .context(UserSharedItemRenameQueryFailedSnafu {})
 }
 
 /// Calls `USER_SHARED_ITEM_RENAME_PATH` endpoint asynchronously.
@@ -791,7 +791,7 @@ pub fn user_shared_item_status_request(
     filen_settings: &FilenSettings,
 ) -> Result<UserSharedItemStatusResponsePayload> {
     queries::query_filen_api(USER_SHARED_ITEM_STATUS_PATH, payload, filen_settings)
-        .context(UserSharedItemStatusQueryFailed {})
+        .context(UserSharedItemStatusQueryFailedSnafu {})
 }
 
 /// Calls `USER_SHARED_ITEM_STATUS_PATH` endpoint asynchronously.
@@ -817,7 +817,7 @@ pub fn share_file<T: HasFileMetadata + HasUuid>(
 ) -> Result<String> {
     let file_properties = file_data
         .decrypt_file_metadata(master_keys)
-        .context(DecryptFileMetadataFailed {
+        .context(DecryptFileMetadataFailedSnafu {
             metadata: file_data.file_metadata_ref().to_owned(),
         })?;
     let share_payload = ShareRequestPayload::from_file_properties(
@@ -828,14 +828,14 @@ pub fn share_file<T: HasFileMetadata + HasUuid>(
         receiver_email,
         receiver_public_key_bytes,
     )
-    .context(EncryptFileMetadataRsaFailed {
+    .context(EncryptFileMetadataRsaFailedSnafu {
         metadata: file_data.file_metadata_ref().to_owned(),
     })?;
     let response = share_request(&share_payload, filen_settings)?;
     if response.status {
         Ok(response.message.unwrap_or_default())
     } else {
-        CannotShareFile {
+        CannotShareFileSnafu {
             uuid: *file_data.uuid_ref(),
             message: format!("{:?}", response.message),
         }
@@ -896,7 +896,7 @@ pub fn share_folder<T: HasLocationName + HasUuid>(
     if response.status {
         Ok(response.message.unwrap_or_default())
     } else {
-        CannotShareFolder {
+        CannotShareFolderSnafu {
             uuid: *folder_data.uuid_ref(),
             message: format!("{:?}", response.message),
         }
@@ -951,10 +951,10 @@ pub fn share_folder_recursively(
     let contents_response = settings
         .retry
         .call(|| download_dir_request(&content_payload, &settings.filen))
-        .context(DownloadDirRequestFailed {})?;
+        .context(DownloadDirRequestFailedSnafu {})?;
     let contents = contents_response
         .data_ref_or_err()
-        .context(CannotGetUserFolderContents {})?;
+        .context(CannotGetUserFolderContentsSnafu {})?;
     // Share this folder and all sub-folders:
     contents
         .folders

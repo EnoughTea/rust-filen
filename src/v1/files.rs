@@ -134,7 +134,7 @@ impl FileProperties {
     ) -> Result<Self> {
         ensure!(
             size > 0,
-            BadArgument {
+            BadArgumentSnafu {
                 message: "file size should be > 0"
             }
         );
@@ -143,7 +143,7 @@ impl FileProperties {
         let mime = mime_guess.unwrap_or("");
         let last_modified_secs = last_modified
             .duration_since(UNIX_EPOCH)
-            .context(SystemTimeError {})?
+            .context(SystemTimeSnafu {})?
             .as_secs();
         Ok(Self {
             name: name.to_owned(),
@@ -163,14 +163,14 @@ impl FileProperties {
     pub fn from_local_path(local_file_path: &Path) -> Result<Self> {
         match local_file_path.file_name().and_then(std::ffi::OsStr::to_str) {
             Some(file_name) => Self::from_name_and_local_path(file_name, local_file_path),
-            None => FilePathDoesNotContainValidFilename {}.fail(),
+            None => FilePathDoesNotContainValidFilenameSnafu {}.fail(),
         }
     }
 
     /// Fills file properties from local file properties, with a way to change file name.
     /// File key will be randomly generated.
     pub fn from_name_and_local_path(filen_filename: &str, local_file_path: &Path) -> Result<Self> {
-        let fs_metadata = fs::metadata(local_file_path).context(FileSystemMetadataError {})?;
+        let fs_metadata = fs::metadata(local_file_path).context(FileSystemMetadataSnafu {})?;
         let last_modified_time = fs_metadata.modified().unwrap_or_else(|_| SystemTime::now());
         Self::from_name_size_modified(filen_filename, fs_metadata.len(), &last_modified_time)
     }
@@ -178,11 +178,11 @@ impl FileProperties {
     /// Decrypts file properties from metadata string.
     pub fn decrypt_file_metadata(metadata: &str, master_keys: &[SecUtf8]) -> Result<Self> {
         crypto::decrypt_metadata_str_any_key(metadata, master_keys)
-            .context(DecryptFileMetadataFailed {
+            .context(DecryptFileMetadataFailedSnafu {
                 metadata: metadata.to_owned(),
             })
             .and_then(|file_properties_json| {
-                serde_json::from_str::<Self>(&file_properties_json).context(DeserializeFileMetadataFailed {
+                serde_json::from_str::<Self>(&file_properties_json).context(DeserializeFileMetadataFailedSnafu {
                     metadata: metadata.to_owned(),
                 })
             })
@@ -200,14 +200,14 @@ impl FileProperties {
     /// Decrypts file properties from a metadata string using RSA private key.
     /// Assumes given metadata string is base64-encoded.
     pub fn decrypt_file_metadata_rsa(metadata: &str, rsa_private_key_bytes: &SecVec<u8>) -> Result<Self> {
-        let decoded = base64::decode(metadata).context(CannotDecodeBase64Metadata {
+        let decoded = base64::decode(metadata).context(CannotDecodeBase64MetadataSnafu {
             metadata: metadata.to_owned(),
         })?;
         let decrypted =
-            crypto::decrypt_rsa(&decoded, rsa_private_key_bytes.unsecure()).context(DecryptFileMetadataRsaFailed {
+            crypto::decrypt_rsa(&decoded, rsa_private_key_bytes.unsecure()).context(DecryptFileMetadataRsaFailedSnafu {
                 metadata: metadata.to_owned(),
             })?;
-        serde_json::from_slice::<Self>(&decrypted).context(DeserializeFileMetadataFailed {
+        serde_json::from_slice::<Self>(&decrypted).context(DeserializeFileMetadataFailedSnafu {
             metadata: metadata.to_owned(),
         })
     }
@@ -217,7 +217,7 @@ impl FileProperties {
     pub fn encrypt_file_metadata_rsa(file_properties: &Self, rsa_public_key_bytes: &[u8]) -> Result<String> {
         let metadata_json = json!(file_properties).to_string();
         let encrypted = crypto::encrypt_rsa(metadata_json.as_bytes(), rsa_public_key_bytes).context(
-            EncryptFileMetadataRsaFailed {
+            EncryptFileMetadataRsaFailedSnafu {
                 metadata: metadata_json,
             },
         )?;
@@ -370,7 +370,7 @@ pub fn file_archive_request(
     payload: &FileArchiveRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(FILE_ARCHIVE_PATH, payload, filen_settings).context(FileArchieveQueryFailed {})
+    queries::query_filen_api(FILE_ARCHIVE_PATH, payload, filen_settings).context(FileArchieveQueryFailedSnafu {})
 }
 
 /// Calls `FILE_ARCHIVE_PATH` endpoint asynchronously.
@@ -392,7 +392,7 @@ pub fn file_exists_request(
     payload: &LocationExistsRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<LocationExistsResponsePayload> {
-    queries::query_filen_api(FILE_EXISTS_PATH, payload, filen_settings).context(FileExistsQueryFailed {})
+    queries::query_filen_api(FILE_EXISTS_PATH, payload, filen_settings).context(FileExistsQueryFailedSnafu {})
 }
 
 /// Calls `FILE_EXISTS_PATH` endpoint asynchronously.
@@ -417,7 +417,7 @@ pub fn file_move_request(
     payload: &FileMoveRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(FILE_MOVE_PATH, payload, filen_settings).context(FileMoveQueryFailed {})
+    queries::query_filen_api(FILE_MOVE_PATH, payload, filen_settings).context(FileMoveQueryFailedSnafu {})
 }
 
 /// Calls `FILE_MOVE_PATH` endpoint asynchronously.
@@ -443,7 +443,7 @@ pub fn file_rename_request(
     payload: &FileRenameRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(FILE_RENAME_PATH, payload, filen_settings).context(FileRenameQueryFailed {})
+    queries::query_filen_api(FILE_RENAME_PATH, payload, filen_settings).context(FileRenameQueryFailedSnafu {})
 }
 
 /// Calls `FILE_RENAME_PATH` endpoint asynchronously.
@@ -464,7 +464,7 @@ pub fn file_restore_request(
     payload: &FileRestoreRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(FILE_RESTORE_PATH, payload, filen_settings).context(FileRestoreQueryFailed {})
+    queries::query_filen_api(FILE_RESTORE_PATH, payload, filen_settings).context(FileRestoreQueryFailedSnafu {})
 }
 
 /// Calls `FILE_RESTORE_PATH` endpoint asynchronously. Used to restore file from the 'trash' folder.
@@ -485,7 +485,7 @@ pub fn file_trash_request(
     payload: &LocationTrashRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(FILE_TRASH_PATH, payload, filen_settings).context(FileTrashQueryFailed {})
+    queries::query_filen_api(FILE_TRASH_PATH, payload, filen_settings).context(FileTrashQueryFailedSnafu {})
 }
 
 /// Calls `FILE_TRASH_PATH` endpoint asynchronously.
@@ -503,7 +503,7 @@ pub async fn file_trash_request_async(
 
 /// Calls `RM_PATH` endpoint. Used to delete file.
 pub fn rm_request(payload: &RmRequestPayload, filen_settings: &FilenSettings) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(RM_PATH, payload, filen_settings).context(RmQueryFailed {})
+    queries::query_filen_api(RM_PATH, payload, filen_settings).context(RmQueryFailedSnafu {})
 }
 
 /// Calls `RM_PATH` endpoint asynchronously. Used to delete file.
@@ -520,7 +520,7 @@ pub async fn rm_request_async(
 /// Calls `USER_DELETE_ALL_PATH` endpoint. Used to delete *all* user files and folders.
 pub fn user_delete_all_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<UserRecentResponsePayload> {
     queries::query_filen_api(USER_DELETE_ALL_PATH, &utils::api_key_json(api_key), filen_settings)
-        .context(UserDeleteAllQueryFailed {})
+        .context(UserDeleteAllQueryFailedSnafu {})
 }
 
 /// Calls `USER_DELETE_ALL_PATH` endpoint. Used to delete *all* user files and folders.
@@ -537,7 +537,7 @@ pub async fn user_delete_all_request_async(
 /// Calls `USER_RECENT_PATH` endpoint. Used to fetch recent files.
 pub fn user_recent_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<UserRecentResponsePayload> {
     queries::query_filen_api(USER_RECENT_PATH, &utils::api_key_json(api_key), filen_settings)
-        .context(UserRecentQueryFailed {})
+        .context(UserRecentQueryFailedSnafu {})
 }
 
 /// Calls `USER_RECENT_PATH` endpoint asynchronously. Used to fetch recent files.

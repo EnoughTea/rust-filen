@@ -384,16 +384,16 @@ impl FileData {
     /// call.
     pub fn decrypt_name_size_mime(&self, file_key: &SecUtf8) -> Result<FileNameSizeMime> {
         let name =
-            crypto::decrypt_metadata_str(&self.name_metadata, file_key).context(DecryptFileNameMetadataFailed {
+            crypto::decrypt_metadata_str(&self.name_metadata, file_key).context(DecryptFileNameMetadataFailedSnafu {
                 metadata: self.name_metadata.clone(),
             })?;
         let size_string =
-            &crypto::decrypt_metadata_str(&self.size_metadata, file_key).context(DecryptFileSizeMetadataFailed {
+            &crypto::decrypt_metadata_str(&self.size_metadata, file_key).context(DecryptFileSizeMetadataFailedSnafu {
                 metadata: self.size_metadata.clone(),
             })?;
-        let size = str::parse::<u64>(size_string).context(DecryptedSizeIsInvalid { size: size_string })?;
+        let size = str::parse::<u64>(size_string).context(DecryptedSizeIsInvalidSnafu { size: size_string })?;
         let mime =
-            crypto::decrypt_metadata_str(&self.mime_metadata, file_key).context(DecryptFileMimeMetadataFailed {
+            crypto::decrypt_metadata_str(&self.mime_metadata, file_key).context(DecryptFileMimeMetadataFailedSnafu {
                 metadata: self.mime_metadata.clone(),
             })?;
         Ok(FileNameSizeMime { name, size, mime })
@@ -422,7 +422,7 @@ pub fn download_dir_link_request(
     payload: &DownloadDirLinkRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<DownloadDirLinkResponsePayload> {
-    queries::query_filen_api(DOWNLOAD_DIR_LINK_PATH, payload, filen_settings).context(DownloadDirLinkQueryFailed {})
+    queries::query_filen_api(DOWNLOAD_DIR_LINK_PATH, payload, filen_settings).context(DownloadDirLinkQueryFailedSnafu {})
 }
 
 /// Calls `DOWNLOAD_DIR_LINK_PATH` endpoint asynchronously. Used to check contents of a linked folder.
@@ -444,7 +444,7 @@ pub fn download_dir_shared_request(
     payload: &DownloadDirSharedRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<DownloadDirSharedResponsePayload> {
-    queries::query_filen_api(DOWNLOAD_DIR_SHARED_PATH, payload, filen_settings).context(DownloadDirSharedQueryFailed {})
+    queries::query_filen_api(DOWNLOAD_DIR_SHARED_PATH, payload, filen_settings).context(DownloadDirSharedQueryFailedSnafu {})
 }
 
 /// Calls `DOWNLOAD_DIR_SHARED_PATH` endpoint asynchronously. Used to check contents of a 'received' folder:
@@ -466,7 +466,7 @@ pub fn download_dir_request(
     payload: &DownloadDirRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<DownloadDirResponsePayload> {
-    queries::query_filen_api(DOWNLOAD_DIR_PATH, payload, filen_settings).context(DownloadDirQueryFailed {})
+    queries::query_filen_api(DOWNLOAD_DIR_PATH, payload, filen_settings).context(DownloadDirQueryFailedSnafu {})
 }
 
 /// Calls `DOWNLOAD_DIR_PATH` endpoint asynchronously.

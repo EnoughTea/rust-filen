@@ -140,7 +140,7 @@ pub fn file_archive_restore_request(
     filen_settings: &FilenSettings,
 ) -> Result<FileArchiveRestoreResponsePayload> {
     queries::query_filen_api(FILE_ARCHIVE_RESTORE_PATH, payload, filen_settings)
-        .context(FileArchiveRestoreQueryFailed {})
+        .context(FileArchiveRestoreQueryFailedSnafu {})
 }
 
 /// Calls `FILE_ARCHIVE_RESTORE_PATH` endpoint asynchronously. Used to get versions of the given file.
@@ -159,7 +159,7 @@ pub fn file_versions_request(
     payload: &FileVersionsRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<FileVersionsResponsePayload> {
-    queries::query_filen_api(FILE_VERSIONS_PATH, payload, filen_settings).context(FileVersionsQueryFailed {})
+    queries::query_filen_api(FILE_VERSIONS_PATH, payload, filen_settings).context(FileVersionsQueryFailedSnafu {})
 }
 
 /// Calls `FILE_VERSIONS_PATH` endpoint asynchronously. Used to get versions of the given file.

@@ -88,7 +88,7 @@ pub fn user_sync_get_data_request(
     filen_settings: &FilenSettings,
 ) -> Result<UserSyncGetDataResponsePayload> {
     queries::query_filen_api(USER_SYNC_GET_DATA_PATH, &utils::api_key_json(api_key), filen_settings)
-        .context(UserSyncGetDataQueryFailed {})
+        .context(UserSyncGetDataQueryFailedSnafu {})
 }
 
 /// Calls `USER_SYNC_GET_DATA` endpoint asynchronously. Used to fetch user sync storage stats.
@@ -105,7 +105,7 @@ pub async fn user_sync_get_data_request_async(
 /// Calls `USER_USAGE_PATH` endpoint. Used to fetch user general usage stats.
 pub fn user_usage_request(api_key: &SecUtf8, filen_settings: &FilenSettings) -> Result<UserUsageResponsePayload> {
     queries::query_filen_api(USER_USAGE_PATH, &utils::api_key_json(api_key), filen_settings)
-        .context(UserUsageQueryFailed {})
+        .context(UserUsageQueryFailedSnafu {})
 }
 
 /// Calls `USER_USAGE_PATH` endpoint asynchronously. Used to fetch user general usage stats.

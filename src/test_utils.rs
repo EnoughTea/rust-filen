@@ -59,8 +59,8 @@ pub fn project_path() -> Result<Utf8PathBuf> {
     if let Ok(val) = env::var("CARGO_MANIFEST_DIR") {
         Ok(Utf8PathBuf::from(val))
     } else {
-        let curr_dir = env::current_dir().context(CurrentWorkingDirectoryIsUnaccessible {})?;
-        Utf8PathBuf::try_from(curr_dir.clone()).context(FileSystemPathIsNotUtf8 {
+        let curr_dir = env::current_dir().context(CurrentWorkingDirectoryIsUnaccessibleSnafu {})?;
+        Utf8PathBuf::try_from(curr_dir.clone()).context(FileSystemPathIsNotUtf8Snafu {
             path: format!("{:?}", curr_dir),
         })
     }

@@ -57,9 +57,9 @@ pub trait HasMasterKeys {
     fn decrypt_master_keys_metadata(&self, last_master_key: &SecUtf8) -> Result<Vec<SecUtf8>> {
         match self.master_keys_metadata_ref() {
             Some(metadata) => {
-                crypto::decrypt_master_keys_metadata(metadata, last_master_key).context(DecryptMasterKeysFailed {})
+                crypto::decrypt_master_keys_metadata(metadata, last_master_key).context(DecryptMasterKeysFailedSnafu {})
             }
-            None => BadArgument {
+            None => BadArgumentSnafu {
                 message: "master keys metadata is absent, cannot decrypt None",
             }
             .fail(),
@@ -76,9 +76,9 @@ pub trait HasPrivateKey {
     fn decrypt_private_key(&self, master_keys: &[SecUtf8]) -> Result<SecVec<u8>> {
         match self.private_key_metadata_ref() {
             Some(metadata) => {
-                crypto::decrypt_private_key_metadata(metadata, master_keys).context(DecryptPrivateKeyFailed {})
+                crypto::decrypt_private_key_metadata(metadata, master_keys).context(DecryptPrivateKeyFailedSnafu {})
             }
-            None => BadArgument {
+            None => BadArgumentSnafu {
                 message: "private key metadata is absent, cannot decrypt None",
             }
             .fail(),
@@ -94,8 +94,8 @@ pub trait HasPublicKey {
     /// Conveniently decodes base64-encoded public key into bytes.
     fn decode_public_key(&self) -> Result<Vec<u8>> {
         match self.public_key_ref() {
-            Some(key) => base64::decode(key).context(DecodePublicKeyFailed {}),
-            None => BadArgument {
+            Some(key) => base64::decode(key).context(DecodePublicKeyFailedSnafu {}),
+            None => BadArgumentSnafu {
                 message: "public key is absent, cannot decode None",
             }
             .fail(),
@@ -175,7 +175,7 @@ impl<'user_key_pair_update> UserKeyPairUpdateRequestPayload<'user_key_pair_updat
             METADATA_VERSION,
         )
         .map(SecUtf8::from)
-        .context(EncryptPrivateKeyFailed {})?;
+        .context(EncryptPrivateKeyFailedSnafu {})?;
 
         let public_key = base64::encode(public_key_bytes);
         Ok(Self {
@@ -209,14 +209,14 @@ impl<'master_keys_fetch> MasterKeysFetchRequestPayload<'master_keys_fetch> {
 
         ensure!(
             !last_master_key.unsecure().is_empty(),
-            BadArgument {
+            BadArgumentSnafu {
                 message: "given raw master keys should not be empty or last master key should not be empty"
             }
         );
 
         let master_keys_metadata =
             crypto::encrypt_master_keys_metadata(raw_master_keys, last_master_key, super::METADATA_VERSION)
-                .context(EncryptMasterKeysFailed {})?;
+                .context(EncryptMasterKeysFailedSnafu {})?;
 
         Ok(Self {
             api_key,
@@ -285,7 +285,7 @@ pub fn user_key_pair_info_request(
     filen_settings: &FilenSettings,
 ) -> Result<UserKeyPairInfoResponsePayload> {
     queries::query_filen_api(USER_KEY_PAIR_INFO_PATH, &utils::api_key_json(api_key), filen_settings)
-        .context(UserKeyPairInfoQueryFailed {})
+        .context(UserKeyPairInfoQueryFailedSnafu {})
 }
 
 /// Calls `USER_KEY_PAIR_INFO_PATH` endpoint asynchronously. Used to get RSA public/private key pair.
@@ -305,7 +305,7 @@ pub fn user_key_pair_update_request(
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api(USER_KEY_PAIR_UPDATE_PATH, payload, filen_settings)
-        .context(UserKeyPairUpdateQueryFailed {})
+        .context(UserKeyPairUpdateQueryFailedSnafu {})
 }
 
 /// Calls `USER_KEY_PAIR_UPDATE_PATH` endpoint asynchronously. Used to set user's RSA public/private key pair.
@@ -326,7 +326,7 @@ pub fn user_master_keys_request(
     payload: &MasterKeysFetchRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<MasterKeysFetchResponsePayload> {
-    queries::query_filen_api(USER_MASTER_KEYS_PATH, payload, filen_settings).context(UserMasterKeysQueryFailed {})
+    queries::query_filen_api(USER_MASTER_KEYS_PATH, payload, filen_settings).context(UserMasterKeysQueryFailedSnafu {})
 }
 
 /// Calls `USER_MASTER_KEYS_PATH` endpoint asynchronously. Used to get/update user's master keys.
@@ -347,7 +347,7 @@ pub fn user_public_key_get_request(
     payload: &UserPublicKeyGetRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserPublicKeyGetResponsePayload> {
-    queries::query_filen_api(USER_PUBLIC_KEY_GET_PATH, payload, filen_settings).context(UserPublicKeyGetQueryFailed {})
+    queries::query_filen_api(USER_PUBLIC_KEY_GET_PATH, payload, filen_settings).context(UserPublicKeyGetQueryFailedSnafu {})
 }
 
 /// Calls `USER_PUBLIC_KEY_GET_PATH` endpoint asynchronously. Used to get any user's RSA public key.

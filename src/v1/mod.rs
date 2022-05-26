@@ -68,10 +68,10 @@ pub trait FilenResponse<T> {
         if self.status_ref() {
             match self.data_ref() {
                 Some(data) => Ok(data),
-                None => FilenResponseHasNoData {}.fail(),
+                None => FilenResponseHasNoDataSnafu {}.fail(),
             }
         } else {
-            FilenResponseIndicatesFailure {
+            FilenResponseIndicatesFailureSnafu {
                 message: format!("{:?}", self.message_ref()),
             }
             .fail()

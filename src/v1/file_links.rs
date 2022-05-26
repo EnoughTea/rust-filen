@@ -188,7 +188,7 @@ pub fn link_edit_request(
     payload: &LinkEditRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(LINK_EDIT_PATH, payload, filen_settings).context(LinkEditQueryFailed {})
+    queries::query_filen_api(LINK_EDIT_PATH, payload, filen_settings).context(LinkEditQueryFailedSnafu {})
 }
 
 /// Calls `LINK_EDIT_PATH` endpoint asynchronously. Used to edit given file link.
@@ -207,7 +207,7 @@ pub fn link_status_request(
     payload: &LinkStatusRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<LinkStatusResponsePayload> {
-    queries::query_filen_api(LINK_STATUS_PATH, payload, filen_settings).context(LinkStatusQueryFailed {})
+    queries::query_filen_api(LINK_STATUS_PATH, payload, filen_settings).context(LinkStatusQueryFailedSnafu {})
 }
 
 /// Calls `LINK_STATUS_PATH` endpoint asynchronously. Used to check file link status.

@@ -291,7 +291,7 @@ impl FileUploadInfo {
         if locations.len() == self.chunk_responses.len() {
             Ok(locations)
         } else {
-            ChunkUploadResponseMissingData {
+            ChunkUploadResponseMissingDataSnafu {
                 file_upload_info: self.clone(),
             }
             .fail()
@@ -305,7 +305,7 @@ pub fn upload_done_request(
     payload: &UploadDoneRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(UPLOAD_DONE_PATH, payload, filen_settings).context(UploadDoneQueryFailed {})
+    queries::query_filen_api(UPLOAD_DONE_PATH, payload, filen_settings).context(UploadDoneQueryFailedSnafu {})
 }
 
 /// Calls `UPLOAD_DONE_PATH` endpoint asynchronously. Used to mark upload as done after all file chunks
@@ -326,7 +326,7 @@ pub fn upload_stop_request(
     payload: &UploadStopRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<PlainResponsePayload> {
-    queries::query_filen_api(UPLOAD_STOP_PATH, payload, filen_settings).context(UploadStopQueryFailed {})
+    queries::query_filen_api(UPLOAD_STOP_PATH, payload, filen_settings).context(UploadStopQueryFailedSnafu {})
 }
 
 /// Calls `UPLOAD_STOP_PATH` endpoint asynchronously.
@@ -356,10 +356,10 @@ pub fn encrypt_and_upload_chunk(
         .unsecure()
         .as_bytes()
         .try_into()
-        .context(FileKeyShouldHave32Chars {})?;
+        .context(FileKeyShouldHave32CharsSnafu {})?;
 
     let chunk_encrypted =
-        crypto::encrypt_file_chunk(chunk, file_key, upload_properties.version).context(ChunkEncryptionError {
+        crypto::encrypt_file_chunk(chunk, file_key, upload_properties.version).context(ChunkEncryptionSnafu {
             chunk_size: chunk.len(),
             file_key_size: file_key.len(),
             file_version: upload_properties.version,
@@ -371,7 +371,7 @@ pub fn encrypt_and_upload_chunk(
         chunk_encrypted.as_bytes(),
         filen_settings,
     )
-    .context(UploadQueryFailed {
+    .context(UploadQueryFailedSnafu {
         api_endpoint,
         chunk_size,
     })
@@ -425,7 +425,7 @@ pub fn user_unfinished_delete_request(
         &utils::api_key_json(api_key),
         filen_settings,
     )
-    .context(UserUnfinishedDeleteQueryFailed {})
+    .context(UserUnfinishedDeleteQueryFailedSnafu {})
 }
 
 /// Calls `USER_UNFINISHED_DELETE_PATH` endpoint asynchronously. Used to delete all unfinished file uploads.
@@ -487,13 +487,13 @@ pub fn encrypt_and_upload_file<R: Read + Seek>(
                 if mark_done_response.status {
                     Ok(FileUploadInfo::new(upload_properties, chunk_upload_responses))
                 } else {
-                    CouldNotMarkDone {
+                    CouldNotMarkDoneSnafu {
                         message: format!("{:?}", mark_done_response.message),
                     }
                     .fail()
                 }
             } else {
-                DummyChunkNotAccepted {
+                DummyChunkNotAcceptedSnafu {
                     message: dummy_chunk_response
                         .message
                         .unwrap_or_else(|| "unknown reason".to_owned()),
@@ -590,7 +590,7 @@ where
         Some(failed_chunk) => {
             let failure_reason = failed_chunk.message.as_deref().unwrap_or("unknown reason");
             // At least one chunk failed with 'status: false', so fail entire upload, I guess
-            ChunkNotAccepted {
+            ChunkNotAcceptedSnafu {
                 message: failure_reason.to_owned(),
             }
             .fail()
@@ -664,7 +664,7 @@ where
         reader
             .seek(SeekFrom::Start(chunk_pos.start_position))
             .and_then(|_| reader.read_exact(&mut chunk_buf))
-            .context(SeekReadError {})
+            .context(SeekReadSnafu {})
             .map(|_| chunk_processor(chunk_pos, chunk_buf))
     })
 }
@@ -678,7 +678,7 @@ fn send_dummy_chunk(
 ) -> Result<UploadFileChunkResponsePayload> {
     ensure!(
         file_size > 0,
-        BadArgument {
+        BadArgumentSnafu {
             message: "file size should be > 0"
         }
     );

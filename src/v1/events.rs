@@ -121,7 +121,7 @@ impl FromStr for UserEventFilter {
         } else {
             match UserEventKind::from_str(all_or_event_kind) {
                 Ok(user_event_kind) => Ok(Self::Specific(user_event_kind)),
-                Err(_) => CannotParseUserEventFilterFromString {
+                Err(_) => CannotParseUserEventFilterFromStringSnafu {
                     string_length: all_or_event_kind.len(),
                 }
                 .fail(),
@@ -996,7 +996,7 @@ pub fn user_events_request(
     payload: &UserEventsRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserEventsResponsePayload> {
-    queries::query_filen_api(USER_EVENTS_PATH, payload, filen_settings).context(UserEventsQueryFailed {})
+    queries::query_filen_api(USER_EVENTS_PATH, payload, filen_settings).context(UserEventsQueryFailedSnafu {})
 }
 
 /// Calls `USER_EVENTS_PATH` endpoint asynchronously.
@@ -1015,7 +1015,7 @@ pub fn user_events_get_request(
     payload: &UserEventsGetRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserEventsGetResponsePayload> {
-    queries::query_filen_api(USER_EVENTS_GET_PATH, payload, filen_settings).context(UserEventsGetQueryFailed {})
+    queries::query_filen_api(USER_EVENTS_GET_PATH, payload, filen_settings).context(UserEventsGetQueryFailedSnafu {})
 }
 
 /// Calls `USER_EVENTS_GET_PATH` endpoint asynchronously.

@@ -106,7 +106,7 @@ pub fn get_dir_request(
     payload: &GetDirRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<GetDirResponsePayload> {
-    queries::query_filen_api(GET_DIR_PATH, payload, filen_settings).context(GetDirQueryFailed {})
+    queries::query_filen_api(GET_DIR_PATH, payload, filen_settings).context(GetDirQueryFailedSnafu {})
 }
 
 /// Calls `GET_DIR_PATH` endpoint asynchronously. It fetches the entire Filen sync folder contents, with option
