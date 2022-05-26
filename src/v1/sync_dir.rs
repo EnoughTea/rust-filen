@@ -118,7 +118,7 @@ pub async fn get_dir_request_async(
 ) -> Result<GetDirResponsePayload> {
     queries::query_filen_api_async(GET_DIR_PATH, payload, filen_settings)
         .await
-        .context(GetDirQueryFailed {})
+        .context(GetDirQueryFailedSnafu {})
 }
 
 #[cfg(test)]

@@ -199,7 +199,7 @@ pub async fn link_edit_request_async(
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(LINK_EDIT_PATH, payload, filen_settings)
         .await
-        .context(LinkEditQueryFailed {})
+        .context(LinkEditQueryFailedSnafu {})
 }
 
 /// Calls `LINK_STATUS_PATH` endpoint. Used to check file link status.
@@ -218,7 +218,7 @@ pub async fn link_status_request_async(
 ) -> Result<LinkStatusResponsePayload> {
     queries::query_filen_api_async(LINK_STATUS_PATH, payload, filen_settings)
         .await
-        .context(LinkStatusQueryFailed {})
+        .context(LinkStatusQueryFailedSnafu {})
 }
 
 #[cfg(test)]

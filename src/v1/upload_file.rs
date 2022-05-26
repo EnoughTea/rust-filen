@@ -317,7 +317,7 @@ pub async fn upload_done_request_async(
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(UPLOAD_DONE_PATH, payload, filen_settings)
         .await
-        .context(UploadDoneQueryFailed {})
+        .context(UploadDoneQueryFailedSnafu {})
 }
 
 /// Calls `UPLOAD_STOP_PATH` endpoint.
@@ -338,7 +338,7 @@ pub async fn upload_stop_request_async(
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(UPLOAD_STOP_PATH, payload, filen_settings)
         .await
-        .context(UploadStopQueryFailed {})
+        .context(UploadStopQueryFailedSnafu {})
 }
 
 /// Calls `UPLOAD_PATH` endpoint. Used to encrypt and upload a file chunk to Filen.
@@ -393,9 +393,9 @@ pub async fn encrypt_and_upload_chunk_async(
         .unsecure()
         .as_bytes()
         .try_into()
-        .context(FileKeyShouldHave32Chars {})?;
+        .context(FileKeyShouldHave32CharsSnafu {})?;
     let chunk_encrypted =
-        crypto::encrypt_file_chunk(chunk, file_key, upload_properties.version).context(ChunkEncryptionError {
+        crypto::encrypt_file_chunk(chunk, file_key, upload_properties.version).context(ChunkEncryptionSnafu {
             chunk_size: chunk.len(),
             file_key_size: file_key.len(),
             file_version: upload_properties.version,
@@ -409,7 +409,7 @@ pub async fn encrypt_and_upload_chunk_async(
         filen_settings,
     )
     .await
-    .context(UploadQueryFailed {
+    .context(UploadQueryFailedSnafu {
         api_endpoint,
         chunk_size,
     })
@@ -440,7 +440,7 @@ pub async fn user_unfinished_delete_request_async(
         filen_settings,
     )
     .await
-    .context(UserUnfinishedDeleteQueryFailed {})
+    .context(UserUnfinishedDeleteQueryFailedSnafu {})
 }
 
 /// Uploads file to Filen by reading file chunks from given reader,
@@ -557,13 +557,13 @@ pub async fn encrypt_and_upload_file_async<R: Read + Seek + Send>(
             if mark_done_response.status {
                 Ok(FileUploadInfo::new(upload_properties, chunk_upload_responses))
             } else {
-                CouldNotMarkDone {
+                CouldNotMarkDoneSnafu {
                     message: format!("{:?}", mark_done_response.message),
                 }
                 .fail()
             }
         } else {
-            DummyChunkNotAccepted {
+            DummyChunkNotAcceptedSnafu {
                 message: dummy_chunk_response
                     .message
                     .unwrap_or_else(|| "unknown reason".to_owned()),

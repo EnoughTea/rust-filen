@@ -137,8 +137,8 @@ pub async fn download_file_chunk_async(
     let api_endpoint = utils::filen_file_location_to_api_endpoint(file_chunk_location);
     queries::download_from_filen_async(&api_endpoint, filen_settings)
         .await
-        .context(CannotDownloadFileChunk {
-            location: file_chunk_location.clone(),
+        .context(CannotDownloadFileChunkSnafu {
+            chunk_location: file_chunk_location.clone(),
         })
 }
 
@@ -269,7 +269,7 @@ pub async fn download_and_decrypt_file_async<W: Write + Send>(
         })
         .collect::<Result<Vec<u64>>>()?;
 
-    writer.flush().context(CannotFlushWriter {})?;
+    writer.flush().context(CannotFlushWriterSnafu {})?;
     Ok(written_batch_lengths.iter().sum::<u64>())
 }
 
@@ -288,9 +288,9 @@ fn write_batch<W: Write>(
             writer
                 .write_all(bytes)
                 .map(|_| batch_encrypted_size)
-                .context(CannotWriteFileChunk {
+                .context(CannotWriteFileChunkSnafu {
                     length: bytes.len(),
-                    location: file_chunk_location.clone(),
+                    chunk_location: file_chunk_location.clone(),
                 })
         })
         .collect::<Result<Vec<u64>>>()?;
@@ -315,16 +315,16 @@ fn decrypt_batch(
                 .unsecure()
                 .as_bytes()
                 .try_into()
-                .context(InvalidFileKeySize {})?;
+                .context(InvalidFileKeySizeSnafu {})?;
             let chunk_index = batch_index + index as u32;
             crypto::decrypt_file_chunk(encrypted_bytes, file_key_bytes, version)
                 .map(|decrypted_bytes| {
                     encrypted_total += encrypted_bytes.len() as u64;
                     decrypted_bytes
                 })
-                .context(CannotDecryptFileChunk {
+                .context(CannotDecryptFileChunkSnafu {
                     length: encrypted_bytes.len(),
-                    location: file_location.get_file_chunk_location(chunk_index),
+                    chunk_location: file_location.get_file_chunk_location(chunk_index),
                 })
         })
         .collect::<Result<Vec<Vec<u8>>>>()?;

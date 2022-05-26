@@ -1007,7 +1007,7 @@ pub async fn user_events_request_async(
 ) -> Result<UserEventsResponsePayload> {
     queries::query_filen_api_async(USER_EVENTS_PATH, payload, filen_settings)
         .await
-        .context(UserEventsQueryFailed {})
+        .context(UserEventsQueryFailedSnafu {})
 }
 
 /// Calls `USER_EVENTS_GET_PATH` endpoint.
@@ -1026,7 +1026,7 @@ pub async fn user_events_get_request_async(
 ) -> Result<UserEventsGetResponsePayload> {
     queries::query_filen_api_async(USER_EVENTS_GET_PATH, payload, filen_settings)
         .await
-        .context(UserEventsGetQueryFailed {})
+        .context(UserEventsGetQueryFailedSnafu {})
 }
 
 macro_rules! user_event_struct {

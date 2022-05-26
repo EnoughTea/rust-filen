@@ -99,7 +99,7 @@ pub async fn user_sync_get_data_request_async(
 ) -> Result<UserSyncGetDataResponsePayload> {
     queries::query_filen_api_async(USER_SYNC_GET_DATA_PATH, &utils::api_key_json(api_key), filen_settings)
         .await
-        .context(UserSyncGetDataQueryFailed {})
+        .context(UserSyncGetDataQueryFailedSnafu {})
 }
 
 /// Calls `USER_USAGE_PATH` endpoint. Used to fetch user general usage stats.
@@ -116,5 +116,5 @@ pub async fn user_usage_request_async(
 ) -> Result<UserUsageResponsePayload> {
     queries::query_filen_api_async(USER_USAGE_PATH, &utils::api_key_json(api_key), filen_settings)
         .await
-        .context(UserUsageQueryFailed {})
+        .context(UserUsageQueryFailedSnafu {})
 }

@@ -107,7 +107,7 @@ pub fn download_from_filen(api_endpoint: &str, filen_settings: &FilenSettings) -
     let response = get_bytes(filen_endpoint.as_str(), filen_settings.download_chunk_timeout.as_secs());
     #[cfg(feature = "async")]
     {
-        response.context(ReqwestWebRequestFailed {
+        response.context(ReqwestWebRequestFailedSnafu {
             message: format!("Failed to download file chunk from '{}'", filen_endpoint),
         })
     }
@@ -124,7 +124,7 @@ pub async fn download_from_filen_async(api_endpoint: &str, filen_settings: &File
     let filen_endpoint = produce_filen_endpoint(api_endpoint, &filen_settings.download_servers)?;
     get_bytes_async(filen_endpoint.as_str(), filen_settings.download_chunk_timeout.as_secs())
         .await
-        .context(ReqwestWebRequestFailed {
+        .context(ReqwestWebRequestFailedSnafu {
             message: format!("Failed to download file chunk (async) from '{}'", filen_endpoint),
         })
 }
@@ -321,12 +321,12 @@ where
     U: DeserializeOwned,
     F: Send + FnOnce() -> String,
 {
-    let response = request_result.context(ReqwestWebRequestFailed {
+    let response = request_result.context(ReqwestWebRequestFailedSnafu {
         message: error_message(),
     })?;
     response
         .json::<U>()
-        .context(ReqwestCannotDeserializeResponseBodyJson {})
+        .context(ReqwestCannotDeserializeResponseBodyJsonSnafu {})
 }
 
 #[cfg(feature = "async")]
@@ -338,11 +338,11 @@ where
     U: DeserializeOwned,
     F: Send + FnOnce() -> String,
 {
-    let response = request_result.context(ReqwestWebRequestFailed {
+    let response = request_result.context(ReqwestWebRequestFailedSnafu {
         message: error_message(),
     })?;
     response
         .json::<U>()
         .await
-        .context(ReqwestCannotDeserializeResponseBodyJson {})
+        .context(ReqwestCannotDeserializeResponseBodyJsonSnafu {})
 }

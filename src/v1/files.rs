@@ -384,7 +384,7 @@ pub async fn file_archive_request_async(
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(FILE_ARCHIVE_PATH, payload, filen_settings)
         .await
-        .context(FileArchieveQueryFailed {})
+        .context(FileArchieveQueryFailedSnafu {})
 }
 
 /// Calls `FILE_EXISTS_PATH` endpoint.
@@ -405,7 +405,7 @@ pub async fn file_exists_request_async(
 ) -> Result<LocationExistsResponsePayload> {
     queries::query_filen_api_async(FILE_EXISTS_PATH, payload, filen_settings)
         .await
-        .context(FileExistsQueryFailed {})
+        .context(FileExistsQueryFailedSnafu {})
 }
 
 /// Calls `FILE_MOVE_PATH` endpoint.
@@ -434,7 +434,7 @@ pub async fn file_move_request_async(
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(FILE_MOVE_PATH, payload, filen_settings)
         .await
-        .context(FileMoveQueryFailed {})
+        .context(FileMoveQueryFailedSnafu {})
 }
 
 /// Calls `FILE_RENAME_PATH` endpoint.
@@ -457,7 +457,7 @@ pub async fn file_rename_request_async(
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(FILE_RENAME_PATH, payload, filen_settings)
         .await
-        .context(FileRenameQueryFailed {})
+        .context(FileRenameQueryFailedSnafu {})
 }
 
 /// Calls `FILE_RESTORE_PATH` endpoint. Used to restore file from the 'trash' folder.
@@ -476,7 +476,7 @@ pub async fn file_restore_request_async(
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(FILE_RESTORE_PATH, payload, filen_settings)
         .await
-        .context(FileRestoreQueryFailed {})
+        .context(FileRestoreQueryFailedSnafu {})
 }
 
 /// Calls `FILE_TRASH_PATH` endpoint.
@@ -499,7 +499,7 @@ pub async fn file_trash_request_async(
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(FILE_TRASH_PATH, payload, filen_settings)
         .await
-        .context(FileTrashQueryFailed {})
+        .context(FileTrashQueryFailedSnafu {})
 }
 
 /// Calls `RM_PATH` endpoint. Used to delete file.
@@ -515,7 +515,7 @@ pub async fn rm_request_async(
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(RM_PATH, payload, filen_settings)
         .await
-        .context(RmQueryFailed {})
+        .context(RmQueryFailedSnafu {})
 }
 
 /// Calls `USER_DELETE_ALL_PATH` endpoint. Used to delete *all* user files and folders.
@@ -532,7 +532,7 @@ pub async fn user_delete_all_request_async(
 ) -> Result<UserRecentResponsePayload> {
     queries::query_filen_api_async(USER_DELETE_ALL_PATH, &utils::api_key_json(api_key), filen_settings)
         .await
-        .context(UserDeleteAllQueryFailed {})
+        .context(UserDeleteAllQueryFailedSnafu {})
 }
 
 /// Calls `USER_RECENT_PATH` endpoint. Used to fetch recent files.
@@ -549,7 +549,7 @@ pub async fn user_recent_request_async(
 ) -> Result<UserRecentResponsePayload> {
     queries::query_filen_api_async(USER_RECENT_PATH, &utils::api_key_json(api_key), filen_settings)
         .await
-        .context(UserRecentQueryFailed {})
+        .context(UserRecentQueryFailedSnafu {})
 }
 
 #[cfg(test)]

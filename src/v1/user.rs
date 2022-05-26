@@ -334,7 +334,7 @@ pub async fn user_get_account_request_async(
 ) -> Result<UserGetAccountResponsePayload> {
     queries::query_filen_api_async(USER_GET_ACCOUNT_PATH, &utils::api_key_json(api_key), filen_settings)
         .await
-        .context(UserGetAccountQueryFailed {})
+        .context(UserGetAccountQueryFailedSnafu {})
 }
 
 /// Calls `USER_GET_SETTINGS_PATH` endpoint. Used to 2FA settings, versioned and unfinished storage sizes.
@@ -355,7 +355,7 @@ pub async fn user_get_settings_request_async(
 ) -> Result<UserGetSettingsResponsePayload> {
     queries::query_filen_api_async(USER_GET_SETTINGS_PATH, &utils::api_key_json(api_key), filen_settings)
         .await
-        .context(UserGetSettingsQueryFailed {})
+        .context(UserGetSettingsQueryFailedSnafu {})
 }
 
 /// Calls `USER_INFO_PATH` endpoint.
@@ -372,7 +372,7 @@ pub async fn user_info_request_async(
 ) -> Result<UserInfoResponsePayload> {
     queries::query_filen_api_async(USER_INFO_PATH, &utils::api_key_json(api_key), filen_settings)
         .await
-        .context(UserInfoQueryFailed {})
+        .context(UserInfoQueryFailedSnafu {})
 }
 
 #[cfg(test)]

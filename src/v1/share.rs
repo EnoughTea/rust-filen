@@ -660,7 +660,7 @@ pub async fn share_dir_status_request_async(
 ) -> Result<ShareDirStatusResponsePayload> {
     queries::query_filen_api_async(SHARE_DIR_STATUS_PATH, payload, filen_settings)
         .await
-        .context(ShareDirStatusQueryFailed {})
+        .context(ShareDirStatusQueryFailedSnafu {})
 }
 
 /// Calls `SHARE_PATH` endpoint. Used to share a file or folder.
@@ -676,7 +676,7 @@ pub async fn share_request_async(
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(SHARE_PATH, payload, filen_settings)
         .await
-        .context(ShareQueryFailed {})
+        .context(ShareQueryFailedSnafu {})
 }
 
 /// Calls `USER_SHARED_IN_PATH` endpoint.
@@ -697,7 +697,7 @@ pub async fn user_shared_in_request_async(
 ) -> Result<UserSharedInOrOutResponsePayload> {
     queries::query_filen_api_async(USER_SHARED_IN_PATH, payload, filen_settings)
         .await
-        .context(UserSharedInQueryFailed {})
+        .context(UserSharedInQueryFailedSnafu {})
 }
 
 /// Calls `USER_SHARED_OUT_PATH` endpoint.
@@ -718,7 +718,7 @@ pub async fn user_shared_out_request_async(
 ) -> Result<UserSharedInOrOutResponsePayload> {
     queries::query_filen_api_async(USER_SHARED_OUT_PATH, payload, filen_settings)
         .await
-        .context(UserSharedOutQueryFailed {})
+        .context(UserSharedOutQueryFailedSnafu {})
 }
 
 /// Calls `USER_SHARED_ITEM_IN_REMOVE_PATH` endpoint.
@@ -740,7 +740,7 @@ pub async fn user_shared_item_in_rename_request_async(
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(USER_SHARED_ITEM_IN_REMOVE_PATH, payload, filen_settings)
         .await
-        .context(UserSharedItemInRemoveQueryFailed {})
+        .context(UserSharedItemInRemoveQueryFailedSnafu {})
 }
 
 /// Calls `USER_SHARED_ITEM_OUT_REMOVE_PATH` endpoint.
@@ -762,7 +762,7 @@ pub async fn user_shared_item_out_remove_request_async(
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(USER_SHARED_ITEM_OUT_REMOVE_PATH, payload, filen_settings)
         .await
-        .context(UserSharedItemOutRemoveQueryFailed {})
+        .context(UserSharedItemOutRemoveQueryFailedSnafu {})
 }
 
 /// Calls `USER_SHARED_ITEM_RENAME_PATH` endpoint.
@@ -782,7 +782,7 @@ pub async fn user_shared_item_rename_request_async(
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(USER_SHARED_ITEM_RENAME_PATH, payload, filen_settings)
         .await
-        .context(UserSharedItemRenameQueryFailed {})
+        .context(UserSharedItemRenameQueryFailedSnafu {})
 }
 
 /// Calls `USER_SHARED_ITEM_STATUS_PATH` endpoint.
@@ -802,7 +802,7 @@ pub async fn user_shared_item_status_request_async(
 ) -> Result<UserSharedItemStatusResponsePayload> {
     queries::query_filen_api_async(USER_SHARED_ITEM_STATUS_PATH, payload, filen_settings)
         .await
-        .context(UserSharedItemStatusQueryFailed {})
+        .context(UserSharedItemStatusQueryFailedSnafu {})
 }
 
 /// Helper which shares given file with the specified user.
@@ -866,7 +866,7 @@ pub async fn share_file_async<T: HasFileMetadata + HasUuid + Sync>(
     if response.status {
         Ok(response.message.unwrap_or_default())
     } else {
-        CannotShareFile {
+        CannotShareFileSnafu {
             uuid: *file_data.uuid_ref(),
             message: format!("{:?}", response.message),
         }
@@ -927,7 +927,7 @@ pub async fn share_folder_async<T: HasLocationName + HasUuid + Sync>(
     if response.status {
         Ok(response.message.unwrap_or_default())
     } else {
-        CannotShareFolder {
+        CannotShareFolderSnafu {
             uuid: *folder_data.uuid_ref(),
             message: format!("{:?}", response.message),
         }
@@ -1015,10 +1015,10 @@ pub async fn share_folder_recursively_async(
         .retry
         .call_async(|| download_dir_request_async(&content_payload, &settings.filen))
         .await
-        .context(DownloadDirRequestFailed {})?;
+        .context(DownloadDirRequestFailedSnafu {})?;
     let contents = contents_response
         .data_ref_or_err()
-        .context(CannotGetUserFolderContents {})?;
+        .context(CannotGetUserFolderContentsSnafu {})?;
     // Share this folder and all sub-folders:
     let folder_futures = contents.folders.iter().map(|folder| {
         settings.retry.call_async(move || async move {

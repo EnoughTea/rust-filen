@@ -439,7 +439,7 @@ pub async fn download_dir_link_request_async(
 ) -> Result<DownloadDirLinkResponsePayload> {
     queries::query_filen_api_async(DOWNLOAD_DIR_LINK_PATH, payload, filen_settings)
         .await
-        .context(DownloadDirLinkQueryFailed {})
+        .context(DownloadDirLinkQueryFailedSnafu {})
 }
 
 /// Calls `DOWNLOAD_DIR_SHARED_PATH` endpoint. Used to check contents of a 'received' folder:
@@ -461,7 +461,7 @@ pub async fn download_dir_shared_request_async(
 ) -> Result<DownloadDirSharedResponsePayload> {
     queries::query_filen_api_async(DOWNLOAD_DIR_SHARED_PATH, payload, filen_settings)
         .await
-        .context(DownloadDirSharedQueryFailed {})
+        .context(DownloadDirSharedQueryFailedSnafu {})
 }
 
 /// Calls `DOWNLOAD_DIR_PATH` endpoint. Used to get a user's folder with given ID and its sub-folders and files.
@@ -486,7 +486,7 @@ pub async fn download_dir_request_async(
 ) -> Result<DownloadDirResponsePayload> {
     queries::query_filen_api_async(DOWNLOAD_DIR_PATH, payload, filen_settings)
         .await
-        .context(DownloadDirQueryFailed {})
+        .context(DownloadDirQueryFailedSnafu {})
 }
 
 #[cfg(test)]

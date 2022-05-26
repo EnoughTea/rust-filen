@@ -236,7 +236,7 @@ pub async fn link_dir_item_rename_request_async(
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(LINK_DIR_ITEM_RENAME_PATH, payload, filen_settings)
         .await
-        .context(LinkDirItemRenameQueryFailed {})
+        .context(LinkDirItemRenameQueryFailedSnafu {})
 }
 
 /// Calls `LINK_DIR_ITEM_STATUS_PATH` endpoint.
@@ -256,7 +256,7 @@ pub async fn link_dir_item_status_request_async(
 ) -> Result<LinkDirStatusResponsePayload> {
     queries::query_filen_api_async(LINK_DIR_ITEM_STATUS_PATH, payload, filen_settings)
         .await
-        .context(LinkDirItemStatusQueryFailed {})
+        .context(LinkDirItemStatusQueryFailedSnafu {})
 }
 
 /// Calls `LINK_DIR_STATUS_PATH` endpoint. Used to check if given folder has links and return them, if any.
@@ -276,7 +276,7 @@ pub async fn link_dir_status_request_async(
 ) -> Result<LinkDirStatusResponsePayload> {
     queries::query_filen_api_async(LINK_DIR_STATUS_PATH, payload, filen_settings)
         .await
-        .context(LinkDirStatusQueryFailed {})
+        .context(LinkDirStatusQueryFailedSnafu {})
 }
 
 /// Helper used to disable link on the given file.
@@ -316,12 +316,12 @@ pub async fn disable_file_link_async(
     let link_disable_payload = LinkEditRequestPayload::disabled(api_key, file_uuid, link_uuid);
     let link_disable_response = link_edit_request_async(&link_disable_payload, filen_settings)
         .await
-        .context(LinkEditQueryFailed {})?;
+        .context(LinkEditQueryFailedSnafu {})?;
     let message = link_disable_response.message_ref().unwrap_or_default().to_owned();
     if link_disable_response.status {
         Ok(message)
     } else {
-        CannotDisableFileLink { message }.fail()
+        CannotDisableFileLinkSnafu { message }.fail()
     }
 }
 
@@ -380,12 +380,12 @@ pub async fn enable_file_link_async(
     );
     let link_enable_response = link_edit_request_async(&link_enable_payload, filen_settings)
         .await
-        .context(LinkEditQueryFailed {})?;
+        .context(LinkEditQueryFailedSnafu {})?;
     let message = link_enable_response.message_ref().unwrap_or_default().to_owned();
     if link_enable_response.status {
         Ok(link_enable_payload.uuid)
     } else {
-        CannotEnableFileLink { message }.fail()
+        CannotEnableFileLinkSnafu { message }.fail()
     }
 }
 
@@ -425,15 +425,15 @@ pub async fn add_file_to_link_async<'add_file_to_link, T: HasFileMetadata + HasU
 ) -> Result<String> {
     let dir_link_add_payload =
         DirLinkAddRequestPayload::from_file_data(api_key, file_data, parent, link_uuid, link_key_metadata, master_keys)
-            .context(DirLinkAddRequestPayloadCreationFailed {})?;
+            .context(DirLinkAddRequestPayloadCreationFailedSnafu {})?;
     let dir_link_add_response = dir_link_add_request_async(&dir_link_add_payload, filen_settings)
         .await
-        .context(DirLinkAddQueryFailed {})?;
+        .context(DirLinkAddQueryFailedSnafu {})?;
     let message = dir_link_add_response.message_ref().unwrap_or_default().to_owned();
     if dir_link_add_response.status {
         Ok(message)
     } else {
-        CannotEnableFileLink { message }.fail()
+        CannotEnableFileLinkSnafu { message }.fail()
     }
 }
 
@@ -485,15 +485,15 @@ pub async fn add_folder_to_link_async<'add_folder_to_link, T: HasLocationName + 
         link_key_metadata,
         master_keys,
     )
-    .context(DirLinkAddRequestPayloadCreationFailed {})?;
+    .context(DirLinkAddRequestPayloadCreationFailedSnafu {})?;
     let dir_link_add_response = dir_link_add_request_async(&dir_link_add_payload, filen_settings)
         .await
-        .context(DirLinkAddQueryFailed {})?;
+        .context(DirLinkAddQueryFailedSnafu {})?;
     let message = dir_link_add_response.message_ref().unwrap_or_default().to_owned();
     if dir_link_add_response.status {
         Ok(message)
     } else {
-        CannotEnableFolderLink { message }.fail()
+        CannotEnableFolderLinkSnafu { message }.fail()
     }
 }
 
@@ -593,7 +593,7 @@ pub async fn link_folder_recursively_async(
 ) -> Result<LinkIdWithKey> {
     let last_master_key = match master_keys.last() {
         Some(key) => key,
-        None => BadArgument {
+        None => BadArgumentSnafu {
             message: "master keys cannot be empty",
         }
         .fail()?,
@@ -607,10 +607,10 @@ pub async fn link_folder_recursively_async(
         .retry
         .call_async(|| download_dir_request_async(&content_payload, &settings.filen))
         .await
-        .context(DownloadDirRequestFailed {})?;
+        .context(DownloadDirRequestFailedSnafu {})?;
     let contents = contents_response
         .data_ref_or_err()
-        .context(CannotGetUserFolderContents {})?;
+        .context(CannotGetUserFolderContentsSnafu {})?;
 
     let link_id_with_key = LinkIdWithKey::generate(last_master_key);
     let link_uuid = link_id_with_key.link_uuid;

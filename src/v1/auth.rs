@@ -210,7 +210,7 @@ pub async fn auth_info_request_async(
 ) -> Result<AuthInfoResponsePayload> {
     queries::query_filen_api_async(AUTH_INFO_PATH, payload, filen_settings)
         .await
-        .context(AuthInfoQueryFailed {})
+        .context(AuthInfoQueryFailedSnafu {})
 }
 
 /// Calls `LOGIN_PATH` endpoint. Used to get API key, master keys and private key.
@@ -228,7 +228,7 @@ pub async fn login_request_async(
 ) -> Result<LoginResponsePayload> {
     queries::query_filen_api_async(LOGIN_PATH, payload, filen_settings)
         .await
-        .context(LoginQueryFailed {
+        .context(LoginQueryFailedSnafu {
             auth_version: payload.auth_version,
         })
 }

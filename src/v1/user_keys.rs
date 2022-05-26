@@ -296,7 +296,7 @@ pub async fn user_key_pair_info_request_async(
 ) -> Result<UserKeyPairInfoResponsePayload> {
     queries::query_filen_api_async(USER_KEY_PAIR_INFO_PATH, &utils::api_key_json(api_key), filen_settings)
         .await
-        .context(UserKeyPairInfoQueryFailed {})
+        .context(UserKeyPairInfoQueryFailedSnafu {})
 }
 
 /// Calls `USER_KEY_PAIR_UPDATE_PATH` endpoint. Used to set user's RSA public/private key pair.
@@ -316,7 +316,7 @@ pub async fn user_key_pair_update_request_async(
 ) -> Result<PlainResponsePayload> {
     queries::query_filen_api_async(USER_KEY_PAIR_UPDATE_PATH, payload, filen_settings)
         .await
-        .context(UserKeyPairUpdateQueryFailed {})
+        .context(UserKeyPairUpdateQueryFailedSnafu {})
 }
 
 /// Calls `USER_MASTER_KEYS_PATH` endpoint. Used to get/update user's master keys.
@@ -339,7 +339,7 @@ pub async fn user_master_keys_request_async(
 ) -> Result<MasterKeysFetchResponsePayload> {
     queries::query_filen_api_async(USER_MASTER_KEYS_PATH, payload, filen_settings)
         .await
-        .context(UserMasterKeysQueryFailed {})
+        .context(UserMasterKeysQueryFailedSnafu {})
 }
 
 /// Calls `USER_PUBLIC_KEY_GET_PATH` endpoint. Used to get any user's RSA public key.
@@ -359,7 +359,7 @@ pub async fn user_public_key_get_request_async(
 ) -> Result<UserPublicKeyGetResponsePayload> {
     queries::query_filen_api_async(USER_PUBLIC_KEY_GET_PATH, payload, filen_settings)
         .await
-        .context(UserPublicKeyGetQueryFailed {})
+        .context(UserPublicKeyGetQueryFailedSnafu {})
 }
 
 #[cfg(test)]
