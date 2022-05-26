@@ -1,18 +1,18 @@
 //! This module contains crypto functions used by Filen to generate and process its keys and metadata.
 use std::convert::TryInto;
 
+use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
 use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
-use block_modes::block_padding::Pkcs7;
-use block_modes::{BlockMode, Cbc};
 use easy_hasher::easy_hasher::{md2, md4, md5, sha1, sha256, sha384, sha512};
 use evpkdf::evpkdf;
-use hmac::{Hmac, Mac, NewMac};
+use hmac::digest::{FixedOutput, KeyInit};
+use hmac::{Hmac, Mac};
 use md5::Md5;
 use pbkdf2::pbkdf2;
 use rand::{thread_rng, Rng};
-use rsa::pkcs8::{FromPrivateKey, FromPublicKey};
+use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
 use rsa::PublicKey;
 use secstr::{SecUtf8, SecVec};
 use snafu::{ensure, Backtrace, ResultExt, Snafu};
@@ -21,7 +21,8 @@ use crate::utils;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-type Aes256Cbc = Cbc<Aes256, Pkcs7>;
+type Aes256CbcEnc = cbc::Encryptor<Aes256>;
+type Aes256CbcDec = cbc::Decryptor<Aes256>;
 type HmacSha512 = Hmac<sha2::Sha512>;
 
 pub const OPENSSL_SALT_PREFIX: &[u8] = b"Salted__";
@@ -34,8 +35,8 @@ pub const FILEN_VERSION_LENGTH: usize = 3;
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("AES CBC failed to decipher raw bytes: {}", source))]
-    AesCbcCannotDecipherData { source: block_modes::BlockModeError },
+    #[snafu(display("AES CBC failed to decipher raw bytes"))]
+    AesCbcCannotDecipherData { message: String },
 
     #[snafu(display("Prefixed AES GCM failed to decipher ciphered message: {}", source))]
     AesGcmCannotDecipherData { source: aes_gcm::Error },
@@ -66,9 +67,6 @@ pub enum Error {
     ))]
     EncryptedMetadataIsNotUtf8 { source: std::string::FromUtf8Error },
 
-    #[snafu(display("Somehow AES CBC key and IV slices were invalid, you should never see this"))]
-    InvalidAesCbcKeyIvSlices { source: block_modes::InvalidKeyIvLength },
-
     #[snafu(display(
         "Cannot encrypt data with given public key, assuming RSA-OAEP with SHA512 hash and PKCS8 format: {}",
         source
@@ -85,7 +83,7 @@ pub enum Error {
     RsaCannotDeserializePrivateKey { source: rsa::pkcs8::Error },
 
     #[snafu(display("Cannot deserialize public key from ASN.1 DER-encoded data: {}", source))]
-    RsaCannotDeserializePublicKey { source: rsa::pkcs8::Error },
+    RsaCannotDeserializePublicKey { source: rsa::pkcs8::spki::Error },
 
     #[snafu(display("Unsupported Filen file version {}", file_version))]
     UnsupportedFilenFileVersion { file_version: i64, backtrace: Backtrace },
@@ -425,8 +423,8 @@ fn encrypt_aes_cbc_with_key_and_iv(
     key: &[u8; AES_CBC_KEY_LENGTH],
     iv: &[u8; AES_CBC_IV_LENGTH],
 ) -> Result<Vec<u8>> {
-    let cipher = Aes256Cbc::new_from_slices(key, iv).context(InvalidAesCbcKeyIvSlicesSnafu {})?;
-    Ok(cipher.encrypt_vec(data))
+    let cipher = Aes256CbcEnc::new(key.into(), iv.into());
+    Ok(cipher.encrypt_padded_vec_mut::<Pkcs7>(data))
 }
 
 /// Decrypts data prefiously encrypted with `encrypt_aes_cbc_with_key_and_iv`.
@@ -435,10 +433,12 @@ fn decrypt_aes_cbc_with_key_and_iv(
     key: &[u8; AES_CBC_KEY_LENGTH],
     iv: &[u8; AES_CBC_IV_LENGTH],
 ) -> Result<Vec<u8>> {
-    let cipher = Aes256Cbc::new_from_slices(key, iv).context(InvalidAesCbcKeyIvSlicesSnafu {})?;
+    let cipher = Aes256CbcDec::new(key.into(), iv.into());
     cipher
-        .decrypt_vec(aes_encrypted_data)
-        .context(AesCbcCannotDecipherDataSnafu {})
+        .decrypt_padded_vec_mut::<Pkcs7>(aes_encrypted_data)
+        .map_err(|err| Error::AesCbcCannotDecipherData {
+            message: err.to_string(),
+        })
 }
 
 /// Calculates AES-GCM hash. Returns IV within [0, `AES_GCM_IV_LENGTH`) range,
@@ -544,7 +544,7 @@ fn salt_and_message_from_aes_openssl_encrypted_data(
 /// Calculates login key from the given user password and service-provided salt.
 fn derive_key_from_password_generic<M>(password: &[u8], salt: &[u8], iterations: u32, pbkdf2_hash: &mut [u8])
 where
-    M: Mac + NewMac + Sync,
+    M: Clone + FixedOutput + KeyInit + Mac + Sync,
 {
     let iterations_or_default = if iterations == 0 { 200_000 } else { iterations };
     pbkdf2::<M>(password, salt, iterations_or_default, pbkdf2_hash);
