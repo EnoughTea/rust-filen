@@ -103,7 +103,7 @@ impl fmt::Display for ContentKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ContentKind::Trash => write!(f, "trash"),
-            ContentKind::Folder(uuid) => uuid.to_hyphenated().fmt(f),
+            ContentKind::Folder(uuid) => uuid.as_hyphenated().fmt(f),
         }
     }
 }
@@ -136,7 +136,7 @@ impl Serialize for ContentKind {
     {
         match *self {
             ContentKind::Trash => serializer.serialize_str("trash"),
-            ContentKind::Folder(uuid) => serializer.serialize_str(&uuid.to_hyphenated().to_string()),
+            ContentKind::Folder(uuid) => serializer.serialize_str(&uuid.as_hyphenated().to_string()),
         }
     }
 }
@@ -676,7 +676,8 @@ pub fn user_base_folders_request(
     payload: &UserBaseFoldersRequestPayload,
     filen_settings: &FilenSettings,
 ) -> Result<UserBaseFoldersResponsePayload> {
-    queries::query_filen_api(USER_BASE_FOLDERS_PATH, payload, filen_settings).context(UserBaseFoldersQueryFailedSnafu {})
+    queries::query_filen_api(USER_BASE_FOLDERS_PATH, payload, filen_settings)
+        .context(UserBaseFoldersQueryFailedSnafu {})
 }
 
 /// Calls `USER_BASE_FOLDERS_PATH` endpoint asynchronously.

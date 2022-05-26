@@ -63,7 +63,7 @@ pub fn filen_file_address_to_api_endpoint(region: &str, bucket: &str, file_uuid:
     vec![
         region,
         bucket,
-        &file_uuid.to_hyphenated().to_string(),
+        &file_uuid.as_hyphenated().to_string(),
         &chunk_index.to_string(),
     ]
     .join("/")

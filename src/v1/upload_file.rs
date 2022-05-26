@@ -228,7 +228,7 @@ impl FileUploadProperties {
             "https://localhost?",
             &[
                 ("apiKey", api_key.unsecure()),
-                ("uuid", &self.uuid.to_hyphenated().to_string()),
+                ("uuid", &self.uuid.as_hyphenated().to_string()),
                 ("name", &self.name_metadata),
                 ("nameHashed", &self.name_hashed),
                 ("size", &self.size_metadata),
@@ -239,7 +239,7 @@ impl FileUploadProperties {
                 ("expire", &self.expire.to_string()),
                 ("uploadKey", &self.upload_key),
                 ("metaData", &self.file_metadata),
-                ("parent", &self.parent_uuid.to_hyphenated().to_string()),
+                ("parent", &self.parent_uuid.as_hyphenated().to_string()),
                 ("version", &self.version.to_string()),
             ],
         )

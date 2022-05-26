@@ -561,7 +561,7 @@ impl Serialize for ParentOrBase {
     {
         match *self {
             Self::Base => serializer.serialize_str("base"),
-            Self::Folder(uuid) => serializer.serialize_str(&uuid.to_hyphenated().to_string()),
+            Self::Folder(uuid) => serializer.serialize_str(&uuid.as_hyphenated().to_string()),
         }
     }
 }
@@ -635,7 +635,7 @@ impl Serialize for ParentOrNone {
     {
         match *self {
             ParentOrNone::None => serializer.serialize_str("none"),
-            ParentOrNone::Folder(uuid) => serializer.serialize_str(&uuid.to_hyphenated().to_string()),
+            ParentOrNone::Folder(uuid) => serializer.serialize_str(&uuid.as_hyphenated().to_string()),
         }
     }
 }
