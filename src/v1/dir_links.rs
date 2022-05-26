@@ -270,7 +270,7 @@ impl<'dir_link_edit> DirLinkEditRequestPayload<'dir_link_edit> {
     ) -> Self {
         let (password_hashed, salt) = link_plain_password.map_or_else(
             || crypto::encrypt_to_link_password_and_salt(&SEC_LINK_EMPTY_PASSWORD_VALUE),
-            |password| crypto::encrypt_to_link_password_and_salt(password),
+            crypto::encrypt_to_link_password_and_salt,
         );
         Self {
             api_key,

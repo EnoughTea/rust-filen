@@ -86,7 +86,7 @@ impl<'de> Deserialize<'de> for UserEventKind {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        Ok(Self::from_str(&s).unwrap_or_else(|_| Self::Unknown(s)))
+        Ok(Self::from_str(&s).unwrap_or(Self::Unknown(s)))
     }
 }
 

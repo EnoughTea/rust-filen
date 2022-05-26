@@ -395,8 +395,8 @@ pub fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -
     let (key, iv) = generate_aes_key_and_iv(AES_CBC_KEY_LENGTH, AES_CBC_IV_LENGTH, 1, Some(&salt), key);
     let mut encrypted = encrypt_aes_cbc_with_key_and_iv(
         data,
-        &key.try_into().unwrap_or_else(|_| [0_u8; AES_CBC_KEY_LENGTH]),
-        &iv.try_into().unwrap_or_else(|_| [0_u8; AES_CBC_IV_LENGTH]),
+        &key.try_into().unwrap_or([0_u8; AES_CBC_KEY_LENGTH]),
+        &iv.try_into().unwrap_or([0_u8; AES_CBC_IV_LENGTH]),
     )?;
     let mut result = OPENSSL_SALT_PREFIX.to_vec();
     result.extend_from_slice(&salt);
@@ -408,8 +408,8 @@ pub fn encrypt_aes_openssl(data: &[u8], key: &[u8], maybe_salt: Option<&[u8]>) -
 pub fn decrypt_aes_openssl(aes_encrypted_data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     let (salt, message) = salt_and_message_from_aes_openssl_encrypted_data(aes_encrypted_data, OPENSSL_SALT_LENGTH)?;
     let (key, iv) = generate_aes_key_and_iv(AES_CBC_KEY_LENGTH, AES_CBC_IV_LENGTH, 1, Some(salt), key);
-    let key_sized: &[u8; AES_CBC_KEY_LENGTH] = &key.try_into().unwrap_or_else(|_| [0_u8; AES_CBC_KEY_LENGTH]);
-    let iv_sized: &[u8; AES_CBC_IV_LENGTH] = &iv.try_into().unwrap_or_else(|_| [0_u8; AES_CBC_IV_LENGTH]);
+    let key_sized: &[u8; AES_CBC_KEY_LENGTH] = &key.try_into().unwrap_or([0_u8; AES_CBC_KEY_LENGTH]);
+    let iv_sized: &[u8; AES_CBC_IV_LENGTH] = &iv.try_into().unwrap_or([0_u8; AES_CBC_IV_LENGTH]);
     decrypt_aes_cbc_with_key_and_iv(message, key_sized, iv_sized)
 }
 
