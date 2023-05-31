@@ -18,6 +18,10 @@ download and decrypt files, encrypt and upload files, and share/link files/folde
 Some obscure user-specific API queries are unimplemented and documentation is almost non-existent, sorry about that.
 If you need to call missing API query, you can do so with `rust_filen::queries::query_filen_api("/v1/some/uimplemented/api/path", any_serde_serializable_payload, filen_settings)`.
 
+# Disclaimer
+
+Filen has come a long way in the last 2 years, there is /v3/ API already. This lib was written for /v1/, so, chances are, it's even more janky than before. Sorry about that, wish I had time to tinker with it some more.
+
 ## Optional async
 
 By default, all queries are synchronous and performed with [ureq](https://github.com/algesten/ureq).
@@ -541,5 +545,4 @@ can be used to encrypt&decrypt folder/file names.
 ### That's all, folks!
 
 This is it for examples, at least for now.
-To dig deeper, you might want to check out https://filen.io/assets/js/fm.min.js and
-https://filen.io/assets/js/app.min.js for Filen API usage patterns.
+To dig deeper, you might want to check out Filen sources like aforementioned [desktop client](https://github.com/FilenCloudDienste/filen-desktop) and web scripts like https://drive.filen.io/static/js/lib/api/api.ts for Filen API usage patterns.
